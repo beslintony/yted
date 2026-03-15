@@ -74,6 +74,10 @@ export function GetDownloadPresets() {
   return window['go']['app']['App']['GetDownloadPresets']();
 }
 
+export function GetDownloadQueue() {
+  return window['go']['app']['App']['GetDownloadQueue']();
+}
+
 export function GetDownloads() {
   return window['go']['app']['App']['GetDownloads']();
 }
@@ -172,6 +176,10 @@ export function ShowOpenDirectoryDialog() {
 
 export function ShowSaveDialog(arg1) {
   return window['go']['app']['App']['ShowSaveDialog'](arg1);
+}
+
+export function StartProcessingDownloads() {
+  return window['go']['app']['App']['StartProcessingDownloads']();
 }
 
 export function SyncDownloadWithFile(arg1) {

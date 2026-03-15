@@ -40,6 +40,8 @@ export function GetChannels():Promise<Array<string>>;
 
 export function GetDownloadPresets():Promise<Array<config.DownloadPreset>>;
 
+export function GetDownloadQueue():Promise<Array<app.DownloadResult>>;
+
 export function GetDownloads():Promise<Array<db.Download>>;
 
 export function GetDownloadsByStatus(arg1:string):Promise<Array<db.Download>>;
@@ -89,6 +91,8 @@ export function ShowError(arg1:string):Promise<void>;
 export function ShowOpenDirectoryDialog():Promise<string>;
 
 export function ShowSaveDialog(arg1:string):Promise<string>;
+
+export function StartProcessingDownloads():Promise<void>;
 
 export function SyncDownloadWithFile(arg1:string):Promise<void>;
 

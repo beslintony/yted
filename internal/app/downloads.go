@@ -618,6 +618,7 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 	logger := applog.GetLogger()
 	
 	if a.db == nil {
+		logger.Warn("Download", "GetDownloadQueue called but db is nil")
 		return nil, nil
 	}
 	
@@ -628,6 +629,7 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 	}
 	
 	if len(downloads) == 0 {
+		logger.Debug("Download", "GetDownloadQueue: no incomplete downloads found")
 		return nil, nil
 	}
 	
@@ -637,6 +639,10 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 	
 	// Reset downloads that were 'downloading' to 'pending' so they can be retried
 	for _, dl := range downloads {
+		logger.Debug("Download", "Checking download status for reset", map[string]string{
+			"id":     dl.ID,
+			"status": dl.Status,
+		})
 		if dl.Status == "downloading" {
 			logger.Info("Download", "Resetting stuck download to pending", map[string]string{
 				"id": dl.ID,
@@ -647,6 +653,9 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 				})
 			} else {
 				dl.Status = "pending"
+				logger.Debug("Download", "Successfully reset download to pending", map[string]string{
+					"id": dl.ID,
+				})
 			}
 		}
 	}
@@ -691,7 +700,23 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 // This should be called by the frontend after restoring the queue
 func (a *App) StartProcessingDownloads() {
 	logger := applog.GetLogger()
-	logger.Info("Download", "Frontend requested to start processing downloads")
+	logger.Info("Download", "StartProcessingDownloads called by frontend")
+	
+	if a.db == nil {
+		logger.Error("Download", "Cannot start processing - db is nil")
+		return
+	}
+	
+	// Count pending downloads
+	pending, err := a.db.GetPendingDownloads(100)
+	if err != nil {
+		logger.Error("Download", "Failed to count pending downloads", err)
+	} else {
+		logger.Info("Download", "Found pending downloads", map[string]int{
+			"count": len(pending),
+		})
+	}
+	
 	go a.processDownloads()
 }
 

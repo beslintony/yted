@@ -24,6 +24,38 @@ export namespace app {
 	        this.orphaned_files_size = source["orphaned_files_size"];
 	    }
 	}
+	export class DownloadResult {
+	    id: string;
+	    url: string;
+	    status: string;
+	    progress: number;
+	    title: string;
+	    channel: string;
+	    thumbnail_url: string;
+	    format_id: string;
+	    quality: string;
+	    error_message: string;
+	    youtube_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.status = source["status"];
+	        this.progress = source["progress"];
+	        this.title = source["title"];
+	        this.channel = source["channel"];
+	        this.thumbnail_url = source["thumbnail_url"];
+	        this.format_id = source["format_id"];
+	        this.quality = source["quality"];
+	        this.error_message = source["error_message"];
+	        this.youtube_id = source["youtube_id"];
+	    }
+	}
 	export class ListVideosOptions {
 	    search: string;
 	    channel: string;

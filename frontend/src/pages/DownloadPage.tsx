@@ -91,7 +91,9 @@ export function DownloadPage() {
     // Restore download queue from previous session
     const restoreQueue = async () => {
       try {
+        console.log('Calling GetDownloadQueue...');
         const queue = await GetDownloadQueue();
+        console.log('GetDownloadQueue returned:', queue);
         if (queue && queue.length > 0) {
           console.log('Restoring download queue:', queue);
           for (const data of queue) {
@@ -132,7 +134,9 @@ export function DownloadPage() {
             }
           }
           // Tell backend to start processing pending downloads
+          console.log('Calling StartProcessingDownloads...');
           await StartProcessingDownloads();
+          console.log('StartProcessingDownloads completed');
         }
       } catch (err) {
         console.error('Failed to restore download queue:', err);
