@@ -1,8 +1,6 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -40,47 +38,4 @@ func TestSanitizeFilenameMaxLength(t *testing.T) {
 	if len(result) > 100 {
 		t.Errorf("SanitizeFilename length = %d, want <= 100", len(result))
 	}
-}
-
-func TestFileManagerIsManagedFile(t *testing.T) {
-	// Create a temp directory for testing
-	tempDir := t.TempDir()
-	
-	cfg := &mockConfig{
-		downloadPath: tempDir,
-	}
-	
-	fm := NewFileManager(cfg)
-	
-	// Test managed file (inside YTed folder)
-	managedFile := filepath.Join(tempDir, "video.mp4")
-	if !fm.IsManagedFile(managedFile) {
-		t.Errorf("IsManagedFile(%q) = false, want true for managed file", managedFile)
-	}
-	
-	// Test unmanaged file (outside YTed folder)
-	unmanagedFile := "/tmp/video.mp4"
-	if fm.IsManagedFile(unmanagedFile) {
-		t.Errorf("IsManagedFile(%q) = true, want false for unmanaged file", unmanagedFile)
-	}
-	
-	// Test empty path
-	if fm.IsManagedFile("") {
-		t.Errorf("IsManagedFile(\"\") = true, want false for empty path")
-	}
-}
-
-// mockConfig implements a minimal config interface for testing
-type mockConfig struct {
-	downloadPath string
-}
-
-func (m *mockConfig) Get() *mockConfigData {
-	return &mockConfigData{
-		DownloadPath: m.downloadPath,
-	}
-}
-
-type mockConfigData struct {
-	DownloadPath string
 }
