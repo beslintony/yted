@@ -8,15 +8,47 @@ import (
 )
 
 // findDownloadedFile searches for the downloaded file in the output directory
-// Looks for files containing the YouTube ID OR files modified very recently
-func findDownloadedFile(outputDir, youtubeID, ext string) string {
+// Looks for files containing the YouTube ID AND format (for multiple versions support)
+// If formatID is empty, falls back to just matching YouTube ID
+func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 	// Read directory contents
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
 		return ""
 	}
 
-	// First pass: Look for files with the YouTube ID in the name
+	// Build the expected format suffix for matching
+	// New format: %(title)s [%(id)s][%(format_id)s].%(ext)s
+	formatSuffix := ""
+	if formatID != "" {
+		formatSuffix = "[" + formatID + "]"
+	}
+
+	// First pass: Look for files with BOTH YouTube ID AND format ID
+	if formatSuffix != "" {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			// Check if filename contains both the YouTube ID and format ID
+			if strings.Contains(name, youtubeID) && strings.Contains(name, formatSuffix) {
+				// Check extension (video or audio)
+				lowerName := strings.ToLower(name)
+				if strings.HasSuffix(lowerName, ".mp4") ||
+					strings.HasSuffix(lowerName, ".webm") ||
+					strings.HasSuffix(lowerName, ".mkv") ||
+					strings.HasSuffix(lowerName, ".mp3") ||
+					strings.HasSuffix(lowerName, ".m4a") ||
+					strings.HasSuffix(lowerName, ".ogg") {
+					return filepath.Join(outputDir, name)
+				}
+			}
+		}
+	}
+
+	// Second pass: Look for files with just the YouTube ID (backward compatibility)
+	// This handles older downloads without format in filename
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue

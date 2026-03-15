@@ -1,6 +1,10 @@
 package app
 
 import (
+	"fmt"
+	"os"
+
+	applog "yted/internal/log"
 	"yted/internal/db"
 )
 
@@ -33,8 +37,10 @@ type ListVideosOptions struct {
 	Offset   int    `json:"offset"`
 }
 
-// ListVideos returns videos from the library
+// ListVideos returns videos from the library with file existence check
 func (a *App) ListVideos(opts ListVideosOptions) ([]VideoResult, error) {
+	logger := applog.GetLogger()
+
 	if a.db == nil {
 		return nil, nil
 	}
@@ -48,31 +54,48 @@ func (a *App) ListVideos(opts ListVideosOptions) ([]VideoResult, error) {
 		Offset:   opts.Offset,
 	}
 
-	videos, err := a.db.ListVideos(dbOpts)
+	videos, err := a.db.ListVideosWithHash(dbOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	results := make([]VideoResult, len(videos))
-	for i, v := range videos {
-		results[i] = videoToResult(v)
+	results := make([]VideoResult, 0, len(videos))
+	for _, v := range videos {
+		// Check if file still exists for managed files
+		if v.IsManaged && v.FilePath != "" {
+			if _, err := os.Stat(v.FilePath); os.IsNotExist(err) {
+				logger.Warn("Library", "Managed file missing, skipping", map[string]string{
+					"video_id": v.ID,
+					"path":     v.FilePath,
+				})
+				continue
+			}
+		}
+		results = append(results, videoToResult(v))
 	}
 
 	return results, nil
 }
 
-// GetVideo returns a single video
+// GetVideo returns a single video with file existence check
 func (a *App) GetVideo(id string) (*VideoResult, error) {
 	if a.db == nil {
 		return nil, nil
 	}
 
-	video, err := a.db.GetVideo(id)
+	video, err := a.db.GetVideoWithHash(id)
 	if err != nil {
 		return nil, err
 	}
 	if video == nil {
 		return nil, nil
+	}
+
+	// Check if managed file exists
+	if video.IsManaged && video.FilePath != "" {
+		if _, err := os.Stat(video.FilePath); os.IsNotExist(err) {
+			return nil, fmt.Errorf("video file not found: %s", video.FilePath)
+		}
 	}
 
 	result := videoToResult(*video)
@@ -85,7 +108,7 @@ func (a *App) GetVideoByYoutubeID(youtubeID string) (*VideoResult, error) {
 		return nil, nil
 	}
 
-	video, err := a.db.GetVideoByYoutubeID(youtubeID)
+	video, err := a.db.GetVideoByFileHash(youtubeID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,13 +120,79 @@ func (a *App) GetVideoByYoutubeID(youtubeID string) (*VideoResult, error) {
 	return &result, nil
 }
 
-// DeleteVideo removes a video from the library
-func (a *App) DeleteVideo(id string) error {
+// DeleteVideo removes a video from the library and optionally deletes the file
+func (a *App) DeleteVideo(id string, deleteFile bool) error {
+	logger := applog.GetLogger()
+
 	if a.db == nil {
 		return nil
 	}
 
-	return a.db.DeleteVideo(id)
+	// Get video info before deleting
+	filePath, isManaged, err := a.db.DeleteVideoAndFile(id)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Library", "Video deleted from database", map[string]string{
+		"id": id,
+		"file": filePath,
+	})
+
+	// Delete file only if it's managed and user confirmed
+	if deleteFile && isManaged && filePath != "" {
+		if err := os.Remove(filePath); err != nil {
+			logger.Error("Library", "Failed to delete video file", err, map[string]string{
+				"path": filePath,
+			})
+			return fmt.Errorf("failed to delete file: %w", err)
+		}
+		logger.Info("Library", "Video file deleted", map[string]string{
+			"path": filePath,
+		})
+	}
+
+	return nil
+}
+
+// DeleteVideoWithConfirmation removes a video and returns info for frontend confirmation
+func (a *App) DeleteVideoWithConfirmation(id string) (map[string]interface{}, error) {
+	logger := applog.GetLogger()
+
+	if a.db == nil {
+		return nil, nil
+	}
+
+	video, err := a.db.GetVideoWithHash(id)
+	if err != nil {
+		return nil, err
+	}
+	if video == nil {
+		return map[string]interface{}{
+			"found": false,
+		}, nil
+	}
+
+	// Check if file exists
+	fileExists := false
+	if video.FilePath != "" {
+		_, err := os.Stat(video.FilePath)
+		fileExists = !os.IsNotExist(err)
+	}
+
+	result := map[string]interface{}{
+		"found":       true,
+		"title":       video.Title,
+		"isManaged":   video.IsManaged,
+		"filePath":    video.FilePath,
+		"fileExists":  fileExists,
+		"fileSize":    video.FileSize,
+		"requiresConfirmation": video.IsManaged && fileExists,
+	}
+
+	logger.Info("Library", "Video deletion info", result)
+
+	return result, nil
 }
 
 // UpdateWatchPosition updates the watch position for a video
