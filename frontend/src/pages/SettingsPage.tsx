@@ -135,6 +135,17 @@ export function SettingsPage() {
     }
   };
 
+  const handleBrowseLogPath = async () => {
+    try {
+      const path = await ShowOpenDirectoryDialog();
+      if (path) {
+        setSettings((s) => s ? { ...s, log_path: path } as any : null);
+      }
+    } catch (err) {
+      console.error('Failed to browse:', err);
+    }
+  };
+
   const handleReset = () => {
     if (originalSettings) {
       setSettings(JSON.parse(JSON.stringify(originalSettings)));
@@ -445,6 +456,46 @@ export function SettingsPage() {
       >
         <Stack gap="md">
           <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Logging</Text>
+          
+          <Group align="flex-end" gap="sm">
+            <TextInput
+              label="Log Storage Path"
+              description="Where application logs are stored (default: ~/.yted/.logs)"
+              value={settings.log_path || ''}
+              readOnly
+              style={{ flex: 1 }}
+              styles={{
+                input: {
+                  background: dark ? '#1a1b1e' : '#f8f9fa',
+                  color: dark ? '#c1c2c5' : '#212529',
+                },
+              }}
+            />
+            <Button
+              variant="light"
+              leftSection={<IconFolder size={16} />}
+              onClick={handleBrowseLogPath}
+              color="yted"
+            >
+              Browse
+            </Button>
+          </Group>
+
+          <NumberInput
+            label="Max Log Sessions"
+            description="Number of log sessions to keep (1-100). Each session is one app start."
+            value={settings.max_log_sessions || 10}
+            onChange={(v) => updateSetting('max_log_sessions', v || 10)}
+            min={1}
+            max={100}
+            w={200}
+            styles={{
+              input: {
+                background: dark ? '#1a1b1e' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
+          />
           
           <Group align="flex-end" gap="sm">
             <TextInput

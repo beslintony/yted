@@ -2,13 +2,15 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-	applog "yted/internal/log"
 	"yted/internal/config"
 	"yted/internal/db"
+	applog "yted/internal/log"
 	"yted/internal/ytdl"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -37,28 +39,34 @@ func (a *App) Startup(ctx context.Context) {
 		return
 	}
 
-	// Initialize logger with log directory
-	logDir := appDataDir + "/logs"
-	if err := a.logger.SetLogDir(logDir); err != nil {
-		a.logger.Error("App", "Failed to set log directory", err)
-	}
-
-	a.logger.Info("App", "Starting YTed", map[string]string{
-		"version": "1.0.0",
-		"appDir":  appDataDir,
-	})
-
-	// Initialize config
+	// Initialize config first (needed for log settings)
 	cfgManager, err := config.NewManager(appDataDir)
 	if err != nil {
 		a.logger.Error("Config", "Failed to initialize config", err)
 		return
 	}
-	
+
 	if err := cfgManager.Load(); err != nil {
 		a.logger.Error("Config", "Failed to load config", err)
 	}
 	a.config = cfgManager
+
+	// Initialize logger with configured log directory and session management
+	logDir := cfgManager.Get().LogPath
+	maxSessions := cfgManager.Get().MaxLogSessions
+	if maxSessions < 1 {
+		maxSessions = 10
+	}
+	if err := a.logger.SetLogDirWithSessions(logDir, maxSessions); err != nil {
+		a.logger.Error("App", "Failed to set log directory", err)
+	}
+
+	a.logger.Info("App", "Starting YTed", map[string]string{
+		"version":     "1.0.0",
+		"appDir":      appDataDir,
+		"logDir":      logDir,
+		"maxSessions": fmt.Sprintf("%d", maxSessions),
+	})
 	a.logger.Info("Config", "Configuration loaded", map[string]interface{}{
 		"downloadPath": cfgManager.Get().DownloadPath,
 		"theme":        cfgManager.Get().Theme,
@@ -82,7 +90,7 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.ytdl = ytdl.NewClient(ytdlConfig)
 	a.logger.Info("YTDLP", "yt-dlp client initialized")
-	
+
 	// Install yt-dlp binary
 	if err := a.ytdl.Install(ctx); err != nil {
 		a.logger.Error("YTDLP", "Failed to install yt-dlp", err)
@@ -101,7 +109,7 @@ func (a *App) Startup(ctx context.Context) {
 // Shutdown is called when the app shuts down
 func (a *App) Shutdown(ctx context.Context) {
 	a.logger.Info("App", "Shutting down YTed")
-	
+
 	if a.config != nil {
 		if err := a.config.Save(); err != nil {
 			a.logger.Error("Config", "Failed to save config", err)

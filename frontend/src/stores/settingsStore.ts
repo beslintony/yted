@@ -4,7 +4,7 @@ import { UserSettings, DEFAULT_SETTINGS, ThemeMode, QualityOption, DownloadPrese
 interface SettingsState extends UserSettings {
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   setDownloadPath: (path: string) => void;
   setMaxConcurrentDownloads: (count: number) => void;
@@ -17,7 +17,9 @@ interface SettingsState extends UserSettings {
   setRememberPosition: (remember: boolean) => void;
   setSpeedLimit: (limit: number | null) => void;
   setProxyUrl: (url: string | null) => void;
+  setLogPath: (path: string) => void;
   setLogExportPath: (path: string) => void;
+  setMaxLogSessions: (count: number) => void;
   addDownloadPreset: (preset: Omit<DownloadPreset, 'id'>) => void;
   removeDownloadPreset: (id: string) => void;
   updateDownloadPreset: (id: string, preset: Partial<DownloadPreset>) => void;
@@ -32,42 +34,46 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   error: null,
 
   setDownloadPath: (path) => set({ downloadPath: path }),
-  
+
   setMaxConcurrentDownloads: (count) => set({ maxConcurrentDownloads: Math.max(1, Math.min(10, count)) }),
-  
+
   setDefaultQuality: (quality) => set({ defaultQuality: quality }),
-  
+
   setFilenameTemplate: (template) => set({ filenameTemplate: template }),
-  
+
   setTheme: (theme) => set({ theme }),
-  
+
   setAccentColor: (color) => set({ accentColor: color }),
-  
+
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  
+
   setDefaultVolume: (volume) => set({ defaultVolume: Math.max(0, Math.min(100, volume)) }),
-  
+
   setRememberPosition: (remember) => set({ rememberPosition: remember }),
-  
+
   setSpeedLimit: (limit) => set({ speedLimitKbps: limit }),
-  
+
   setProxyUrl: (url) => set({ proxyUrl: url }),
-  
+
+  setLogPath: (path) => set({ logPath: path }),
+
   setLogExportPath: (path) => set({ logExportPath: path }),
-  
+
+  setMaxLogSessions: (count) => set({ maxLogSessions: Math.max(1, Math.min(100, count)) }),
+
   addDownloadPreset: (preset) => {
     const id = crypto.randomUUID();
     set((state) => ({
       downloadPresets: [...state.downloadPresets, { ...preset, id }],
     }));
   },
-  
+
   removeDownloadPreset: (id) => {
     set((state) => ({
       downloadPresets: state.downloadPresets.filter((p) => p.id !== id),
     }));
   },
-  
+
   updateDownloadPreset: (id, updates) => {
     set((state) => ({
       downloadPresets: state.downloadPresets.map((p) =>
@@ -75,7 +81,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ),
     }));
   },
-  
+
   loadSettings: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -87,7 +93,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ error: err instanceof Error ? err.message : 'Failed to load settings', isLoading: false });
     }
   },
-  
+
   saveSettings: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -104,7 +110,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         rememberPosition: state.rememberPosition,
         speedLimitKbps: state.speedLimitKbps,
         proxyUrl: state.proxyUrl,
+        logPath: state.logPath,
         logExportPath: state.logExportPath,
+        maxLogSessions: state.maxLogSessions,
         downloadPresets: state.downloadPresets,
       };
       // TODO: Save to Go backend
@@ -114,6 +122,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ error: err instanceof Error ? err.message : 'Failed to save settings', isLoading: false });
     }
   },
-  
+
   resetToDefaults: () => set({ ...DEFAULT_SETTINGS }),
 }));

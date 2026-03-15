@@ -93,7 +93,9 @@ export interface UserSettings {
   proxyUrl: string | null;
   
   // Logging
-  logExportPath: string;
+  logPath: string;          // Internal log storage path (.logs folder)
+  logExportPath: string;    // Export destination
+  maxLogSessions: number;   // Number of sessions to keep (default: 10)
   
   // Presets
   downloadPresets: DownloadPreset[];
@@ -111,7 +113,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   rememberPosition: true,
   speedLimitKbps: null,
   proxyUrl: null,
-  logExportPath: '', // Will be set to ~/Downloads on init
+  logPath: '',          // Will be set to ~/.yted/.logs on init
+  logExportPath: '',    // Will be set to ~/Downloads on init
+  maxLogSessions: 10,   // Default: keep last 10 sessions
   downloadPresets: [
     { id: '1', name: 'Best Quality', format: 'best', quality: 'best', extension: 'mp4' },
     { id: '2', name: '1080p', format: 'bestvideo[height<=1080]+bestaudio', quality: '1080p', extension: 'mp4' },

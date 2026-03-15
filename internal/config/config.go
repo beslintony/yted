@@ -11,10 +11,10 @@ import (
 // Config holds all user-configurable settings
 type Config struct {
 	// Downloads
-	DownloadPath           string           `json:"download_path"`
-	MaxConcurrentDownloads int              `json:"max_concurrent_downloads"`
-	DefaultQuality         string           `json:"default_quality"`
-	FilenameTemplate       string           `json:"filename_template"`
+	DownloadPath           string `json:"download_path"`
+	MaxConcurrentDownloads int    `json:"max_concurrent_downloads"`
+	DefaultQuality         string `json:"default_quality"`
+	FilenameTemplate       string `json:"filename_template"`
 
 	// UI
 	Theme            string `json:"theme"`
@@ -22,15 +22,17 @@ type Config struct {
 	SidebarCollapsed bool   `json:"sidebar_collapsed"`
 
 	// Player
-	DefaultVolume      int  `json:"default_volume"`
-	RememberPosition   bool `json:"remember_position"`
+	DefaultVolume    int  `json:"default_volume"`
+	RememberPosition bool `json:"remember_position"`
 
 	// Network
 	SpeedLimitKbps *int    `json:"speed_limit_kbps"`
 	ProxyURL       *string `json:"proxy_url"`
 
 	// Logging
-	LogExportPath string `json:"log_export_path"`
+	LogPath        string `json:"log_path"`         // Internal log storage path
+	LogExportPath  string `json:"log_export_path"`  // Export destination
+	MaxLogSessions int    `json:"max_log_sessions"` // Number of sessions to keep (default: 10)
 
 	// Presets
 	DownloadPresets []DownloadPreset `json:"download_presets"`
@@ -46,10 +48,13 @@ type DownloadPreset struct {
 }
 
 // DefaultConfig returns the default configuration
-func DefaultConfig() *Config {
+func DefaultConfig(appDataDir string) *Config {
 	homeDir, _ := os.UserHomeDir()
 	defaultDownloadPath := filepath.Join(homeDir, "Downloads", "YTed")
 	defaultLogExportPath := filepath.Join(homeDir, "Downloads")
+
+	// Default log path is inside the app data directory as .logs
+	defaultLogPath := filepath.Join(appDataDir, ".logs")
 
 	return &Config{
 		DownloadPath:           defaultDownloadPath,
@@ -63,7 +68,9 @@ func DefaultConfig() *Config {
 		RememberPosition:       true,
 		SpeedLimitKbps:         nil,
 		ProxyURL:               nil,
+		LogPath:                defaultLogPath,
 		LogExportPath:          defaultLogExportPath,
+		MaxLogSessions:         10,
 		DownloadPresets: []DownloadPreset{
 			{ID: "1", Name: "Best Quality", Format: "best", Quality: "best", Extension: "mp4"},
 			{ID: "2", Name: "1080p", Format: "bestvideo[height<=1080]+bestaudio", Quality: "1080p", Extension: "mp4"},
@@ -89,7 +96,7 @@ func NewManager(appDataDir string) (*Manager, error) {
 
 	return &Manager{
 		configPath: filepath.Join(configDir, "settings.json"),
-		config:     DefaultConfig(),
+		config:     DefaultConfig(appDataDir),
 	}, nil
 }
 
