@@ -1,0 +1,253 @@
+package log
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+)
+
+type LogLevel string
+
+const (
+	DEBUG LogLevel = "DEBUG"
+	INFO  LogLevel = "INFO"
+	WARN  LogLevel = "WARN"
+	ERROR LogLevel = "ERROR"
+)
+
+type LogEntry struct {
+	Timestamp   time.Time       `json:"timestamp"`
+	Level       LogLevel        `json:"level"`
+	Component   string          `json:"component"`
+	Message     string          `json:"message"`
+	Data        json.RawMessage `json:"data,omitempty"`
+	Error       string          `json:"error,omitempty"`
+	StackTrace  string          `json:"stack_trace,omitempty"`
+}
+
+type Logger struct {
+	mu         sync.RWMutex
+	entries    []LogEntry
+	maxEntries int
+	logDir     string
+	listeners  []func(LogEntry)
+}
+
+var (
+	instance *Logger
+	once     sync.Once
+)
+
+// GetLogger returns the singleton logger instance
+func GetLogger() *Logger {
+	once.Do(func() {
+		instance = &Logger{
+			entries:    make([]LogEntry, 0, 1000),
+			maxEntries: 10000,
+			listeners:  make([]func(LogEntry), 0),
+		}
+	})
+	return instance
+}
+
+// SetLogDir sets the directory for log file output
+func (l *Logger) SetLogDir(dir string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	
+	l.logDir = dir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+	return nil
+}
+
+// AddListener adds a callback for new log entries (for frontend notifications)
+func (l *Logger) AddListener(fn func(LogEntry)) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.listeners = append(l.listeners, fn)
+}
+
+// RemoveListener removes a callback
+func (l *Logger) RemoveListener(fn func(LogEntry)) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	
+	for i, listener := range l.listeners {
+		if fmt.Sprintf("%p", listener) == fmt.Sprintf("%p", fn) {
+			l.listeners = append(l.listeners[:i], l.listeners[i+1:]...)
+			break
+		}
+	}
+}
+
+// log creates a log entry and notifies listeners
+func (l *Logger) log(level LogLevel, component, message string, data interface{}, err error) {
+	entry := LogEntry{
+		Timestamp: time.Now(),
+		Level:     level,
+		Component: component,
+		Message:   message,
+	}
+	
+	if data != nil {
+		if jsonData, err := json.Marshal(data); err == nil {
+			entry.Data = jsonData
+		}
+	}
+	
+	if err != nil {
+		entry.Error = err.Error()
+	}
+	
+	l.mu.Lock()
+	
+	// Add to in-memory buffer
+	l.entries = append(l.entries, entry)
+	
+	// Trim if exceeding max
+	if len(l.entries) > l.maxEntries {
+		l.entries = l.entries[len(l.entries)-l.maxEntries:]
+	}
+	
+	// Notify listeners
+	listeners := make([]func(LogEntry), len(l.listeners))
+	copy(listeners, l.listeners)
+	
+	l.mu.Unlock()
+	
+	// Notify outside of lock
+	for _, fn := range listeners {
+		go fn(entry)
+	}
+	
+	// Also write to file if configured
+	if l.logDir != "" {
+		go l.writeToFile(entry)
+	}
+	
+	// Also print to stdout for development
+	fmt.Printf("[%s] %s - %s: %s\n", entry.Timestamp.Format("15:04:05"), level, component, message)
+}
+
+func (l *Logger) writeToFile(entry LogEntry) {
+	filename := filepath.Join(l.logDir, time.Now().Format("2006-01-02")+".log")
+	
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	
+	jsonEntry, _ := json.Marshal(entry)
+	file.Write(jsonEntry)
+	file.Write([]byte("\n"))
+}
+
+// Debug logs a debug message
+func (l *Logger) Debug(component, message string, data ...interface{}) {
+	var d interface{}
+	if len(data) > 0 {
+		d = data[0]
+	}
+	l.log(DEBUG, component, message, d, nil)
+}
+
+// Info logs an info message
+func (l *Logger) Info(component, message string, data ...interface{}) {
+	var d interface{}
+	if len(data) > 0 {
+		d = data[0]
+	}
+	l.log(INFO, component, message, d, nil)
+}
+
+// Warn logs a warning message
+func (l *Logger) Warn(component, message string, data ...interface{}) {
+	var d interface{}
+	if len(data) > 0 {
+		d = data[0]
+	}
+	l.log(WARN, component, message, d, nil)
+}
+
+// Error logs an error message
+func (l *Logger) Error(component, message string, err error, data ...interface{}) {
+	var d interface{}
+	if len(data) > 0 {
+		d = data[0]
+	}
+	l.log(ERROR, component, message, d, err)
+}
+
+// GetRecentEntries returns the most recent log entries
+func (l *Logger) GetRecentEntries(count int, level ...LogLevel) []LogEntry {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	
+	if count > len(l.entries) {
+		count = len(l.entries)
+	}
+	
+	entries := l.entries[len(l.entries)-count:]
+	
+	// Filter by level if specified
+	if len(level) > 0 {
+		filtered := make([]LogEntry, 0, len(entries))
+		levelMap := make(map[LogLevel]bool)
+		for _, l := range level {
+			levelMap[l] = true
+		}
+		
+		for _, entry := range entries {
+			if levelMap[entry.Level] {
+				filtered = append(filtered, entry)
+			}
+		}
+		return filtered
+	}
+	
+	return entries
+}
+
+// GetAllEntries returns all log entries
+func (l *Logger) GetAllEntries() []LogEntry {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	
+	result := make([]LogEntry, len(l.entries))
+	copy(result, l.entries)
+	return result
+}
+
+// Clear clears all log entries
+func (l *Logger) Clear() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	
+	l.entries = make([]LogEntry, 0, 1000)
+}
+
+// Export exports logs to a file
+func (l *Logger) Export(filepath string) error {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	for _, entry := range l.entries {
+		jsonEntry, _ := json.Marshal(entry)
+		file.Write(jsonEntry)
+		file.Write([]byte("\n"))
+	}
+	
+	return nil
+}

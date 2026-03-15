@@ -18,8 +18,20 @@ export function ClearCompletedDownloads() {
   return window['go']['app']['App']['ClearCompletedDownloads']();
 }
 
+export function ClearLogs() {
+  return window['go']['app']['App']['ClearLogs']();
+}
+
 export function DeleteVideo(arg1) {
   return window['go']['app']['App']['DeleteVideo'](arg1);
+}
+
+export function ExportLogs(arg1) {
+  return window['go']['app']['App']['ExportLogs'](arg1);
+}
+
+export function GetAllLogs() {
+  return window['go']['app']['App']['GetAllLogs']();
 }
 
 export function GetAppName() {
@@ -44,6 +56,10 @@ export function GetDownloadsByStatus(arg1) {
 
 export function GetLibraryStats() {
   return window['go']['app']['App']['GetLibraryStats']();
+}
+
+export function GetLogs(arg1) {
+  return window['go']['app']['App']['GetLogs'](arg1);
 }
 
 export function GetSettings() {

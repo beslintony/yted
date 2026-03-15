@@ -22,6 +22,26 @@ export namespace app {
 	        this.offset = source["offset"];
 	    }
 	}
+	export class LogEntry {
+	    timestamp: string;
+	    level: string;
+	    component: string;
+	    message: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = source["timestamp"];
+	        this.level = source["level"];
+	        this.component = source["component"];
+	        this.message = source["message"];
+	        this.error = source["error"];
+	    }
+	}
 	export class VideoInfoResult {
 	    id: string;
 	    title: string;

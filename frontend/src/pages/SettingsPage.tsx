@@ -16,6 +16,7 @@ import {
   Table,
   Modal,
   Badge,
+  useMantineColorScheme,
 } from '@mantine/core';
 import {
   IconFolder,
@@ -30,36 +31,53 @@ import { GetSettings, SaveSettings, ShowOpenDirectoryDialog } from '../../wailsj
 import { config } from '../../wailsjs/go/models';
 
 export function SettingsPage() {
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [settings, setSettings] = useState<config.Config | null>(null);
+  const [originalSettings, setOriginalSettings] = useState<config.Config | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<config.DownloadPreset | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const {
-    theme,
+    theme: userTheme,
     setTheme,
     toggleSidebar,
-    downloadPath,
     setDownloadPath,
-    maxConcurrentDownloads,
     setMaxConcurrentDownloads,
-    defaultQuality,
     setDefaultQuality,
     downloadPresets,
     addDownloadPreset,
     removeDownloadPreset,
     updateDownloadPreset,
+    saveSettings: saveSettingsToStore,
   } = useSettingsStore();
+
+  const dark = colorScheme === 'dark';
 
   useEffect(() => {
     loadSettings();
   }, []);
 
+  // Track changes
+  useEffect(() => {
+    if (originalSettings && settings) {
+      const changed = JSON.stringify(originalSettings) !== JSON.stringify(settings);
+      setHasChanges(changed);
+    }
+  }, [settings, originalSettings]);
+
   const loadSettings = async () => {
     try {
       const result = await GetSettings();
-      setSettings(result);
       if (result) {
+        setSettings(result);
+        setOriginalSettings(JSON.parse(JSON.stringify(result)));
+        
+        // Sync with store
         setDownloadPath(result.download_path);
         setMaxConcurrentDownloads(result.max_concurrent_downloads);
         setDefaultQuality(result.default_quality as any);
@@ -75,10 +93,35 @@ export function SettingsPage() {
   const handleSave = async () => {
     if (!settings) return;
     
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    
     try {
       await SaveSettings(settings);
-    } catch (err) {
+      setOriginalSettings(JSON.parse(JSON.stringify(settings)));
+      setHasChanges(false);
+      setSaveSuccess(true);
+      
+      // Also save to store
+      await saveSettingsToStore();
+      
+      // Apply theme if changed
+      if (settings.theme !== userTheme) {
+        setTheme(settings.theme as any);
+        if (settings.theme === 'dark' && colorScheme !== 'dark') {
+          toggleColorScheme('dark');
+        } else if (settings.theme === 'light' && colorScheme !== 'light') {
+          toggleColorScheme('light');
+        }
+      }
+      
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
       console.error('Failed to save settings:', err);
+      setSaveError(err?.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -95,7 +138,23 @@ export function SettingsPage() {
   };
 
   const handleReset = () => {
-    loadSettings();
+    if (originalSettings) {
+      setSettings(JSON.parse(JSON.stringify(originalSettings)));
+    }
+  };
+
+  const handleThemeChange = (value: string) => {
+    setSettings((s) => s ? { ...s, theme: value } as any : null);
+    setTheme(value as any);
+    if (value === 'dark' && colorScheme !== 'dark') {
+      toggleColorScheme('dark');
+    } else if (value === 'light' && colorScheme !== 'light') {
+      toggleColorScheme('light');
+    }
+  };
+
+  const updateSetting = (key: string, value: any) => {
+    setSettings((s) => s ? { ...s, [key]: value } as any : null);
   };
 
   if (loading) {
@@ -108,12 +167,36 @@ export function SettingsPage() {
 
   return (
     <Stack spacing="lg">
-      <Text size="xl" fw={700}>Settings</Text>
+      <Group position="apart">
+        <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Settings</Text>
+        {hasChanges && (
+          <Badge color="yellow" variant="filled">Unsaved Changes</Badge>
+        )}
+      </Group>
+
+      {saveError && (
+        <Paper p="sm" withBorder sx={{ background: '#2c1b1b', borderColor: '#c92a2a' }}>
+          <Text c="red">{saveError}</Text>
+        </Paper>
+      )}
+
+      {saveSuccess && (
+        <Paper p="sm" withBorder sx={{ background: '#1b2c1b', borderColor: '#2ac92a' }}>
+          <Text c="green">Settings saved successfully!</Text>
+        </Paper>
+      )}
 
       {/* Downloads */}
-      <Paper p="md" withBorder>
+      <Paper 
+        p="md" 
+        withBorder
+        sx={{
+          background: dark ? '#25262b' : '#fff',
+          borderColor: dark ? '#373a40' : '#dee2e6',
+        }}
+      >
         <Stack spacing="md">
-          <Text size="lg" fw={600}>Downloads</Text>
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Downloads</Text>
           
           <Group align="flex-end">
             <TextInput
@@ -121,12 +204,19 @@ export function SettingsPage() {
               description="Where downloaded videos are saved"
               value={settings.download_path}
               readOnly
-              style={{ flex: 1 }}
+              sx={{ flex: 1 }}
+              styles={{
+                input: {
+                  background: dark ? '#1a1b1e' : '#f8f9fa',
+                  color: dark ? '#c1c2c5' : '#212529',
+                },
+              }}
             />
             <Button
               variant="light"
               leftIcon={<IconFolder size={16} />}
               onClick={handleBrowseDownloadPath}
+              color="red"
             >
               Browse
             </Button>
@@ -136,17 +226,23 @@ export function SettingsPage() {
             label="Max Concurrent Downloads"
             description="Number of simultaneous downloads (1-10)"
             value={settings.max_concurrent_downloads}
-            onChange={(v) => setSettings((s) => s ? { ...s, max_concurrent_downloads: v || 1 } as any : null)}
+            onChange={(v) => updateSetting('max_concurrent_downloads', v || 1)}
             min={1}
             max={10}
             w={200}
+            styles={{
+              input: {
+                background: dark ? '#1a1b1e' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
 
           <Select
             label="Default Quality"
             description="Preferred quality for new downloads"
             value={settings.default_quality}
-            onChange={(v) => v && setSettings((s) => s ? { ...s, default_quality: v } as any : null)}
+            onChange={(v) => v && updateSetting('default_quality', v)}
             data={[
               { value: 'best', label: 'Best Quality' },
               { value: '1080p', label: '1080p' },
@@ -156,22 +252,41 @@ export function SettingsPage() {
               { value: 'audio', label: 'Audio Only' },
             ]}
             w={200}
+            styles={{
+              input: {
+                background: dark ? '#1a1b1e' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
 
           <TextInput
             label="Filename Template"
             description="Template for output filenames (yt-dlp format)"
             value={settings.filename_template}
-            onChange={(e) => setSettings((s) => s ? { ...s, filename_template: e.currentTarget.value } as any : null)}
+            onChange={(e) => updateSetting('filename_template', e.currentTarget.value)}
+            styles={{
+              input: {
+                background: dark ? '#1a1b1e' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
         </Stack>
       </Paper>
 
       {/* Download Presets */}
-      <Paper p="md" withBorder>
+      <Paper 
+        p="md" 
+        withBorder
+        sx={{
+          background: dark ? '#25262b' : '#fff',
+          borderColor: dark ? '#373a40' : '#dee2e6',
+        }}
+      >
         <Stack spacing="md">
           <Group position="apart">
-            <Text size="lg" fw={600}>Download Presets</Text>
+            <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Download Presets</Text>
             <Button
               size="sm"
               leftIcon={<IconPlus size={16} />}
@@ -179,6 +294,7 @@ export function SettingsPage() {
                 setEditingPreset(null);
                 setPresetModalOpen(true);
               }}
+              color="red"
             >
               Add Preset
             </Button>
@@ -186,7 +302,7 @@ export function SettingsPage() {
 
           <Table>
             <thead>
-              <tr>
+              <tr style={{ color: dark ? '#c1c2c5' : '#495057' }}>
                 <th>Name</th>
                 <th>Format</th>
                 <th>Quality</th>
@@ -197,10 +313,10 @@ export function SettingsPage() {
             <tbody>
               {settings.download_presets?.map((preset) => (
                 <tr key={preset.id}>
-                  <td>{preset.name}</td>
-                  <td><code>{preset.format}</code></td>
-                  <td><Badge>{preset.quality}</Badge></td>
-                  <td>{preset.extension}</td>
+                  <td style={{ color: dark ? '#fff' : '#000' }}>{preset.name}</td>
+                  <td><code style={{ color: dark ? '#c1c2c5' : '#495057' }}>{preset.format}</code></td>
+                  <td><Badge color="red">{preset.quality}</Badge></td>
+                  <td style={{ color: dark ? '#c1c2c5' : '#495057' }}>{preset.extension}</td>
                   <td>
                     <Group spacing={4}>
                       <Tooltip label="Edit">
@@ -218,7 +334,10 @@ export function SettingsPage() {
                         <ActionIcon
                           size="sm"
                           color="red"
-                          onClick={() => removeDownloadPreset(preset.id)}
+                          onClick={() => {
+                            const newPresets = settings.download_presets.filter((p) => p.id !== preset.id);
+                            updateSetting('download_presets', newPresets);
+                          }}
                         >
                           <IconTrash size={14} />
                         </ActionIcon>
@@ -233,26 +352,39 @@ export function SettingsPage() {
       </Paper>
 
       {/* UI */}
-      <Paper p="md" withBorder>
+      <Paper 
+        p="md" 
+        withBorder
+        sx={{
+          background: dark ? '#25262b' : '#fff',
+          borderColor: dark ? '#373a40' : '#dee2e6',
+        }}
+      >
         <Stack spacing="md">
-          <Text size="lg" fw={600}>UI</Text>
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>UI</Text>
 
           <Select
             label="Theme"
             value={settings.theme}
-            onChange={(v) => v && setSettings((s) => s ? { ...s, theme: v } as any : null)}
+            onChange={handleThemeChange}
             data={[
               { value: 'dark', label: 'Dark' },
               { value: 'light', label: 'Light' },
               { value: 'auto', label: 'Auto' },
             ]}
             w={200}
+            styles={{
+              input: {
+                background: dark ? '#1a1b1e' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
 
           <ColorInput
             label="Accent Color"
             value={settings.accent_color}
-            onChange={(v) => setSettings((s) => s ? { ...s, accent_color: v } as any : null)}
+            onChange={(v) => updateSetting('accent_color', v)}
             w={200}
           />
 
@@ -260,41 +392,77 @@ export function SettingsPage() {
             label="Collapse Sidebar"
             checked={settings.sidebar_collapsed}
             onChange={(e) => {
-              setSettings((s) => s ? { ...s, sidebar_collapsed: e.currentTarget.checked } as any : null);
+              updateSetting('sidebar_collapsed', e.currentTarget.checked);
               toggleSidebar();
+            }}
+            styles={{
+              label: {
+                color: dark ? '#c1c2c5' : '#495057',
+              },
             }}
           />
         </Stack>
       </Paper>
 
       {/* Player */}
-      <Paper p="md" withBorder>
+      <Paper 
+        p="md" 
+        withBorder
+        sx={{
+          background: dark ? '#25262b' : '#fff',
+          borderColor: dark ? '#373a40' : '#dee2e6',
+        }}
+      >
         <Stack spacing="md">
-          <Text size="lg" fw={600}>Player</Text>
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Player</Text>
 
           <NumberInput
             label="Default Volume"
             value={settings.default_volume}
-            onChange={(v) => setSettings((s) => s ? { ...s, default_volume: v || 80 } as any : null)}
+            onChange={(v) => updateSetting('default_volume', v || 80)}
             min={0}
             max={100}
             w={200}
+            styles={{
+              input: {
+                background: dark ? '#1a1b1e' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
 
           <Switch
             label="Remember Watch Position"
             checked={settings.remember_position}
-            onChange={(e) => setSettings((s) => s ? { ...s, remember_position: e.currentTarget.checked } as any : null)}
+            onChange={(e) => updateSetting('remember_position', e.currentTarget.checked)}
+            styles={{
+              label: {
+                color: dark ? '#c1c2c5' : '#495057',
+              },
+            }}
           />
         </Stack>
       </Paper>
 
       {/* Actions */}
       <Group position="right">
-        <Button variant="light" leftIcon={<IconRefresh size={16} />} onClick={handleReset}>
-          Reset
-        </Button>
-        <Button leftIcon={<IconDeviceFloppy size={16} />} onClick={handleSave}>
+        {hasChanges && (
+          <Button 
+            variant="light" 
+            leftIcon={<IconRefresh size={16} />} 
+            onClick={handleReset}
+            color="gray"
+          >
+            Reset
+          </Button>
+        )}
+        <Button 
+          leftIcon={<IconDeviceFloppy size={16} />} 
+          onClick={handleSave}
+          loading={saving}
+          disabled={!hasChanges}
+          color="red"
+        >
           Save Settings
         </Button>
       </Group>
@@ -305,91 +473,96 @@ export function SettingsPage() {
         onClose={() => setPresetModalOpen(false)}
         preset={editingPreset}
         onSave={(preset) => {
-          const fixedPreset = { ...preset, quality: preset.quality as any };
+          const currentPresets = settings.download_presets || [];
           if (editingPreset) {
-            updateDownloadPreset(editingPreset.id, fixedPreset);
+            const updatedPresets = currentPresets.map((p) =>
+              p.id === preset.id ? preset : p
+            );
+            updateSetting('download_presets', updatedPresets);
           } else {
-            addDownloadPreset(fixedPreset as any);
+            const newPreset = { ...preset, id: crypto.randomUUID() };
+            updateSetting('download_presets', [...currentPresets, newPreset]);
           }
           setPresetModalOpen(false);
         }}
       />
     </Stack>
   );
-}
 
-function PresetModal({
-  opened,
-  onClose,
-  preset,
-  onSave,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  preset: config.DownloadPreset | null;
-  onSave: (preset: config.DownloadPreset) => void;
-}) {
-  const [name, setName] = useState(preset?.name || '');
-  const [format, setFormat] = useState(preset?.format || 'best');
-  const [quality, setQuality] = useState(preset?.quality || 'best');
-  const [extension, setExtension] = useState(preset?.extension || 'mp4');
+  function PresetModal({
+    opened,
+    onClose,
+    preset,
+    onSave,
+  }: {
+    opened: boolean;
+    onClose: () => void;
+    preset: config.DownloadPreset | null;
+    onSave: (preset: config.DownloadPreset) => void;
+  }) {
+    const [name, setName] = useState(preset?.name || '');
+    const [format, setFormat] = useState(preset?.format || 'best');
+    const [quality, setQuality] = useState(preset?.quality || 'best');
+    const [extension, setExtension] = useState(preset?.extension || 'mp4');
 
-  useEffect(() => {
-    setName(preset?.name || '');
-    setFormat(preset?.format || 'best');
-    setQuality(preset?.quality || 'best');
-    setExtension(preset?.extension || 'mp4');
-  }, [preset]);
+    useEffect(() => {
+      setName(preset?.name || '');
+      setFormat(preset?.format || 'best');
+      setQuality(preset?.quality || 'best');
+      setExtension(preset?.extension || 'mp4');
+    }, [preset]);
 
-  return (
-    <Modal opened={opened} onClose={onClose} title={preset ? 'Edit Preset' : 'Add Preset'}>
-      <Stack spacing="md">
-        <TextInput
-          label="Name"
-          value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="e.g., 1080p Video"
-        />
-        <TextInput
-          label="Format"
-          value={format}
-          onChange={(e) => setFormat(e.currentTarget.value)}
-          placeholder="e.g., bestvideo[height<=1080]+bestaudio"
-        />
-        <Select
-          label="Quality"
-          value={quality}
-          onChange={(v) => v && setQuality(v as any)}
-          data={[
-            { value: 'best', label: 'Best' },
-            { value: '1080p', label: '1080p' },
-            { value: '720p', label: '720p' },
-            { value: '480p', label: '480p' },
-            { value: 'audio', label: 'Audio' },
-          ]}
-        />
-        <TextInput
-          label="Extension"
-          value={extension}
-          onChange={(e) => setExtension(e.currentTarget.value)}
-          placeholder="e.g., mp4"
-        />
-        <Group position="right" mt="md">
-          <Button variant="light" onClick={onClose}>Cancel</Button>
-          <Button
-            onClick={() => onSave({
-              id: preset?.id || '',
-              name,
-              format,
-              quality,
-              extension,
-            })}
-            disabled={!name || !format}
-          >
-            Save
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
-  );
+    return (
+      <Modal opened={opened} onClose={onClose} title={preset ? 'Edit Preset' : 'Add Preset'}>
+        <Stack spacing="md">
+          <TextInput
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            placeholder="e.g., 1080p Video"
+          />
+          <TextInput
+            label="Format"
+            value={format}
+            onChange={(e) => setFormat(e.currentTarget.value)}
+            placeholder="e.g., bestvideo[height<=1080]+bestaudio"
+          />
+          <Select
+            label="Quality"
+            value={quality}
+            onChange={(v) => v && setQuality(v)}
+            data={[
+              { value: 'best', label: 'Best' },
+              { value: '1080p', label: '1080p' },
+              { value: '720p', label: '720p' },
+              { value: '480p', label: '480p' },
+              { value: 'audio', label: 'Audio' },
+            ]}
+          />
+          <TextInput
+            label="Extension"
+            value={extension}
+            onChange={(e) => setExtension(e.currentTarget.value)}
+            placeholder="e.g., mp4"
+          />
+          <Group position="right" mt="md">
+            <Button variant="light" onClick={onClose}>Cancel</Button>
+            <Button
+              onClick={() => onSave({
+                id: preset?.id || '',
+                name,
+                format,
+                quality,
+                extension,
+              } as any)}
+              disabled={!name || !format}
+              color="red"
+            >
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    );
+  }
 }
