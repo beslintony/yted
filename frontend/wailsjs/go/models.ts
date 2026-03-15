@@ -163,7 +163,9 @@ export namespace config {
 	    remember_position: boolean;
 	    speed_limit_kbps?: number;
 	    proxy_url?: string;
+	    log_path: string;
 	    log_export_path: string;
+	    max_log_sessions: number;
 	    download_presets: DownloadPreset[];
 	
 	    static createFrom(source: any = {}) {
@@ -183,7 +185,9 @@ export namespace config {
 	        this.remember_position = source["remember_position"];
 	        this.speed_limit_kbps = source["speed_limit_kbps"];
 	        this.proxy_url = source["proxy_url"];
+	        this.log_path = source["log_path"];
 	        this.log_export_path = source["log_export_path"];
+	        this.max_log_sessions = source["max_log_sessions"];
 	        this.download_presets = this.convertValues(source["download_presets"], DownloadPreset);
 	    }
 	

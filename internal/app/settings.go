@@ -86,6 +86,18 @@ func (a *App) UpdateSetting(key string, value interface{}) error {
 			if v, ok := value.(string); ok {
 				cfg.LogExportPath = v
 			}
+		case "log_path":
+			if v, ok := value.(string); ok {
+				cfg.LogPath = v
+			}
+		case "max_log_sessions":
+			if v, ok := value.(float64); ok {
+				cfg.MaxLogSessions = int(v)
+				// Update logger's max sessions in real-time
+				if a.logger != nil {
+					a.logger.SetMaxSessions(int(v))
+				}
+			}
 		}
 	})
 
