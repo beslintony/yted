@@ -3,9 +3,8 @@ import {
   AppShell,
   Burger,
   Group,
-  Text,
-  ActionIcon,
   Tooltip,
+  ActionIcon,
   Stack,
   useMantineColorScheme,
 } from '@mantine/core';
@@ -13,7 +12,6 @@ import {
   IconDownload,
   IconVideo,
   IconSettings,
-  IconMenu2,
   IconSun,
   IconMoon,
 } from '@tabler/icons-react';
@@ -26,7 +24,7 @@ function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [mobileOpened, setMobileOpened] = useState(false);
   const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
-  const { sidebarCollapsed, toggleSidebar, setTheme } = useSettingsStore();
+  const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
 
   const dark = colorScheme === 'dark';
 
@@ -39,7 +37,6 @@ function App() {
   const handleThemeToggle = () => {
     const newScheme = dark ? 'light' : 'dark';
     setColorScheme(newScheme);
-    setTheme(newScheme as any);
   };
 
   return (
@@ -56,6 +53,7 @@ function App() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group>
+            {/* Hamburger first */}
             <Burger
               opened={mobileOpened}
               onClick={() => setMobileOpened((o) => !o)}
@@ -63,18 +61,14 @@ function App() {
               size="sm"
               color={dark ? '#c1c2c5' : '#495057'}
             />
-            <img src="/logo.svg" alt="YTed" style={{ height: 32, width: 32 }} />
-            <Text fw={700} size="lg" c={dark ? '#fff' : '#000'}>YTed</Text>
             
-            <Tooltip label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-              <ActionIcon 
-                variant="subtle" 
-                onClick={toggleSidebar}
-                color="gray"
-                ml="sm"
-              >
-                <IconMenu2 size={18} />
-              </ActionIcon>
+            {/* Logo second - no text */}
+            <Tooltip label="YTed v1.0.0">
+              <img 
+                src="/logo.svg" 
+                alt="YTed" 
+                style={{ height: 36, width: 36, cursor: 'pointer' }}
+              />
             </Tooltip>
           </Group>
           
@@ -83,8 +77,9 @@ function App() {
               variant="subtle" 
               onClick={handleThemeToggle}
               color="gray"
+              size="lg"
             >
-              {dark ? <IconSun size={20} /> : <IconMoon size={20} />}
+              {dark ? <IconSun size={22} /> : <IconMoon size={22} />}
             </ActionIcon>
           </Tooltip>
         </Group>
@@ -96,32 +91,37 @@ function App() {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
-              <ActionIcon
-                key={item.id}
-                variant={isActive ? 'filled' : 'subtle'}
-                color={isActive ? 'yted' : 'gray'}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setMobileOpened(false);
-                }}
-                w={sidebarCollapsed ? 60 : '100%'}
-                h={44}
-                style={{
-                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                  padding: sidebarCollapsed ? 0 : '0 12px',
-                  borderRadius: 8,
-                }}
-                title={item.label}
+              <Tooltip 
+                key={item.id} 
+                label={item.label} 
+                position="right" 
+                disabled={!sidebarCollapsed}
               >
-                <Group gap={12} wrap="nowrap">
-                  <Icon size={20} />
-                  {!sidebarCollapsed && (
-                    <Text size="sm" fw={500}>
-                      {item.label}
-                    </Text>
-                  )}
-                </Group>
-              </ActionIcon>
+                <ActionIcon
+                  variant={isActive ? 'filled' : 'subtle'}
+                  color={isActive ? 'yted' : 'gray'}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setMobileOpened(false);
+                  }}
+                  w={sidebarCollapsed ? 60 : '100%'}
+                  h={44}
+                  style={{
+                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                    padding: sidebarCollapsed ? 0 : '0 12px',
+                    borderRadius: 8,
+                  }}
+                >
+                  <Group gap={12} wrap="nowrap">
+                    <Icon size={20} />
+                    {!sidebarCollapsed && (
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>
+                        {item.label}
+                      </span>
+                    )}
+                  </Group>
+                </ActionIcon>
+              </Tooltip>
             );
           })}
         </Stack>
@@ -135,12 +135,12 @@ function App() {
 
       <AppShell.Footer>
         <Group h="100%" px="md" justify="space-between">
-          <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+          <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>
             YTed v1.0.0
-          </Text>
-          <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+          </span>
+          <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>
             Ready
-          </Text>
+          </span>
         </Group>
       </AppShell.Footer>
     </AppShell>
