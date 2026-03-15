@@ -573,42 +573,6 @@ func extractYoutubeID(videoURL string) string {
 
 // findDownloadedFile searches for the downloaded file in the output directory
 // yt-dlp includes the video ID in the filename, so we search for files containing the ID
-func findDownloadedFile(outputDir, youtubeID, ext string) string {
-	// Read directory contents
-	entries, err := os.ReadDir(outputDir)
-	if err != nil {
-		return ""
-	}
-
-	// Look for files with the YouTube ID in the name and matching extension
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		// Check if filename contains the YouTube ID
-		if strings.Contains(name, youtubeID) {
-			// Check extension
-			if strings.HasSuffix(strings.ToLower(name), "."+strings.ToLower(ext)) {
-				return filepath.Join(outputDir, name)
-			}
-		}
-	}
-
-	// Also try looking for any file with the YouTube ID (different extension)
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if strings.Contains(name, youtubeID) {
-			// Return any matching file (video or audio)
-			return filepath.Join(outputDir, name)
-		}
-	}
-
-	return ""
-}
 
 
 // GetIncompleteDownloads returns all downloads that are not completed (for restoring queue)

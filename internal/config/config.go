@@ -130,6 +130,10 @@ func (m *Manager) Load() error {
 		homeDir, _ := os.UserHomeDir()
 		cfg.LogExportPath = filepath.Join(homeDir, "Downloads")
 	}
+	// Ensure filename template includes YouTube ID for file tracking
+	if cfg.FilenameTemplate == "" || cfg.FilenameTemplate == "%(title)s.%(ext)s" {
+		cfg.FilenameTemplate = "%(title)s [%(id)s].%(ext)s"
+	}
 
 	m.config = &cfg
 	return nil
