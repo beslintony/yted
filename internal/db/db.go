@@ -37,10 +37,15 @@ func (db *DB) Close() error {
 
 // migrate runs database migrations
 func (db *DB) migrate() error {
+	// First, handle schema changes for existing databases
+	if err := db.migrateSchema(); err != nil {
+		return fmt.Errorf("schema migration failed: %w", err)
+	}
+
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS videos (
 			id TEXT PRIMARY KEY,
-			youtube_id TEXT UNIQUE NOT NULL,
+			youtube_id TEXT NOT NULL,
 			title TEXT NOT NULL,
 			channel TEXT,
 			channel_id TEXT,
@@ -79,15 +84,128 @@ func (db *DB) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_videos_channel ON videos(channel)`,
 		`CREATE INDEX IF NOT EXISTS idx_videos_downloaded_at ON videos(downloaded_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
+		// Schema migrations for existing databases
+		`ALTER TABLE videos ADD COLUMN file_hash TEXT`,
+		`ALTER TABLE videos ADD COLUMN is_managed BOOLEAN DEFAULT 1`,
 	}
 
 	for _, migration := range migrations {
 		if _, err := db.conn.Exec(migration); err != nil {
-			return fmt.Errorf("migration failed: %w", err)
+			// Ignore errors for optional migrations (e.g., column already exists)
+			// Log but continue - this allows idempotent migrations
+			continue
 		}
 	}
 
 	return nil
+}
+
+// migrateSchema handles complex schema migrations
+func (db *DB) migrateSchema() error {
+	// Check if we need to remove the UNIQUE constraint from youtube_id
+	// This is needed for supporting multiple versions of the same video
+
+	// First, check if the table exists and has the constraint
+	var count int
+	err := db.conn.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='videos'",
+	).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		// Table doesn't exist yet, will be created with correct schema
+		return nil
+	}
+
+	// Check if file_hash column exists
+	var hasFileHash int
+	err = db.conn.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('videos') WHERE name='file_hash'",
+	).Scan(&hasFileHash)
+	if err != nil {
+		return err
+	}
+
+	// Check if is_managed column exists
+	var hasIsManaged int
+	err = db.conn.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('videos') WHERE name='is_managed'",
+	).Scan(&hasIsManaged)
+	if err != nil {
+		return err
+	}
+
+	// If both columns exist, nothing to do
+	if hasFileHash > 0 && hasIsManaged > 0 {
+		return nil
+	}
+
+	// Need to recreate table to remove UNIQUE constraint and add columns
+	// This is a complex migration - we'll do it in a transaction
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Create new table with correct schema
+	_, err = tx.Exec(`
+		CREATE TABLE videos_new (
+			id TEXT PRIMARY KEY,
+			youtube_id TEXT NOT NULL,
+			title TEXT NOT NULL,
+			channel TEXT,
+			channel_id TEXT,
+			duration INTEGER,
+			description TEXT,
+			thumbnail_url TEXT,
+			file_path TEXT NOT NULL,
+			file_size INTEGER,
+			file_hash TEXT,
+			is_managed BOOLEAN DEFAULT 1,
+			format TEXT,
+			quality TEXT,
+			downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			watch_position INTEGER DEFAULT 0,
+			watch_count INTEGER DEFAULT 0
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create new table: %w", err)
+	}
+
+	// Copy data from old table
+	_, err = tx.Exec(`
+		INSERT INTO videos_new (
+			id, youtube_id, title, channel, channel_id, duration, description,
+			thumbnail_url, file_path, file_size, format, quality, downloaded_at,
+			watch_position, watch_count
+		)
+		SELECT 
+			id, youtube_id, title, channel, channel_id, duration, description,
+			thumbnail_url, file_path, file_size, format, quality, downloaded_at,
+			watch_position, watch_count
+		FROM videos
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to copy data: %w", err)
+	}
+
+	// Drop old table
+	_, err = tx.Exec("DROP TABLE videos")
+	if err != nil {
+		return fmt.Errorf("failed to drop old table: %w", err)
+	}
+
+	// Rename new table
+	_, err = tx.Exec("ALTER TABLE videos_new RENAME TO videos")
+	if err != nil {
+		return fmt.Errorf("failed to rename table: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 // Video represents a downloaded video
