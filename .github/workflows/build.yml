@@ -3,13 +3,13 @@ name: Build
 on:
   push:
     branches: [main, master]
-    tags: ['v*']
+    tags: ["v*"]
   pull_request:
     branches: [main, master]
 
 env:
-  GO_VERSION: '1.23'
-  NODE_VERSION: '20'
+  GO_VERSION: "1.25"
+  NODE_VERSION: "24"
 
 jobs:
   # Build for Linux
