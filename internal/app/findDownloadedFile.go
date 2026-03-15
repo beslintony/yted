@@ -25,6 +25,7 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 	}
 
 	// First pass: Look for files with BOTH YouTube ID AND format ID
+	// This works when format_id in template matches the format selector
 	if formatSuffix != "" {
 		for _, entry := range entries {
 			if entry.IsDir() {
@@ -47,7 +48,34 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 		}
 	}
 
-	// Second pass: Look for files with just the YouTube ID (backward compatibility)
+	// Second pass: Look for files with YouTube ID and ANY format specifier
+	// This handles cases where yt-dlp resolved the format selector to a different code
+	// e.g., "bestvideo[height<=1080]+bestaudio" -> "18"
+	// We look for pattern: [youtubeID][digits] which indicates format-specific file
+	if formatSuffix != "" {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			// Match pattern: [youtubeID][number] - this indicates a specific format
+			if strings.Contains(name, "["+youtubeID+"][") {
+				// Check extension
+				lowerName := strings.ToLower(name)
+				if strings.HasSuffix(lowerName, "."+ext) ||
+					strings.HasSuffix(lowerName, ".mp4") ||
+					strings.HasSuffix(lowerName, ".webm") ||
+					strings.HasSuffix(lowerName, ".mkv") ||
+					strings.HasSuffix(lowerName, ".mp3") ||
+					strings.HasSuffix(lowerName, ".m4a") ||
+					strings.HasSuffix(lowerName, ".ogg") {
+					return filepath.Join(outputDir, name)
+				}
+			}
+		}
+	}
+
+	// Third pass: Look for files with just the YouTube ID (backward compatibility)
 	// This handles older downloads without format in filename
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -69,9 +97,10 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 		}
 	}
 
-	// Second pass: Look for files modified in the last 2 minutes
-	// This handles cases where the template doesn't include the ID
-	cutoff := time.Now().Add(-2 * time.Minute)
+	// Fourth pass: Look for files modified in the last 30 seconds
+	// This is a last resort - only for very recent downloads
+	// Use a shorter window to avoid matching wrong files
+	cutoff := time.Now().Add(-30 * time.Second)
 	var mostRecent os.DirEntry
 	var mostRecentTime time.Time
 
@@ -85,15 +114,14 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 			continue
 		}
 
-		// Check if file is a video/audio file and was modified recently
+		// Check if file is a video/audio file and was modified very recently
 		lowerName := strings.ToLower(entry.Name())
 		isMedia := strings.HasSuffix(lowerName, ".mp4") ||
 			strings.HasSuffix(lowerName, ".webm") ||
 			strings.HasSuffix(lowerName, ".mkv") ||
 			strings.HasSuffix(lowerName, ".mp3") ||
 			strings.HasSuffix(lowerName, ".m4a") ||
-			strings.HasSuffix(lowerName, ".ogg") ||
-			strings.HasSuffix(lowerName, ".part") // yt-dlp partial download
+			strings.HasSuffix(lowerName, ".ogg")
 
 		if isMedia && info.ModTime().After(cutoff) {
 			if info.ModTime().After(mostRecentTime) {
@@ -104,12 +132,7 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 	}
 
 	if mostRecent != nil {
-		path := filepath.Join(outputDir, mostRecent.Name())
-		// If it's a .part file, return without the extension
-		if strings.HasSuffix(path, ".part") {
-			return path[:len(path)-5]
-		}
-		return path
+		return filepath.Join(outputDir, mostRecent.Name())
 	}
 
 	return ""

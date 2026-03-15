@@ -23,6 +23,7 @@ import {
   IconList,
   IconSortAscending,
   IconSortDescending,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { useLibraryStore, useNotifications } from '../stores';
 import { ListVideos, GetLibraryStats, OpenFolder, OpenFile, DeleteVideo } from '../../wailsjs/go/app/App';
@@ -163,10 +164,31 @@ export function LibraryPage() {
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
+  const handleRefresh = async () => {
+    try {
+      await loadVideos();
+      await loadStats();
+      success('Library Refreshed', 'Video library has been synchronized with the disk');
+    } catch (err: any) {
+      error('Refresh Failed', err?.message || 'Failed to refresh library');
+    }
+  };
+
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Library</Text>
+        <Group gap="sm">
+          <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Library</Text>
+          <Tooltip label="Refresh library (sync with disk)">
+            <ActionIcon 
+              variant="light" 
+              onClick={handleRefresh}
+              color="yted"
+            >
+              <IconRefresh size={18} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
         <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
           {stats.total_videos} videos • {formatFileSize(stats.total_size)} • {formatTotalDuration(videos.reduce((acc, v) => acc + (v.duration || 0), 0))} total
         </Text>
