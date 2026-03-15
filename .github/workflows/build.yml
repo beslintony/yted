@@ -38,7 +38,9 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
       - name: Download Go dependencies
-        run: go mod download
+        run: |
+          go mod download
+          go mod tidy
 
       - name: Install frontend dependencies
         run: |
