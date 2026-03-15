@@ -25,6 +25,7 @@ import {
   IconAlertCircle,
   IconLink,
   IconX,
+  IconSearch,
 } from '@tabler/icons-react';
 import { useDownloadStore } from '../stores';
 import { GetVideoInfo, AddDownload, ValidateURL } from '../../wailsjs/go/app/App';
@@ -36,14 +37,22 @@ export function DownloadPage() {
   const [loading, setLoading] = useState(false);
   const [videoInfo, setVideoInfo] = useState<app.VideoInfoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [downloadId, setDownloadId] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const [adding, setAdding] = useState(false);
   
-  const { downloads, removeDownload, pauseDownload, resumeDownload, retryDownload, updateProgress } = useDownloadStore();
+  const { 
+    downloads, 
+    addDownload, 
+    removeDownload, 
+    pauseDownload, 
+    resumeDownload, 
+    retryDownload, 
+    updateProgress 
+  } = useDownloadStore();
+  
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
 
-  // Listen for download progress events
+  // Listen for download progress events from backend
   useEffect(() => {
     const cancel = EventsOn('download:progress', (data: any) => {
       if (data && data.id && data.progress !== undefined) {
@@ -51,15 +60,17 @@ export function DownloadPage() {
       }
     });
     return () => cancel();
-  }, []);
+  }, [updateProgress]);
 
   const handleFetchInfo = async () => {
-    if (!url.trim()) return;
+    if (!url.trim()) {
+      setError('Please enter a YouTube URL');
+      return;
+    }
     
     setLoading(true);
     setError(null);
     setVideoInfo(null);
-    setDownloadId(null);
     
     try {
       const isValid = await ValidateURL(url);
@@ -82,23 +93,58 @@ export function DownloadPage() {
   };
 
   const handleDownload = async () => {
-    if (!videoInfo || !url) return;
+    if (!videoInfo || !url) {
+      setError('No video info available');
+      return;
+    }
     
-    setDownloading(true);
+    setAdding(true);
     setError(null);
     
     try {
-      const formatId = videoInfo.formats?.find(f => f.resolution?.includes('1080') || f.resolution?.includes('720'))?.format_id 
-        || videoInfo.formats?.[0]?.format_id 
-        || 'best';
-      const quality = 'best';
+      // Find best format
+      const format = videoInfo.formats?.find(f => 
+        f.resolution?.includes('1080') || f.resolution?.includes('720')
+      ) || videoInfo.formats?.[0];
       
+      const formatId = format?.format_id || 'best';
+      const quality = format?.quality || 'best';
+      
+      console.log('Adding download:', { url, formatId, quality, title: videoInfo.title });
+      
+      // Call backend to add download
       const id = await AddDownload(url, formatId, quality);
-      setDownloadId(id);
+      console.log('Download added with ID:', id);
+      
+      // Add to local store for immediate UI update
+      addDownload(url, {
+        id: videoInfo.id,
+        title: videoInfo.title,
+        channel: videoInfo.channel,
+        channelId: videoInfo.channel_id,
+        duration: videoInfo.duration,
+        description: videoInfo.description,
+        thumbnail: videoInfo.thumbnail,
+        formats: videoInfo.formats as any,
+      }, {
+        formatId: format?.format_id || 'best',
+        ext: format?.ext || 'mp4',
+        resolution: format?.resolution || '',
+        fps: format?.fps || 0,
+        vcodec: format?.vcodec || '',
+        acodec: format?.acodec || '',
+        filesize: format?.filesize || 0,
+        quality: format?.quality || 'best',
+      });
+      
+      // Clear the form after successful add
+      setUrl('');
+      setVideoInfo(null);
     } catch (err: any) {
+      console.error('Failed to add download:', err);
       setError(err?.message || 'Failed to add download');
     } finally {
-      setDownloading(false);
+      setAdding(false);
     }
   };
 
@@ -106,7 +152,6 @@ export function DownloadPage() {
     setUrl('');
     setVideoInfo(null);
     setError(null);
-    setDownloadId(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -119,24 +164,12 @@ export function DownloadPage() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <IconCheck size={16} />;
-      case 'downloading': return <Loader size={16} />;
-      case 'error': return <IconAlertCircle size={16} />;
-      case 'paused': return <IconPlayerPause size={16} />;
-      default: return <IconDownload size={16} />;
-    }
-  };
-
   const formatDuration = (seconds: number) => {
     if (!seconds) return 'Unknown';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  const currentDownload = downloadId ? downloads.find(d => d.id === downloadId) : null;
 
   return (
     <Stack gap="lg">
@@ -156,7 +189,7 @@ export function DownloadPage() {
             value={url}
             onChange={(e) => setUrl(e.currentTarget.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFetchInfo()}
-            disabled={loading || downloading}
+            disabled={loading}
             size="md"
             styles={{
               input: {
@@ -166,23 +199,27 @@ export function DownloadPage() {
             }}
             rightSection={
               url ? (
-                <ActionIcon onClick={handleClear} color="gray" variant="subtle">
-                  <IconX size={16} />
-                </ActionIcon>
+                <Tooltip label="Clear">
+                  <ActionIcon onClick={handleClear} color="gray" variant="subtle">
+                    <IconX size={16} />
+                  </ActionIcon>
+                </Tooltip>
               ) : undefined
             }
           />
           
           <Group justify="flex-end">
-            <Button
-              onClick={handleFetchInfo}
-              loading={loading}
-              leftSection={<IconDownload size={16} />}
-              disabled={!url.trim() || loading}
-              color="yted"
-            >
-              Get Info
-            </Button>
+            <Tooltip label="Get video information">
+              <Button
+                onClick={handleFetchInfo}
+                loading={loading}
+                leftSection={<IconSearch size={16} />}
+                disabled={!url.trim() || loading}
+                color="yted"
+              >
+                Get Info
+              </Button>
+            </Tooltip>
           </Group>
           
           {error && (
@@ -208,7 +245,6 @@ export function DownloadPage() {
                       height: 90, 
                       objectFit: 'cover', 
                       borderRadius: 8,
-                      background: dark ? '#2c2e33' : '#e9ecef',
                     }}
                   />
                 ) : (
@@ -236,51 +272,21 @@ export function DownloadPage() {
                   <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>
                     Duration: {formatDuration(videoInfo.duration)}
                   </Text>
-                  {videoInfo.formats && videoInfo.formats.length > 0 && (
-                    <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
-                      Available qualities: {videoInfo.formats
-                        .filter(f => f.resolution && f.resolution !== 'audio only')
-                        .map(f => f.resolution)
-                        .filter((v, i, a) => a.indexOf(v) === i)
-                        .slice(0, 5)
-                        .join(', ')}
-                    </Text>
-                  )}
                   <Group justify="flex-end" mt="xs">
-                    {currentDownload ? (
-                      <Badge 
-                        size="lg" 
-                        color={getStatusColor(currentDownload.status)}
-                        leftSection={getStatusIcon(currentDownload.status)}
-                      >
-                        {currentDownload.status === 'downloading' 
-                          ? `Downloading ${Math.round(currentDownload.progress)}%`
-                          : currentDownload.status}
-                      </Badge>
-                    ) : (
+                    <Tooltip label="Add to download queue">
                       <Button 
                         size="sm" 
                         onClick={handleDownload} 
                         color="yted"
-                        loading={downloading}
+                        loading={adding}
                         leftSection={<IconDownload size={16} />}
                       >
                         Download
                       </Button>
-                    )}
+                    </Tooltip>
                   </Group>
                 </Stack>
               </Group>
-              
-              {currentDownload && currentDownload.status === 'downloading' && (
-                <Progress
-                  value={currentDownload.progress}
-                  size="sm"
-                  mt="md"
-                  color="yted"
-                  radius="xs"
-                />
-              )}
             </Paper>
           )}
         </Stack>
@@ -292,14 +298,16 @@ export function DownloadPage() {
           Queue ({downloads.length})
         </Text>
         {downloads.length > 0 && (
-          <Button 
-            size="xs" 
-            variant="subtle" 
-            color="gray"
-            onClick={() => downloads.forEach(d => removeDownload(d.id))}
-          >
-            Clear All
-          </Button>
+          <Tooltip label="Clear all downloads">
+            <Button 
+              size="xs" 
+              variant="subtle" 
+              color="gray"
+              onClick={() => downloads.forEach(d => removeDownload(d.id))}
+            >
+              Clear All
+            </Button>
+          </Tooltip>
         )}
       </Group>
       
@@ -336,7 +344,6 @@ export function DownloadPage() {
                           height: 45, 
                           objectFit: 'cover', 
                           borderRadius: 4,
-                          background: dark ? '#2c2e33' : '#e9ecef',
                         }}
                       />
                     ) : (
@@ -364,8 +371,14 @@ export function DownloadPage() {
                       <Group gap="xs">
                         <Badge 
                           size="sm" 
-                          color={getStatusColor(download.status)} 
-                          leftSection={getStatusIcon(download.status)}
+                          color={getStatusColor(download.status)}
+                          leftSection={
+                            download.status === 'completed' ? <IconCheck size={12} /> :
+                            download.status === 'downloading' ? <Loader size={12} /> :
+                            download.status === 'error' ? <IconAlertCircle size={12} /> :
+                            download.status === 'paused' ? <IconPlayerPause size={12} /> :
+                            <IconDownload size={12} />
+                          }
                         >
                           {download.status}
                         </Badge>
@@ -381,7 +394,7 @@ export function DownloadPage() {
                   <Stack gap="xs" align="flex-end">
                     <Group gap={4}>
                       {download.status === 'downloading' && (
-                        <Tooltip label="Pause">
+                        <Tooltip label="Pause download">
                           <ActionIcon 
                             size="sm" 
                             onClick={() => pauseDownload(download.id)}
@@ -393,7 +406,7 @@ export function DownloadPage() {
                         </Tooltip>
                       )}
                       {download.status === 'paused' && (
-                        <Tooltip label="Resume">
+                        <Tooltip label="Resume download">
                           <ActionIcon 
                             size="sm" 
                             onClick={() => resumeDownload(download.id)}
@@ -405,7 +418,7 @@ export function DownloadPage() {
                         </Tooltip>
                       )}
                       {download.status === 'error' && (
-                        <Tooltip label="Retry">
+                        <Tooltip label="Retry download">
                           <ActionIcon 
                             size="sm" 
                             onClick={() => retryDownload(download.id)}
@@ -416,7 +429,7 @@ export function DownloadPage() {
                           </ActionIcon>
                         </Tooltip>
                       )}
-                      <Tooltip label="Remove">
+                      <Tooltip label="Remove from queue">
                         <ActionIcon 
                           size="sm" 
                           color="red" 
@@ -429,13 +442,15 @@ export function DownloadPage() {
                     </Group>
                     
                     {download.status === 'downloading' && (
-                      <Progress
-                        value={download.progress}
-                        size="sm"
-                        w={100}
-                        color="yted"
-                        radius="xs"
-                      />
+                      <Tooltip label={`${Math.round(download.progress)}% complete`}>
+                        <Progress
+                          value={download.progress}
+                          size="sm"
+                          w={100}
+                          color="yted"
+                          radius="xs"
+                        />
+                      </Tooltip>
                     )}
                     <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
                       {Math.round(download.progress)}%
@@ -457,7 +472,7 @@ export function DownloadPage() {
   );
 }
 
-// Icon placeholder for when no thumbnail
+// Icon placeholder
 function IconVideo({ size, color }: { size: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2">

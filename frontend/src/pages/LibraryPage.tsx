@@ -144,25 +144,31 @@ export function LibraryPage() {
               },
             }}
           />
-          <ActionIcon
-            variant={sortDesc ? 'filled' : 'light'}
-            onClick={() => setSortDesc(!sortDesc)}
-          >
-            {sortDesc ? <IconSortDescending size={18} /> : <IconSortAscending size={18} />}
-          </ActionIcon>
+          <Tooltip label={sortDesc ? "Descending order" : "Ascending order"}>
+            <ActionIcon
+              variant={sortDesc ? 'filled' : 'light'}
+              onClick={() => setSortDesc(!sortDesc)}
+            >
+              {sortDesc ? <IconSortDescending size={18} /> : <IconSortAscending size={18} />}
+            </ActionIcon>
+          </Tooltip>
           <Group gap={4}>
-            <ActionIcon
-              variant={viewMode === 'grid' ? 'filled' : 'light'}
-              onClick={() => setViewMode('grid')}
-            >
-              <IconGridDots size={18} />
-            </ActionIcon>
-            <ActionIcon
-              variant={viewMode === 'list' ? 'filled' : 'light'}
-              onClick={() => setViewMode('list')}
-            >
-              <IconList size={18} />
-            </ActionIcon>
+            <Tooltip label="Grid view">
+              <ActionIcon
+                variant={viewMode === 'grid' ? 'filled' : 'light'}
+                onClick={() => setViewMode('grid')}
+              >
+                <IconGridDots size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="List view">
+              <ActionIcon
+                variant={viewMode === 'list' ? 'filled' : 'light'}
+                onClick={() => setViewMode('list')}
+              >
+                <IconList size={18} />
+              </ActionIcon>
+            </Tooltip>
           </Group>
         </Group>
       </Paper>
@@ -232,18 +238,18 @@ export function LibraryPage() {
           <Group justify="space-between">
             <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>{formatFileSize(video.file_size)}</Text>
             <Group gap={4}>
-              <Tooltip label="Play">
-                <ActionIcon size="sm">
+              <Tooltip label="Play video">
+                <ActionIcon size="sm" variant="subtle">
                   <IconPlayerPlay size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Open Folder">
-                <ActionIcon size="sm" onClick={() => OpenFolder(video.file_path)}>
+              <Tooltip label="Open containing folder">
+                <ActionIcon size="sm" variant="subtle" onClick={() => OpenFolder(video.file_path)}>
                   <IconFolder size={14} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Delete">
-                <ActionIcon size="sm" color="red" onClick={onDelete}>
+              <Tooltip label="Delete from library">
+                <ActionIcon size="sm" color="red" variant="subtle" onClick={onDelete}>
                   <IconTrash size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -283,18 +289,18 @@ export function LibraryPage() {
             </Stack>
           </Group>
           <Group gap={4}>
-            <Tooltip label="Play">
-              <ActionIcon>
+            <Tooltip label="Play video">
+              <ActionIcon variant="subtle">
                 <IconPlayerPlay size={18} />
               </ActionIcon>
             </Tooltip>
-            <Tooltip label="Open Folder">
-              <ActionIcon onClick={() => OpenFolder(video.file_path)}>
+            <Tooltip label="Open containing folder">
+              <ActionIcon variant="subtle" onClick={() => OpenFolder(video.file_path)}>
                 <IconFolder size={18} />
               </ActionIcon>
             </Tooltip>
-            <Tooltip label="Delete">
-              <ActionIcon color="red" onClick={onDelete}>
+            <Tooltip label="Delete from library">
+              <ActionIcon color="red" variant="subtle" onClick={onDelete}>
                 <IconTrash size={18} />
               </ActionIcon>
             </Tooltip>
