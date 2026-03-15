@@ -366,6 +366,7 @@ func (a *App) startDownload(dl db.Download) {
 			dl.Title = &title
 			dl.Channel = &channel
 			dl.ThumbnailURL = &thumbnail
+			dl.Duration = &info.Duration
 			a.db.UpdateDownload(&dl)
 
 			logger.Info("Download", "Video info retrieved", map[string]string{
@@ -462,15 +463,22 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		return
 	}
 
-	// Get video info if we have the URL
+	// Get video info if we have the URL and any metadata is missing
 	ctx := context.Background()
 	var videoInfo *ytdl.VideoInfo
 	var err error
 
-	if dl.Title == nil || *dl.Title == "" {
+	if dl.Title == nil || *dl.Title == "" || dl.Duration == nil || *dl.Duration == 0 {
 		videoInfo, err = a.ytdl.GetInfo(ctx, dl.URL)
 		if err != nil {
 			logger.Warn("Download", "Could not get video info for library", map[string]string{"error": err.Error()})
+		} else {
+			// Update download with info since we fetched it
+			dl.Title = &videoInfo.Title
+			dl.Channel = &videoInfo.Channel
+			dl.ThumbnailURL = &videoInfo.Thumbnail
+			dl.Duration = &videoInfo.Duration
+			a.db.UpdateDownload(&dl)
 		}
 	}
 
@@ -645,6 +653,11 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		if videoInfo.Thumbnail != "" && video.ThumbnailURL == "" {
 			video.ThumbnailURL = videoInfo.Thumbnail
 		}
+	}
+
+	// Fallback to the saved download.Duration if we didn't fetch it just now
+	if video.Duration == 0 && dl.Duration != nil {
+		video.Duration = *dl.Duration
 	}
 
 	// Save to database

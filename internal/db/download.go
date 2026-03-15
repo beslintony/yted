@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -10,13 +11,13 @@ import (
 func (db *DB) CreateDownload(download *Download) error {
 	query := `
 		INSERT INTO downloads (id, url, status, progress, title, channel, 
-			thumbnail_url, format_id, quality, error_message, created_at, started_at, completed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			thumbnail_url, format_id, quality, duration, error_message, created_at, started_at, completed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := db.conn.Exec(query,
 		download.ID, download.URL, download.Status, download.Progress,
 		download.Title, download.Channel, download.ThumbnailURL,
-		download.FormatID, download.Quality, download.ErrorMessage,
+		download.FormatID, download.Quality, download.Duration, download.ErrorMessage,
 		download.CreatedAt, download.StartedAt, download.CompletedAt,
 	)
 	if err != nil {
@@ -29,18 +30,19 @@ func (db *DB) CreateDownload(download *Download) error {
 func (db *DB) GetDownload(id string) (*Download, error) {
 	query := `
 		SELECT id, url, status, progress, title, channel, thumbnail_url,
-			format_id, quality, error_message, created_at, started_at, completed_at
+			format_id, quality, duration, error_message, created_at, started_at, completed_at
 		FROM downloads WHERE id = ?
 	`
 	row := db.conn.QueryRow(query, id)
 
 	var d Download
 	var title, channel, thumbnailURL, formatID, quality, errorMsg sql.NullString
+	var duration sql.NullInt64
 	var startedAt, completedAt sql.NullTime
 
 	err := row.Scan(
 		&d.ID, &d.URL, &d.Status, &d.Progress,
-		&title, &channel, &thumbnailURL, &formatID, &quality, &errorMsg,
+		&title, &channel, &thumbnailURL, &formatID, &quality, &duration, &errorMsg,
 		&d.CreatedAt, &startedAt, &completedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -55,6 +57,7 @@ func (db *DB) GetDownload(id string) (*Download, error) {
 	d.ThumbnailURL = stringPtr(thumbnailURL)
 	d.FormatID = stringPtr(formatID)
 	d.Quality = stringPtr(quality)
+	d.Duration = intPtr(duration)
 	d.ErrorMessage = stringPtr(errorMsg)
 	d.StartedAt = timePtr(startedAt)
 	d.CompletedAt = timePtr(completedAt)
@@ -70,7 +73,7 @@ func (db *DB) ListDownloads(status ...string) ([]Download, error) {
 	if len(status) == 0 {
 		query = `
 			SELECT id, url, status, progress, title, channel, thumbnail_url,
-				format_id, quality, error_message, created_at, started_at, completed_at
+				format_id, quality, duration, error_message, created_at, started_at, completed_at
 			FROM downloads
 			ORDER BY created_at DESC
 		`
@@ -82,11 +85,11 @@ func (db *DB) ListDownloads(status ...string) ([]Download, error) {
 		}
 		query = fmt.Sprintf(`
 			SELECT id, url, status, progress, title, channel, thumbnail_url,
-				format_id, quality, error_message, created_at, started_at, completed_at
+				format_id, quality, duration, error_message, created_at, started_at, completed_at
 			FROM downloads
 			WHERE status IN (%s)
 			ORDER BY created_at DESC
-		`, fmt.Sprintf("%s", placeholders))
+		`, fmt.Sprintf("%s", strings.Join(placeholders, ",")))
 	}
 
 	rows, err := db.conn.Query(query, args...)
@@ -99,11 +102,12 @@ func (db *DB) ListDownloads(status ...string) ([]Download, error) {
 	for rows.Next() {
 		var d Download
 		var title, channel, thumbnailURL, formatID, quality, errorMsg sql.NullString
+		var duration sql.NullInt64
 		var startedAt, completedAt sql.NullTime
 
 		err := rows.Scan(
 			&d.ID, &d.URL, &d.Status, &d.Progress,
-			&title, &channel, &thumbnailURL, &formatID, &quality, &errorMsg,
+			&title, &channel, &thumbnailURL, &formatID, &quality, &duration, &errorMsg,
 			&d.CreatedAt, &startedAt, &completedAt,
 		)
 		if err != nil {
@@ -115,6 +119,7 @@ func (db *DB) ListDownloads(status ...string) ([]Download, error) {
 		d.ThumbnailURL = stringPtr(thumbnailURL)
 		d.FormatID = stringPtr(formatID)
 		d.Quality = stringPtr(quality)
+		d.Duration = intPtr(duration)
 		d.ErrorMessage = stringPtr(errorMsg)
 		d.StartedAt = timePtr(startedAt)
 		d.CompletedAt = timePtr(completedAt)
@@ -130,12 +135,12 @@ func (db *DB) UpdateDownload(download *Download) error {
 	query := `
 		UPDATE downloads SET
 			status = ?, progress = ?, title = ?, channel = ?, thumbnail_url = ?,
-			format_id = ?, quality = ?, error_message = ?, started_at = ?, completed_at = ?
+			format_id = ?, quality = ?, duration = ?, error_message = ?, started_at = ?, completed_at = ?
 		WHERE id = ?
 	`
 	_, err := db.conn.Exec(query,
 		download.Status, download.Progress, download.Title, download.Channel,
-		download.ThumbnailURL, download.FormatID, download.Quality,
+		download.ThumbnailURL, download.FormatID, download.Quality, download.Duration,
 		download.ErrorMessage, download.StartedAt, download.CompletedAt,
 		download.ID,
 	)
@@ -221,7 +226,7 @@ func (db *DB) DeleteCompletedDownloads() error {
 func (db *DB) GetPendingDownloads(limit int) ([]Download, error) {
 	query := `
 		SELECT id, url, status, progress, title, channel, thumbnail_url,
-			format_id, quality, error_message, created_at, started_at, completed_at
+			format_id, quality, duration, error_message, created_at, started_at, completed_at
 		FROM downloads
 		WHERE status = 'pending'
 		ORDER BY created_at ASC
@@ -237,11 +242,12 @@ func (db *DB) GetPendingDownloads(limit int) ([]Download, error) {
 	for rows.Next() {
 		var d Download
 		var title, channel, thumbnailURL, formatID, quality, errorMsg sql.NullString
+		var duration sql.NullInt64
 		var startedAt, completedAt sql.NullTime
 
 		err := rows.Scan(
 			&d.ID, &d.URL, &d.Status, &d.Progress,
-			&title, &channel, &thumbnailURL, &formatID, &quality, &errorMsg,
+			&title, &channel, &thumbnailURL, &formatID, &quality, &duration, &errorMsg,
 			&d.CreatedAt, &startedAt, &completedAt,
 		)
 		if err != nil {
@@ -253,6 +259,7 @@ func (db *DB) GetPendingDownloads(limit int) ([]Download, error) {
 		d.ThumbnailURL = stringPtr(thumbnailURL)
 		d.FormatID = stringPtr(formatID)
 		d.Quality = stringPtr(quality)
+		d.Duration = intPtr(duration)
 		d.ErrorMessage = stringPtr(errorMsg)
 		d.StartedAt = timePtr(startedAt)
 		d.CompletedAt = timePtr(completedAt)
@@ -279,7 +286,7 @@ func (db *DB) CountActiveDownloads() (int, error) {
 func (db *DB) GetIncompleteDownloads() ([]Download, error) {
 	query := `
 		SELECT id, url, status, progress, title, channel, thumbnail_url,
-			format_id, quality, error_message, created_at, started_at, completed_at
+			format_id, quality, duration, error_message, created_at, started_at, completed_at
 		FROM downloads
 		WHERE status != 'completed'
 		ORDER BY created_at DESC
@@ -294,11 +301,12 @@ func (db *DB) GetIncompleteDownloads() ([]Download, error) {
 	for rows.Next() {
 		var d Download
 		var title, channel, thumbnailURL, formatID, quality, errorMsg sql.NullString
+		var duration sql.NullInt64
 		var startedAt, completedAt sql.NullTime
 
 		err := rows.Scan(
 			&d.ID, &d.URL, &d.Status, &d.Progress,
-			&title, &channel, &thumbnailURL, &formatID, &quality, &errorMsg,
+			&title, &channel, &thumbnailURL, &formatID, &quality, &duration, &errorMsg,
 			&d.CreatedAt, &startedAt, &completedAt,
 		)
 		if err != nil {
@@ -310,6 +318,7 @@ func (db *DB) GetIncompleteDownloads() ([]Download, error) {
 		d.ThumbnailURL = stringPtr(thumbnailURL)
 		d.FormatID = stringPtr(formatID)
 		d.Quality = stringPtr(quality)
+		d.Duration = intPtr(duration)
 		d.ErrorMessage = stringPtr(errorMsg)
 		d.StartedAt = timePtr(startedAt)
 		d.CompletedAt = timePtr(completedAt)
