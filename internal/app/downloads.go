@@ -499,7 +499,38 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		contentHash = youtubeID + "_" + formatID
 	}
 
-	// Create video record
+	// Check if a video with this file_hash already exists (duplicate download)
+	existingVideo, err := a.db.GetVideoByFileHash(contentHash)
+	if err != nil {
+		logger.Error("Download", "Failed to check for existing video", err, map[string]string{
+			"file_hash": contentHash,
+		})
+	}
+	
+	if existingVideo != nil {
+		// Update existing record instead of creating duplicate
+		logger.Info("Download", "Updating existing video record", map[string]string{
+			"id":         existingVideo.ID,
+			"youtube_id": youtubeID,
+			"file_hash":  contentHash,
+		})
+		
+		existingVideo.FilePath = filePath
+		existingVideo.FileSize = fileSize
+		existingVideo.DownloadedAt = time.Now()
+		
+		if err := a.db.UpdateVideo(existingVideo); err != nil {
+			logger.Error("Download", "Failed to update existing video", err, map[string]string{
+				"id": existingVideo.ID,
+			})
+			return
+		}
+		
+		runtime.EventsEmit(a.ctx, "library:updated", existingVideo)
+		return
+	}
+
+	// Create new video record
 	video := &db.Video{
 		ID:            uuid.New().String(),
 		YoutubeID:     youtubeID,
