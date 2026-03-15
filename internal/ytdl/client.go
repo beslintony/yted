@@ -268,7 +268,8 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 			}
 			
 			// Calculate speed and ETA
-			var speed, eta string
+			var speed, etaStr string
+			var etaDuration time.Duration
 			if !update.Started.IsZero() {
 				elapsed := time.Since(update.Started).Seconds()
 				if elapsed > 0 && update.DownloadedBytes > 0 {
@@ -278,7 +279,8 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 					if update.TotalBytes > 0 && bytesPerSec > 0 {
 						remainingBytes := update.TotalBytes - update.DownloadedBytes
 						remainingSecs := float64(remainingBytes) / bytesPerSec
-						eta = time.Duration(remainingSecs * float64(time.Second)).String()
+						etaDuration = time.Duration(remainingSecs * float64(time.Second))
+						etaStr = FormatETA(etaDuration)
 					}
 				}
 			}
@@ -287,10 +289,10 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 				Percent: percent,
 				Status:  string(update.Status),
 				Speed:   speed,
-				ETA:     eta,
+				ETA:     etaStr,
 				Size:    FormatFileSize(int64(update.TotalBytes)),
 			}
-			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s)", percent, update.Status, speed, eta)
+			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s)", percent, update.Status, speed, etaStr)
 			callback(progress)
 		})
 	}
@@ -386,4 +388,36 @@ func FormatFileSize(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// FormatETA formats a duration into a human-readable ETA string
+// Returns empty string if duration is zero or negative
+func FormatETA(d time.Duration) string {
+	if d <= 0 {
+		return ""
+	}
+	
+	// Cap at 99 days to avoid unrealistic values
+	const maxDuration = 99 * 24 * time.Hour
+	if d > maxDuration {
+		return ">99d"
+	}
+	
+	// Format based on magnitude
+	totalSeconds := int(d.Seconds())
+	days := totalSeconds / (24 * 3600)
+	hours := (totalSeconds % (24 * 3600)) / 3600
+	minutes := (totalSeconds % 3600) / 60
+	seconds := totalSeconds % 60
+	
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm %ds", hours, minutes, seconds)
+	}
+	if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds)
+	}
+	return fmt.Sprintf("%ds", seconds)
 }

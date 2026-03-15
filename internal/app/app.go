@@ -133,6 +133,11 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Error("App", "Failed to verify downloads", err)
 	}
 
+	// Clean up any existing duplicate library entries
+	if err := a.CleanUpDuplicateVideos(); err != nil {
+		a.logger.Error("App", "Failed to clean up duplicate videos", err)
+	}
+
 	// Note: Download queue restoration is now handled by the frontend
 	// calling GetDownloadQueue() when it's ready
 

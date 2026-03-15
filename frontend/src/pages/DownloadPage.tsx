@@ -151,16 +151,11 @@ export function DownloadPage() {
       if (data && data.id && data.progress !== undefined) {
         updateProgress(data.id, data.progress);
         // Also update speed, eta, and size if provided
+        // ETA is now pre-formatted by the backend (e.g., "2h 30m 15s")
         if (data.speed || data.eta || data.size) {
-          // Handle ETA - it might be a number (nanoseconds) or a formatted string
-          let etaValue = data.eta;
-          if (typeof etaValue === 'number') {
-            // Convert nanoseconds to seconds for formatting
-            etaValue = (etaValue / 1e9).toString();
-          }
           updateDownloadInfo(data.id, {
             speed: data.speed,
-            eta: etaValue,
+            eta: data.eta,
             size: data.size,
           });
         }
@@ -323,72 +318,10 @@ export function DownloadPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // ETA is now pre-formatted by the backend (FormatETA in Go)
+  // Backend returns: "2h 30m 15s", "1m 30s", "45s", ">99d", or empty string
   const formatETA = (eta: string) => {
-    if (!eta || eta === '0s' || eta === '' || eta === '0') return '';
-    
-    // Handle Go duration format: "2h30m15.5s", "1m30s", "45.5s", "100ms"
-    // Also handle edge case where it might be a raw nanosecond number
-    let totalSeconds = 0;
-    
-    // Check if it's a raw number (nanoseconds) - Go time.Duration is an int64 of nanoseconds
-    // If the number is very large (> 1e9), it's likely nanoseconds
-    const rawNumber = parseFloat(eta);
-    if (!isNaN(rawNumber) && !eta.match(/[hms]/)) {
-      // It's a raw number, likely nanoseconds from Go
-      totalSeconds = rawNumber / 1e9;
-    } else {
-      // Parse duration string
-      // Match hours: number followed by 'h'
-      const hoursMatch = eta.match(/(\d+)h/);
-      if (hoursMatch) {
-        totalSeconds += parseInt(hoursMatch[1]) * 3600;
-      }
-      
-      // Match minutes: number followed by 'm' (but not 'ms')
-      const minsMatch = eta.match(/(\d+)m(?!s)/);
-      if (minsMatch) {
-        totalSeconds += parseInt(minsMatch[1]) * 60;
-      }
-      
-      // Match seconds: number (possibly with decimal) followed by 's'
-      const secsMatch = eta.match(/(\d+(?:\.\d+)?)s/);
-      if (secsMatch) {
-        totalSeconds += parseFloat(secsMatch[1]);
-      }
-      
-      // Match milliseconds: number followed by 'ms'
-      const msMatch = eta.match(/(\d+)ms/);
-      if (msMatch) {
-        totalSeconds += parseInt(msMatch[1]) / 1000;
-      }
-    }
-    
-    if (totalSeconds === 0 || !isFinite(totalSeconds)) return '';
-    
-    // Cap at 99 days - if it's longer, something is wrong with the calculation
-    if (totalSeconds > 86400 * 99) {
-      return '99d+';
-    }
-    
-    // Round to nearest second for display
-    const roundedSeconds = Math.round(totalSeconds);
-    
-    // Format for human readability
-    const days = Math.floor(roundedSeconds / 86400);
-    const hours = Math.floor((roundedSeconds % 86400) / 3600);
-    const mins = Math.floor((roundedSeconds % 3600) / 60);
-    const secs = roundedSeconds % 60;
-    
-    if (days > 0) {
-      return `${days}d ${hours}h ${mins}m`;
-    }
-    if (hours > 0) {
-      return `${hours}h ${mins}m ${secs}s`;
-    }
-    if (mins > 0) {
-      return `${mins}m ${secs}s`;
-    }
-    return `${secs}s`;
+    return eta || '';
   };
 
   return (
