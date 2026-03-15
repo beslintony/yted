@@ -3,6 +3,9 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -11,7 +14,8 @@ import (
 
 // DB wraps the database connection
 type DB struct {
-	conn *sql.DB
+	conn   *sql.DB
+	dbPath string // Store path for backup operations
 }
 
 // New creates a new database connection
@@ -22,7 +26,7 @@ func New(appDataDir string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	db := &DB{conn: conn}
+	db := &DB{conn: conn, dbPath: dbPath}
 	if err := db.migrate(); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
@@ -100,6 +104,40 @@ func (db *DB) migrate() error {
 	return nil
 }
 
+// backupDatabase creates a .bak copy of the database file before migrations
+func (db *DB) backupDatabase() (string, error) {
+	if db.dbPath == "" {
+		return "", fmt.Errorf("cannot determine database path")
+	}
+	
+	backupPath := db.dbPath + ".bak"
+	
+	// Check if backup already exists (don't overwrite existing backup)
+	if _, err := os.Stat(backupPath); err == nil {
+		// Backup already exists, create a timestamped backup
+		backupPath = fmt.Sprintf("%s.%s.bak", db.dbPath, time.Now().Format("20060102_150405"))
+	}
+	
+	// Copy database file
+	source, err := os.Open(db.dbPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open database for backup: %w", err)
+	}
+	defer source.Close()
+	
+	destination, err := os.Create(backupPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create backup file: %w", err)
+	}
+	defer destination.Close()
+	
+	if _, err := io.Copy(destination, source); err != nil {
+		return "", fmt.Errorf("failed to copy database: %w", err)
+	}
+	
+	return backupPath, nil
+}
+
 // migrateSchema handles complex schema migrations
 func (db *DB) migrateSchema() error {
 	// Check if we need to remove the UNIQUE constraint from youtube_id
@@ -143,6 +181,13 @@ func (db *DB) migrateSchema() error {
 	}
 
 	// Need to recreate table to remove UNIQUE constraint and add columns
+	// Create backup first to prevent data loss on failure
+	backupPath, err := db.backupDatabase()
+	if err != nil {
+		return fmt.Errorf("failed to create backup before migration: %w", err)
+	}
+	log.Printf("[DB] Created database backup at: %s", backupPath)
+
 	// This is a complex migration - we'll do it in a transaction
 	tx, err := db.conn.Begin()
 	if err != nil {
