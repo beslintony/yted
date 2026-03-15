@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"yted/internal/config"
 	"yted/internal/db"
@@ -53,12 +54,20 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Initialize logger with configured log directory and session management
 	logDir := cfgManager.Get().LogPath
+	if logDir == "" {
+		// Fallback to default log path
+		logDir = filepath.Join(appDataDir, ".logs")
+	}
 	maxSessions := cfgManager.Get().MaxLogSessions
 	if maxSessions < 1 {
 		maxSessions = 10
 	}
 	if err := a.logger.SetLogDirWithSessions(logDir, maxSessions); err != nil {
 		a.logger.Error("App", "Failed to set log directory", err)
+		// Fallback to basic logging without sessions
+		if err := a.logger.SetLogDir(logDir); err != nil {
+			a.logger.Error("App", "Failed to set fallback log directory", err)
+		}
 	}
 
 	a.logger.Info("App", "Starting YTed", map[string]string{
