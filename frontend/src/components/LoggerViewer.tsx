@@ -28,7 +28,6 @@ export function LoggerViewer() {
   const { entries, setEntries, clearLogs, addEntry } = useLogStore();
   const [filter, setFilter] = useState<LogLevel | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
-  const [autoScroll, setAutoScroll] = useState(true);
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
 
@@ -100,19 +99,14 @@ export function LoggerViewer() {
     <Paper
       p="md"
       withBorder
-      sx={{
-        background: dark ? '#25262b' : '#fff',
-        borderColor: dark ? '#373a40' : '#dee2e6',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+      bg={dark ? '#25262b' : '#fff'}
+      style={{ borderColor: dark ? '#373a40' : '#dee2e6', height: '100%', display: 'flex', flexDirection: 'column' }}
     >
-      <Group position="apart" mb="md">
+      <Group justify="space-between" mb="md">
         <Text fw={600} c={dark ? '#fff' : '#000'}>
           Application Logs ({filteredEntries.length})
         </Text>
-        <Group spacing="xs">
+        <Group gap="xs">
           <Tooltip label="Refresh">
             <ActionIcon onClick={loadLogs} variant="light" color="gray">
               <IconRefresh size={16} />
@@ -131,7 +125,7 @@ export function LoggerViewer() {
         </Group>
       </Group>
 
-      <Group spacing="sm" mb="md">
+      <Group gap="sm" mb="md">
         <Select
           value={filter}
           onChange={(v) => setFilter(v as LogLevel | 'ALL')}
@@ -144,35 +138,44 @@ export function LoggerViewer() {
           ]}
           size="sm"
           w={150}
+          styles={{
+            input: {
+              background: dark ? '#1a1b1e' : '#f8f9fa',
+              color: dark ? '#c1c2c5' : '#212529',
+            },
+          }}
         />
         <TextInput
           placeholder="Search logs..."
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
           size="sm"
-          sx={{ flex: 1 }}
-          icon={<IconSearch size={14} />}
+          style={{ flex: 1 }}
+          leftSection={<IconSearch size={14} />}
           rightSection={
-            search && (
+            search ? (
               <ActionIcon onClick={() => setSearch('')} size="sm" color="gray">
                 <IconX size={14} />
               </ActionIcon>
-            )
+            ) : undefined
           }
+          styles={{
+            input: {
+              background: dark ? '#1a1b1e' : '#f8f9fa',
+              color: dark ? '#c1c2c5' : '#212529',
+            },
+          }}
         />
       </Group>
 
       <ScrollArea
-        sx={{
-          flex: 1,
-          background: dark ? '#1a1b1e' : '#f8f9fa',
-          borderRadius: 4,
-          border: `1px solid ${dark ? '#373a40' : '#dee2e6'}`,
-        }}
+        flex={1}
+        bg={dark ? '#1a1b1e' : '#f8f9fa'}
+        style={{ borderRadius: 4, border: `1px solid ${dark ? '#373a40' : '#dee2e6'}` }}
       >
-        <Stack spacing={0} p="xs">
+        <Stack gap={0} p="xs">
           {filteredEntries.length === 0 ? (
-            <Text c={dark ? 'dimmed' : 'gray.6'} align="center" py="xl">
+            <Text c={dark ? 'dimmed' : 'gray.6'} ta="center" py="xl">
               No logs to display
             </Text>
           ) : (
@@ -180,27 +183,24 @@ export function LoggerViewer() {
               <Paper
                 key={index}
                 p="xs"
-                sx={{
-                  background: 'transparent',
-                  borderBottom: `1px solid ${dark ? '#373a40' : '#e9ecef'}`,
-                  '&:last-child': { borderBottom: 'none' },
-                }}
+                bg="transparent"
+                style={{ borderBottom: `1px solid ${dark ? '#373a40' : '#e9ecef'}`, borderRadius: 0 }}
               >
-                <Group spacing="xs" align="flex-start" noWrap>
+                <Group gap="xs" align="flex-start" wrap="nowrap">
                   <Badge
                     size="xs"
                     color={getLevelColor(entry.level)}
-                    sx={{ minWidth: 60 }}
+                    style={{ minWidth: 60 }}
                   >
                     {entry.level}
                   </Badge>
-                  <Text size="xs" c={dark ? 'dimmed' : 'gray.6'} sx={{ minWidth: 130 }}>
+                  <Text size="xs" c={dark ? 'dimmed' : 'gray.6'} style={{ minWidth: 130 }}>
                     {entry.timestamp}
                   </Text>
-                  <Text size="xs" fw={500} c={dark ? 'gray.4' : 'gray.7'} sx={{ minWidth: 100 }}>
+                  <Text size="xs" fw={500} c={dark ? 'gray.4' : 'gray.7'} style={{ minWidth: 100 }}>
                     [{entry.component}]
                   </Text>
-                  <Text size="xs" c={dark ? '#fff' : '#000'} sx={{ flex: 1 }}>
+                  <Text size="xs" c={dark ? '#fff' : '#000'} style={{ flex: 1 }}>
                     {entry.message}
                   </Text>
                 </Group>

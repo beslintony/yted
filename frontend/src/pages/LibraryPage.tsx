@@ -8,12 +8,11 @@ import {
   Badge,
   ActionIcon,
   Tooltip,
-  Grid,
+  SimpleGrid,
   Select,
   Button,
   Image,
-  SimpleGrid,
-  Menu,
+  useMantineColorScheme,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -38,6 +37,8 @@ export function LibraryPage() {
   const [stats, setStats] = useState({ total_videos: 0, total_size: 0 });
   
   const { setVideos: setStoreVideos } = useLibraryStore();
+  const { colorScheme } = useMantineColorScheme();
+  const dark = colorScheme === 'dark';
 
   useEffect(() => {
     loadVideos();
@@ -97,23 +98,34 @@ export function LibraryPage() {
   };
 
   return (
-    <Stack spacing="lg">
-      <Group position="apart">
-        <Text size="xl" fw={700}>Library</Text>
-        <Text size="sm" c="dimmed">
+    <Stack gap="lg">
+      <Group justify="space-between">
+        <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Library</Text>
+        <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
           {stats.total_videos} videos • {formatFileSize(stats.total_size)}
         </Text>
       </Group>
 
       {/* Filters */}
-      <Paper p="sm" withBorder>
-        <Group spacing="md">
+      <Paper 
+        p="sm" 
+        withBorder
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+      >
+        <Group gap="md">
           <TextInput
             placeholder="Search videos..."
-            icon={<IconSearch size={16} />}
+            leftSection={<IconSearch size={16} />}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             style={{ flex: 1 }}
+            styles={{
+              input: {
+                background: dark ? '#141517' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
           <Select
             value={sortBy}
@@ -125,6 +137,12 @@ export function LibraryPage() {
               { value: 'duration', label: 'Duration' },
             ]}
             w={120}
+            styles={{
+              input: {
+                background: dark ? '#141517' : '#f8f9fa',
+                color: dark ? '#c1c2c5' : '#212529',
+              },
+            }}
           />
           <ActionIcon
             variant={sortDesc ? 'filled' : 'light'}
@@ -132,7 +150,7 @@ export function LibraryPage() {
           >
             {sortDesc ? <IconSortDescending size={18} /> : <IconSortAscending size={18} />}
           </ActionIcon>
-          <Group spacing={4}>
+          <Group gap={4}>
             <ActionIcon
               variant={viewMode === 'grid' ? 'filled' : 'light'}
               onClick={() => setViewMode('grid')}
@@ -151,30 +169,33 @@ export function LibraryPage() {
 
       {/* Videos */}
       {videos.length === 0 ? (
-        <Paper p="xl" withBorder>
-          <Text c="dimmed" align="center">No videos in library yet.</Text>
+        <Paper 
+          p="xl" 
+          withBorder
+          bg={dark ? '#25262b' : '#fff'}
+          style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+        >
+          <Text c={dark ? 'dimmed' : 'gray.6'} ta="center">No videos in library yet.</Text>
         </Paper>
       ) : viewMode === 'grid' ? (
-        <SimpleGrid cols={4} spacing="md" breakpoints={[
-          { maxWidth: 'lg', cols: 3 },
-          { maxWidth: 'md', cols: 2 },
-          { maxWidth: 'sm', cols: 1 },
-        ]}>
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="md">
           {videos.map((video) => (
             <VideoCard
               key={video.id}
               video={video}
               onDelete={() => handleDelete(video.id)}
+              dark={dark}
             />
           ))}
         </SimpleGrid>
       ) : (
-        <Stack spacing="sm">
+        <Stack gap="sm">
           {videos.map((video) => (
             <VideoListItem
               key={video.id}
               video={video}
               onDelete={() => handleDelete(video.id)}
+              dark={dark}
             />
           ))}
         </Stack>
@@ -182,15 +203,20 @@ export function LibraryPage() {
     </Stack>
   );
 
-  function VideoCard({ video, onDelete }: { video: app.VideoResult; onDelete: () => void }) {
+  function VideoCard({ video, onDelete, dark }: { video: app.VideoResult; onDelete: () => void; dark: boolean }) {
     return (
-      <Paper withBorder radius="md" sx={{ overflow: 'hidden' }}>
+      <Paper 
+        withBorder 
+        radius="md"
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6', overflow: 'hidden' }}
+      >
         <div style={{ position: 'relative' }}>
           <Image
             src={video.thumbnail_url || '/logo.svg'}
             height={140}
             alt={video.title}
-            withPlaceholder
+            fallbackSrc="/logo.svg"
           />
           <Badge
             style={{ position: 'absolute', bottom: 8, right: 8 }}
@@ -200,12 +226,12 @@ export function LibraryPage() {
             {formatDuration(video.duration)}
           </Badge>
         </div>
-        <Stack p="sm" spacing="xs">
-          <Text size="sm" fw={500} lineClamp={2}>{video.title}</Text>
-          <Text size="xs" c="dimmed">{video.channel}</Text>
-          <Group position="apart">
-            <Text size="xs" c="dimmed">{formatFileSize(video.file_size)}</Text>
-            <Group spacing={4}>
+        <Stack p="sm" gap="xs">
+          <Text size="sm" fw={500} lineClamp={2} c={dark ? '#fff' : '#000'}>{video.title}</Text>
+          <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>{video.channel}</Text>
+          <Group justify="space-between">
+            <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>{formatFileSize(video.file_size)}</Text>
+            <Group gap={4}>
               <Tooltip label="Play">
                 <ActionIcon size="sm">
                   <IconPlayerPlay size={14} />
@@ -228,30 +254,35 @@ export function LibraryPage() {
     );
   }
 
-  function VideoListItem({ video, onDelete }: { video: app.VideoResult; onDelete: () => void }) {
+  function VideoListItem({ video, onDelete, dark }: { video: app.VideoResult; onDelete: () => void; dark: boolean }) {
     return (
-      <Paper p="sm" withBorder>
-        <Group position="apart" align="flex-start">
-          <Group spacing="sm" align="flex-start" noWrap>
+      <Paper 
+        p="sm" 
+        withBorder
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+      >
+        <Group justify="space-between" align="flex-start">
+          <Group gap="sm" align="flex-start" wrap="nowrap">
             <Image
               src={video.thumbnail_url || '/logo.svg'}
-              width={120}
-              height={68}
+              w={120}
+              h={68}
               radius="sm"
               alt={video.title}
-              withPlaceholder
+              fallbackSrc="/logo.svg"
             />
-            <Stack spacing={4}>
-              <Text fw={500} lineClamp={1}>{video.title}</Text>
-              <Text size="sm" c="dimmed">{video.channel}</Text>
-              <Group spacing="xs">
+            <Stack gap={4}>
+              <Text fw={500} lineClamp={1} c={dark ? '#fff' : '#000'}>{video.title}</Text>
+              <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>{video.channel}</Text>
+              <Group gap="xs">
                 <Badge size="sm">{formatDuration(video.duration)}</Badge>
                 <Badge size="sm" variant="outline">{formatFileSize(video.file_size)}</Badge>
                 <Badge size="sm" variant="outline">{video.quality}</Badge>
               </Group>
             </Stack>
           </Group>
-          <Group spacing={4}>
+          <Group gap={4}>
             <Tooltip label="Play">
               <ActionIcon>
                 <IconPlayerPlay size={18} />
