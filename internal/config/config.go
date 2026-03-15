@@ -119,6 +119,18 @@ func (m *Manager) Load() error {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
+	// Ensure defaults for new fields that might be empty in existing configs
+	if cfg.LogPath == "" {
+		cfg.LogPath = filepath.Join(filepath.Dir(m.configPath), "..", ".logs")
+	}
+	if cfg.MaxLogSessions == 0 {
+		cfg.MaxLogSessions = 10
+	}
+	if cfg.LogExportPath == "" {
+		homeDir, _ := os.UserHomeDir()
+		cfg.LogExportPath = filepath.Join(homeDir, "Downloads")
+	}
+
 	m.config = &cfg
 	return nil
 }
