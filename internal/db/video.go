@@ -77,6 +77,33 @@ func (db *DB) GetVideoByYoutubeID(youtubeID string) (*Video, error) {
 	return &v, nil
 }
 
+// GetVideoByFileHash retrieves a video by its file hash (youtubeID_formatID)
+// This ensures we don't create duplicate entries for the same video+format
+func (db *DB) GetVideoByFileHash(fileHash string) (*Video, error) {
+	query := `
+		SELECT id, youtube_id, title, channel, channel_id, duration, description,
+			thumbnail_url, file_path, file_size, format, quality, downloaded_at,
+			watch_position, watch_count
+		FROM videos WHERE file_hash = ?
+	`
+	row := db.conn.QueryRow(query, fileHash)
+
+	var v Video
+	err := row.Scan(
+		&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
+		&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
+		&v.FileSize, &v.Format, &v.Quality, &v.DownloadedAt,
+		&v.WatchPosition, &v.WatchCount,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get video by file hash: %w", err)
+	}
+	return &v, nil
+}
+
 // ListVideosOptions contains options for listing videos
 type ListVideosOptions struct {
 	Search   string
@@ -162,13 +189,15 @@ func (db *DB) UpdateVideo(video *Video) error {
 		UPDATE videos SET
 			title = ?, channel = ?, channel_id = ?, duration = ?,
 			description = ?, thumbnail_url = ?, file_path = ?, file_size = ?,
-			format = ?, quality = ?, watch_position = ?, watch_count = ?
+			file_hash = ?, is_managed = ?, format = ?, quality = ?,
+			watch_position = ?, watch_count = ?, downloaded_at = ?
 		WHERE id = ?
 	`
 	_, err := db.conn.Exec(query,
 		video.Title, video.Channel, video.ChannelID, video.Duration,
 		video.Description, video.ThumbnailURL, video.FilePath, video.FileSize,
-		video.Format, video.Quality, video.WatchPosition, video.WatchCount,
+		video.FileHash, video.IsManaged, video.Format, video.Quality,
+		video.WatchPosition, video.WatchCount, video.DownloadedAt,
 		video.ID,
 	)
 	if err != nil {
