@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"yted/internal/db"
 	applog "yted/internal/log"
 )
 
@@ -156,6 +157,59 @@ func (a *App) SyncDownloadWithFile(downloadID string) error {
 		
 		// Emit completion event
 		runtime.EventsEmit(a.ctx, "download:completed", downloadID)
+	}
+
+	return nil
+}
+
+// CleanUpDuplicateVideos finds and removes duplicate video entries from the library
+// It keeps the most recent entry for each content hash.
+func (a *App) CleanUpDuplicateVideos() error {
+	logger := applog.GetLogger()
+
+	if a.db == nil {
+		return nil
+	}
+
+	// Get all videos, newest first
+	videos, err := a.db.ListVideos(db.ListVideosOptions{
+		SortBy:   "date",
+		SortDesc: true,
+		Limit:    10000,
+	})
+	if err != nil {
+		logger.Error("App", "Failed to list videos for duplicate cleanup", err)
+		return err
+	}
+
+	seenHashes := make(map[string]bool)
+	duplicatesFound := 0
+
+	for _, v := range videos {
+		hash := v.FileHash
+		if hash == "" {
+			// Fallback to youtubeID for older records that have no file_hash
+			hash = v.YoutubeID
+		}
+		
+		if seenHashes[hash] {
+			// This is a duplicate (and older, since we sorted descending)
+			if err := a.db.DeleteVideo(v.ID); err == nil {
+				duplicatesFound++
+			} else {
+				logger.Error("App", "Failed to delete duplicate video", err, map[string]string{
+					"id": v.ID,
+				})
+			}
+		} else {
+			seenHashes[hash] = true
+		}
+	}
+
+	if duplicatesFound > 0 {
+		logger.Info("App", "Cleaned up duplicate videos in library", map[string]int{
+			"count": duplicatesFound,
+		})
 	}
 
 	return nil
