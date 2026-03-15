@@ -10,13 +10,13 @@ import (
 func (db *DB) CreateVideo(video *Video) error {
 	query := `
 		INSERT INTO videos (id, youtube_id, title, channel, channel_id, duration, description, 
-			thumbnail_url, file_path, file_size, format, quality, downloaded_at, watch_position, watch_count)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at, watch_position, watch_count)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err := db.conn.Exec(query,
 		video.ID, video.YoutubeID, video.Title, video.Channel, video.ChannelID,
 		video.Duration, video.Description, video.ThumbnailURL, video.FilePath,
-		video.FileSize, video.Format, video.Quality, video.DownloadedAt,
+		video.FileSize, video.FileHash, video.IsManaged, video.Format, video.Quality, video.DownloadedAt,
 		video.WatchPosition, video.WatchCount,
 	)
 	if err != nil {
