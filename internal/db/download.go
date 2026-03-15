@@ -273,3 +273,69 @@ func (db *DB) CountActiveDownloads() (int, error) {
 	}
 	return count, nil
 }
+
+
+// GetIncompleteDownloads returns all downloads that are not completed
+func (db *DB) GetIncompleteDownloads() ([]Download, error) {
+	query := `
+		SELECT id, url, status, progress, title, channel, thumbnail_url,
+			format_id, quality, error_message, created_at, started_at, completed_at
+		FROM downloads
+		WHERE status != 'completed'
+		ORDER BY created_at DESC
+	`
+	rows, err := db.conn.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get incomplete downloads: %w", err)
+	}
+	defer rows.Close()
+
+	var downloads []Download
+	for rows.Next() {
+		var d Download
+		var title, channel, thumbnailURL, formatID, quality, errorMsg sql.NullString
+		var startedAt, completedAt sql.NullTime
+
+		err := rows.Scan(
+			&d.ID, &d.URL, &d.Status, &d.Progress,
+			&title, &channel, &thumbnailURL, &formatID, &quality, &errorMsg,
+			&d.CreatedAt, &startedAt, &completedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan download: %w", err)
+		}
+
+		d.Title = stringPtr(title)
+		d.Channel = stringPtr(channel)
+		d.ThumbnailURL = stringPtr(thumbnailURL)
+		d.FormatID = stringPtr(formatID)
+		d.Quality = stringPtr(quality)
+		d.ErrorMessage = stringPtr(errorMsg)
+		d.StartedAt = timePtr(startedAt)
+		d.CompletedAt = timePtr(completedAt)
+
+		downloads = append(downloads, d)
+	}
+
+	return downloads, nil
+}
+
+// ClearAllDownloads removes all download records
+func (db *DB) ClearAllDownloads() error {
+	query := `DELETE FROM downloads`
+	_, err := db.conn.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to clear downloads: %w", err)
+	}
+	return nil
+}
+
+// ClearCompletedDownloads removes all completed downloads
+func (db *DB) ClearCompletedDownloads() error {
+	query := `DELETE FROM downloads WHERE status = 'completed'`
+	_, err := db.conn.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to clear completed downloads: %w", err)
+	}
+	return nil
+}

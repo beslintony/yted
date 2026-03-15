@@ -26,7 +26,7 @@ import {
   IconEdit,
 } from '@tabler/icons-react';
 import { useSettingsStore } from '../stores';
-import { GetSettings, SaveSettings, ShowOpenDirectoryDialog } from '../../wailsjs/go/app/App';
+import { GetSettings, SaveSettings, ShowOpenDirectoryDialog, ClearDownloadCache, ClearCompletedDownloadsCache, ClearCompletedDownloads } from '../../wailsjs/go/app/App';
 import { config } from '../../wailsjs/go/models';
 
 export function SettingsPage() {
@@ -519,6 +519,83 @@ export function SettingsPage() {
             >
               Browse
             </Button>
+          </Group>
+        </Stack>
+      </Paper>
+
+      {/* Cache Management */}
+      <Paper 
+        p="md" 
+        withBorder
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+      >
+        <Stack gap="md">
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Cache Management</Text>
+          <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
+            Clear cached data to free up space or fix issues. This action cannot be undone.
+          </Text>
+          
+          <Group gap="sm">
+            <Tooltip label="Clear all download queue history">
+              <Button 
+                variant="light" 
+                color="orange"
+                leftSection={<IconTrash size={16} />}
+                onClick={async () => {
+                  if (confirm('Clear all download cache? This will remove pending and completed downloads from the database.')) {
+                    try {
+                      await ClearDownloadCache();
+                      alert('Download cache cleared successfully');
+                    } catch (err) {
+                      alert('Failed to clear download cache: ' + err);
+                    }
+                  }
+                }}
+              >
+                Clear Download Cache
+              </Button>
+            </Tooltip>
+            
+            <Tooltip label="Clear only completed downloads from history">
+              <Button 
+                variant="light" 
+                color="gray"
+                leftSection={<IconTrash size={16} />}
+                onClick={async () => {
+                  if (confirm('Clear completed downloads from cache?')) {
+                    try {
+                      await ClearCompletedDownloadsCache();
+                      alert('Completed downloads cache cleared successfully');
+                    } catch (err) {
+                      alert('Failed to clear completed downloads: ' + err);
+                    }
+                  }
+                }}
+              >
+                Clear Completed Only
+              </Button>
+            </Tooltip>
+
+            <Tooltip label="Clear completed downloads from queue">
+              <Button 
+                variant="light" 
+                color="gray"
+                leftSection={<IconTrash size={16} />}
+                onClick={async () => {
+                  if (confirm('Clear completed downloads from queue?')) {
+                    try {
+                      await ClearCompletedDownloads();
+                      alert('Completed downloads cleared from queue');
+                    } catch (err) {
+                      alert('Failed to clear completed downloads: ' + err);
+                    }
+                  }
+                }}
+              >
+                Clear Queue Completed
+              </Button>
+            </Tooltip>
           </Group>
         </Stack>
       </Paper>

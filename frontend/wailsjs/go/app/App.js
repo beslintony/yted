@@ -18,6 +18,14 @@ export function ClearCompletedDownloads() {
   return window['go']['app']['App']['ClearCompletedDownloads']();
 }
 
+export function ClearCompletedDownloadsCache() {
+  return window['go']['app']['App']['ClearCompletedDownloadsCache']();
+}
+
+export function ClearDownloadCache() {
+  return window['go']['app']['App']['ClearDownloadCache']();
+}
+
 export function ClearLogs() {
   return window['go']['app']['App']['ClearLogs']();
 }
@@ -52,6 +60,10 @@ export function GetDownloads() {
 
 export function GetDownloadsByStatus(arg1) {
   return window['go']['app']['App']['GetDownloadsByStatus'](arg1);
+}
+
+export function GetIncompleteDownloads() {
+  return window['go']['app']['App']['GetIncompleteDownloads']();
 }
 
 export function GetLibraryStats() {
@@ -104,6 +116,10 @@ export function PauseDownload(arg1) {
 
 export function RemoveDownloadPreset(arg1) {
   return window['go']['app']['App']['RemoveDownloadPreset'](arg1);
+}
+
+export function RestoreDownloadQueue() {
+  return window['go']['app']['App']['RestoreDownloadQueue']();
 }
 
 export function ResumeDownload(arg1) {
