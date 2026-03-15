@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 
 	"yted/internal/config"
 	"yted/internal/db"
@@ -23,6 +24,9 @@ type App struct {
 	ytdl   *ytdl.Client
 	logger *applog.Logger
 	fm     *FileManager
+	
+	// Mutex to prevent concurrent download processing
+	downloadMu sync.Mutex
 }
 
 // NewApp creates a new App application struct

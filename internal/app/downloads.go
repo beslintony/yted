@@ -250,6 +250,10 @@ func (a *App) ClearCompletedDownloads() error {
 // processDownloads starts pending downloads up to the concurrent limit
 func (a *App) processDownloads() {
 	logger := applog.GetLogger()
+	
+	// Prevent concurrent execution to avoid race conditions
+	a.downloadMu.Lock()
+	defer a.downloadMu.Unlock()
 
 	if a.db == nil || a.config == nil || a.ytdl == nil {
 		logger.Warn("Download", "Cannot process downloads - dependencies not ready")
@@ -294,25 +298,45 @@ func (a *App) processDownloads() {
 		"slotsAvailable": slotsAvailable,
 	})
 
-	// Start each download
+	// Start each download - mark as started SYNCHRONOUSLY before spawning goroutine
+	// This prevents race conditions if processDownloads is called again quickly
 	for _, dl := range pending {
+		// Mark as started in DB first (synchronously)
+		if err := a.db.StartDownload(dl.ID); err != nil {
+			logger.Error("Download", "Failed to mark download as started, skipping", err, map[string]string{
+				"id": dl.ID,
+			})
+			continue
+		}
+		
+		// Now spawn the goroutine for the actual download
 		go a.startDownload(dl)
 	}
 }
 
 // startDownload starts a single download
+// Note: The download must already be marked as 'started' in the database
+// before calling this function (done synchronously in processDownloads)
 func (a *App) startDownload(dl db.Download) {
 	logger := applog.GetLogger()
 	ctx := context.Background()
 
-	logger.Info("Download", "Starting download", map[string]string{
+	logger.Info("Download", "Download worker starting", map[string]string{
 		"id":  dl.ID,
 		"url": dl.URL,
 	})
 
-	// Mark as started
-	if err := a.db.StartDownload(dl.ID); err != nil {
-		logger.Error("Download", "Failed to mark download as started", err, map[string]string{"id": dl.ID})
+	// Verify download is still in 'downloading' state (could have been cancelled/paused)
+	currentDownload, err := a.db.GetDownload(dl.ID)
+	if err != nil {
+		logger.Error("Download", "Failed to verify download status", err, map[string]string{"id": dl.ID})
+		return
+	}
+	if currentDownload == nil || currentDownload.Status != "downloading" {
+		logger.Info("Download", "Download no longer active, aborting", map[string]string{
+			"id":     dl.ID,
+			"status": currentDownload.Status,
+		})
 		return
 	}
 
