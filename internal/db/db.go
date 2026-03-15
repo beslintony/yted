@@ -49,6 +49,8 @@ func (db *DB) migrate() error {
 			thumbnail_url TEXT,
 			file_path TEXT NOT NULL,
 			file_size INTEGER,
+			file_hash TEXT,
+			is_managed BOOLEAN DEFAULT 1,
 			format TEXT,
 			quality TEXT,
 			downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -100,6 +102,8 @@ type Video struct {
 	ThumbnailURL   string    `json:"thumbnail_url"`
 	FilePath       string    `json:"file_path"`
 	FileSize       int64     `json:"file_size"`
+	FileHash       string    `json:"file_hash"`    // Unique content ID: YouTube ID + Format (allows multiple versions)
+	IsManaged      bool      `json:"is_managed"`   // Whether file is in YTed managed folder
 	Format         string    `json:"format"`
 	Quality        string    `json:"quality"`
 	DownloadedAt   time.Time `json:"downloaded_at"`
