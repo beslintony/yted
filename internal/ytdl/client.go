@@ -2,9 +2,10 @@ package ytdl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
-	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -39,14 +40,15 @@ func (c *Client) Install(ctx context.Context) error {
 	log.Println("Checking yt-dlp installation...")
 	
 	// Try to find yt-dlp in PATH first
-	if _, err := execLookPath("yt-dlp"); err == nil {
+	if _, err := exec.LookPath("yt-dlp"); err == nil {
 		log.Println("yt-dlp found in PATH")
 		return nil
 	}
 
 	// Auto-install yt-dlp
 	log.Println("yt-dlp not found, installing...")
-	if err := ytdlp.Install(ctx, nil); err != nil {
+	_, err := ytdlp.Install(ctx, nil)
+	if err != nil {
 		return fmt.Errorf("failed to install yt-dlp: %w", err)
 	}
 
@@ -54,35 +56,16 @@ func (c *Client) Install(ctx context.Context) error {
 	return nil
 }
 
-// execLookPath is a helper to check if a command exists
-func execLookPath(file string) (string, error) {
-	// Simple check for common paths
-	paths := []string{
-		"/usr/local/bin/yt-dlp",
-		"/usr/bin/yt-dlp",
-		filepath.Join(os.Getenv("HOME"), ".local", "bin", "yt-dlp"),
-		filepath.Join(os.Getenv("HOME"), "go", "bin", "yt-dlp"),
-	}
-	
-	for _, p := range paths {
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
-		}
-	}
-	
-	return "", fmt.Errorf("not found")
-}
-
 // VideoInfo represents video metadata
 type VideoInfo struct {
-	ID          string        `json:"id"`
-	Title       string        `json:"title"`
-	Channel     string        `json:"channel"`
-	ChannelID   string        `json:"channel_id"`
-	Duration    int           `json:"duration"`
-	Description string        `json:"description"`
-	Thumbnail   string        `json:"thumbnail"`
-	Formats     []FormatInfo  `json:"formats"`
+	ID          string       `json:"id"`
+	Title       string       `json:"title"`
+	Channel     string       `json:"channel"`
+	ChannelID   string       `json:"channel_id"`
+	Duration    int          `json:"duration"`
+	Description string       `json:"description"`
+	Thumbnail   string       `json:"thumbnail"`
+	Formats     []FormatInfo `json:"formats"`
 }
 
 // FormatInfo represents a video format
@@ -102,11 +85,42 @@ type ProgressCallback func(progress DownloadProgress)
 
 // DownloadProgress represents download progress
 type DownloadProgress struct {
-	Percent    float64 `json:"percent"`
-	Speed      string  `json:"speed"`
-	ETA        string  `json:"eta"`
-	Size       string  `json:"size"`
-	Status     string  `json:"status"`
+	Percent float64 `json:"percent"`
+	Speed   string  `json:"speed"`
+	ETA     string  `json:"eta"`
+	Size    string  `json:"size"`
+	Status  string  `json:"status"`
+}
+
+// rawVideoInfo is the yt-dlp JSON output structure
+type rawVideoInfo struct {
+	ID          string          `json:"id"`
+	Title       string          `json:"title"`
+	Channel     string          `json:"channel"`
+	ChannelID   string          `json:"channel_id"`
+	Uploader    string          `json:"uploader"`
+	UploaderID  string          `json:"uploader_id"`
+	Duration    float64         `json:"duration"`
+	Description string          `json:"description"`
+	Thumbnail   string          `json:"thumbnail"`
+	Formats     []rawFormatInfo `json:"formats"`
+	Thumbnails  []struct {
+		URL    string `json:"url"`
+		Height int    `json:"height"`
+		Width  int    `json:"width"`
+	} `json:"thumbnails"`
+}
+
+type rawFormatInfo struct {
+	FormatID   string  `json:"format_id"`
+	Ext        string  `json:"ext"`
+	Resolution string  `json:"resolution"`
+	FPS        float64 `json:"fps"`
+	VCodec     string  `json:"vcodec"`
+	ACodec     string  `json:"acodec"`
+	FileSize   int64   `json:"filesize"`
+	FileSizeApprox int64 `json:"filesize_approx"`
+	Quality    float64 `json:"quality"`
 }
 
 // GetInfo extracts video information from URL
@@ -114,8 +128,7 @@ func (c *Client) GetInfo(ctx context.Context, url string) (*VideoInfo, error) {
 	result, err := c.dl.
 		NoWarnings().
 		Quiet().
-		JSON().
-		ExtractAudio(false).
+		DumpSingleJSON().
 		Run(ctx, url)
 
 	if err != nil {
@@ -132,23 +145,65 @@ func (c *Client) GetInfo(ctx context.Context, url string) (*VideoInfo, error) {
 }
 
 // parseVideoInfo parses yt-dlp JSON output
-func parseVideoInfo(data []byte) (*VideoInfo, error) {
-	// Use yt-dlp's built-in JSON parsing
-	var raw map[string]interface{}
-	
-	// For now, return a minimal implementation
-	// Full implementation would parse the yt-dlp JSON output
-	_ = raw
-	
+func parseVideoInfo(data string) (*VideoInfo, error) {
+	var raw rawVideoInfo
+	if err := json.Unmarshal([]byte(data), &raw); err != nil {
+		return nil, fmt.Errorf("failed to parse video info: %w", err)
+	}
+
+	// Get best thumbnail
+	thumbnail := raw.Thumbnail
+	if len(raw.Thumbnails) > 0 {
+		// Find highest resolution thumbnail
+		bestThumb := raw.Thumbnails[0]
+		bestArea := bestThumb.Width * bestThumb.Height
+		for _, t := range raw.Thumbnails[1:] {
+			area := t.Width * t.Height
+			if area > bestArea {
+				bestThumb = t
+				bestArea = area
+			}
+		}
+		thumbnail = bestThumb.URL
+	}
+
+	// Parse formats
+	formats := make([]FormatInfo, 0, len(raw.Formats))
+	for _, f := range raw.Formats {
+		size := f.FileSize
+		if size == 0 {
+			size = f.FileSizeApprox
+		}
+		formats = append(formats, FormatInfo{
+			FormatID:   f.FormatID,
+			Ext:        f.Ext,
+			Resolution: f.Resolution,
+			FPS:        f.FPS,
+			VCodec:     f.VCodec,
+			ACodec:     f.ACodec,
+			FileSize:   size,
+			Quality:    fmt.Sprintf("%.0f", f.Quality),
+		})
+	}
+
+	channel := raw.Channel
+	if channel == "" {
+		channel = raw.Uploader
+	}
+	channelID := raw.ChannelID
+	if channelID == "" {
+		channelID = raw.UploaderID
+	}
+
 	return &VideoInfo{
-		ID:          "",
-		Title:       "",
-		Channel:     "",
-		ChannelID:   "",
-		Duration:    0,
-		Description: "",
-		Thumbnail:   "",
-		Formats:     []FormatInfo{},
+		ID:          raw.ID,
+		Title:       raw.Title,
+		Channel:     channel,
+		ChannelID:   channelID,
+		Duration:    int(raw.Duration),
+		Description: raw.Description,
+		Thumbnail:   thumbnail,
+		Formats:     formats,
 	}, nil
 }
 
@@ -170,7 +225,7 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	// Apply format selection
 	if opts.Quality == "audio" {
-		dl = dl.ExtractAudio(true).AudioFormat("mp3")
+		dl = dl.ExtractAudio().AudioFormat("mp3")
 	} else if opts.Format != "" {
 		dl = dl.Format(opts.Format)
 	}
@@ -187,12 +242,14 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	// Add progress parsing
 	if callback != nil {
-		dl = dl.ProgressFunc(func(line ytdlp.ProgressLine) {
+		dl = dl.ProgressFunc(100*time.Millisecond, func(update ytdlp.ProgressUpdate) {
+			var percent float64
+			if update.TotalBytes > 0 {
+				percent = float64(update.DownloadedBytes) / float64(update.TotalBytes) * 100
+			}
 			progress := DownloadProgress{
-				Percent: line.Percentage(),
-				Speed:   line.Speed(),
-				ETA:     line.ETA(),
-				Status:  string(line.Status),
+				Percent: percent,
+				Status:  string(update.Status),
 			}
 			callback(progress)
 		})
@@ -217,7 +274,7 @@ func (c *Client) GetFormats(ctx context.Context, url string) ([]FormatInfo, erro
 	result, err := c.dl.
 		NoWarnings().
 		Quiet().
-		ListFormats(true).
+		ListFormats().
 		Run(ctx, url)
 
 	if err != nil {
@@ -225,43 +282,16 @@ func (c *Client) GetFormats(ctx context.Context, url string) ([]FormatInfo, erro
 	}
 
 	// Parse formats from output
-	formats := parseFormats(result.Stdout)
+	formats := parseFormatsList(result.Stdout)
 	return formats, nil
 }
 
-// parseFormats parses format list output
-func parseFormats(data []byte) []FormatInfo {
-	// Implementation would parse yt-dlp format list output
+// parseFormatsList parses format list output
+func parseFormatsList(data string) []FormatInfo {
+	// Format list is printed to stderr in list format
+	// For now, return empty - full implementation would parse the table
 	_ = data
 	return []FormatInfo{}
-}
-
-// Search searches for videos
-func (c *Client) Search(ctx context.Context, query string, maxResults int) ([]VideoInfo, error) {
-	// Use ytsearch: prefix
-	searchURL := fmt.Sprintf("ytsearch%d:%s", maxResults, query)
-	
-	result, err := c.dl.
-		NoWarnings().
-		Quiet().
-		JSON().
-		FlatPlaylist(true).
-		Run(ctx, searchURL)
-
-	if err != nil {
-		return nil, fmt.Errorf("search failed: %w", err)
-	}
-
-	// Parse results
-	videos := parseSearchResults(result.Stdout)
-	return videos, nil
-}
-
-// parseSearchResults parses search output
-func parseSearchResults(data []byte) []VideoInfo {
-	// Implementation would parse yt-dlp JSON output
-	_ = data
-	return []VideoInfo{}
 }
 
 // IsValidURL checks if a URL is a valid YouTube/video URL
