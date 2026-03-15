@@ -101,6 +101,46 @@ export interface UserSettings {
   downloadPresets: DownloadPreset[];
 }
 
+// File Warning for file operations
+export interface FileWarning {
+  type: 'permission' | 'system' | 'location' | 'security' | 'size';
+  title: string;
+  message: string;
+  isCritical: boolean;
+}
+
+// Cache Information
+export interface CacheInfo {
+  downloadCount: number;
+  completedCount: number;
+  pendingCount: number;
+  videoCount: number;
+  totalLibrarySize: number;
+  orphanedFilesCount: number;
+  orphanedFilesSize: number;
+}
+
+// Notification types
+export type NotificationType = 'success' | 'error' | 'warning' | 'info';
+
+export interface NotificationOptions {
+  title: string;
+  message?: string;
+  type?: NotificationType;
+  autoClose?: number;
+}
+
+// Confirm dialog options
+export interface ConfirmOptions {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  confirmColor?: 'red' | 'orange' | 'blue' | 'green' | 'yted' | 'gray' | 'yellow';
+  onConfirm: () => void;
+  onCancel?: () => void;
+}
+
 export const DEFAULT_SETTINGS: UserSettings = {
   downloadPath: '', // Will be set to ~/Downloads/YTed on init
   maxConcurrentDownloads: 3,
