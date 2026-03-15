@@ -502,14 +502,14 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 	// Check if a video with this file_hash already exists (duplicate download)
 	existingVideo, err := a.db.GetVideoByFileHash(contentHash)
 	if err != nil {
-		logger.Error("Download", "Failed to check for existing video", err, map[string]string{
+		logger.Error("Download", "Failed to check for existing video by hash", err, map[string]string{
 			"file_hash": contentHash,
 		})
 	}
 	
 	if existingVideo != nil {
 		// Update existing record instead of creating duplicate
-		logger.Info("Download", "Updating existing video record", map[string]string{
+		logger.Info("Download", "Updating existing video record by hash", map[string]string{
 			"id":         existingVideo.ID,
 			"youtube_id": youtubeID,
 			"file_hash":  contentHash,
@@ -527,6 +527,52 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		}
 		
 		runtime.EventsEmit(a.ctx, "library:updated", existingVideo)
+		return
+	}
+	
+	// Also check by YouTube ID to find and clean up legacy duplicates
+	existingByID, err := a.db.GetVideosByYoutubeID(youtubeID)
+	if err != nil {
+		logger.Error("Download", "Failed to check for existing video by ID", err, map[string]string{
+			"youtube_id": youtubeID,
+		})
+	}
+	
+	if len(existingByID) > 0 {
+		// Use the most recent entry and delete the rest (cleanup duplicates)
+		logger.Info("Download", "Found existing videos by YouTube ID, cleaning up duplicates", map[string]interface{}{
+			"youtube_id": youtubeID,
+			"count":      len(existingByID),
+		})
+		
+		// Update the first (most recent) entry
+		primary := existingByID[0]
+		primary.FilePath = filePath
+		primary.FileSize = fileSize
+		primary.FileHash = contentHash
+		primary.DownloadedAt = time.Now()
+		
+		if err := a.db.UpdateVideo(&primary); err != nil {
+			logger.Error("Download", "Failed to update primary video", err, map[string]string{
+				"id": primary.ID,
+			})
+			return
+		}
+		
+		// Delete duplicate entries
+		for i := 1; i < len(existingByID); i++ {
+			if err := a.db.DeleteVideoByID(existingByID[i].ID); err != nil {
+				logger.Error("Download", "Failed to delete duplicate video", err, map[string]string{
+					"id": existingByID[i].ID,
+				})
+			} else {
+				logger.Debug("Download", "Deleted duplicate video entry", map[string]string{
+					"id": existingByID[i].ID,
+				})
+			}
+		}
+		
+		runtime.EventsEmit(a.ctx, "library:updated", primary)
 		return
 	}
 
