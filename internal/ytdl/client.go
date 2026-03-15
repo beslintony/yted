@@ -231,7 +231,7 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		NoOverwrites().
 		YesPlaylist().
 		Continue().
-		TrimFileNames(100)
+		TrimFilenames(100)
 
 	// Apply format selection - ALWAYS set a format
 	if opts.Quality == "audio" {
