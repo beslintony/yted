@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { Video } from '../types';
+import { ListVideos } from '../../wailsjs/go/app/App';
+import { app } from '../../wailsjs/go/models';
 
 interface LibraryState {
   videos: Video[];
@@ -126,10 +128,36 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   loadLibrary: async () => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: Load from Go backend
-      // const videos = await GetVideos();
-      // set({ videos, isLoading: false });
-      set({ isLoading: false });
+      const options = new app.ListVideosOptions({
+        search: '',
+        channel: '',
+        sort_by: 'date',
+        sort_desc: true,
+        limit: 1000,
+        offset: 0,
+      });
+      const backendVideos = await ListVideos(options);
+      
+      // Map backend VideoResult to frontend Video type
+      const videos: Video[] = (backendVideos || []).map((v: app.VideoResult) => ({
+        id: v.id,
+        youtubeId: v.youtube_id,
+        title: v.title,
+        channel: v.channel,
+        channelId: v.channel_id,
+        duration: v.duration,
+        description: v.description,
+        thumbnailUrl: v.thumbnail_url,
+        filePath: v.file_path,
+        fileSize: v.file_size,
+        format: v.format,
+        quality: v.quality,
+        downloadedAt: v.downloaded_at,
+        watchPosition: v.watch_position,
+        watchCount: v.watch_count,
+      }));
+      
+      set({ videos, isLoading: false });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Failed to load library',

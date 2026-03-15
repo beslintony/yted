@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { ExportLogs } from '../../wailsjs/go/app/App';
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
@@ -54,7 +55,17 @@ export const useLogStore = create<LogState>((set, get) => ({
   },
 
   exportLogs: async () => {
-    // TODO: Export to file
+    set({ isLoading: true, error: null });
+    try {
+      // ExportLogs uses the configured log export path
+      await ExportLogs('');
+      set({ isLoading: false });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to export logs',
+        isLoading: false,
+      });
+    }
   },
 
   getLogsByLevel: (level) => {
