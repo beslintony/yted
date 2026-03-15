@@ -59,6 +59,49 @@ func (db *DB) GetVideoByFileHash(hash string) (*Video, error) {
 	return &v, nil
 }
 
+// GetVideosByYoutubeID retrieves all videos with the same YouTube ID
+// Used to find and clean up duplicates
+func (db *DB) GetVideosByYoutubeID(youtubeID string) ([]Video, error) {
+	query := `
+		SELECT id, youtube_id, title, channel, channel_id, duration, description,
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at,
+			watch_position, watch_count
+		FROM videos WHERE youtube_id = ?
+		ORDER BY downloaded_at DESC
+	`
+	rows, err := db.conn.Query(query, youtubeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get videos by youtube ID: %w", err)
+	}
+	defer rows.Close()
+
+	var videos []Video
+	for rows.Next() {
+		var v Video
+		err := rows.Scan(
+			&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
+			&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
+			&v.FileSize, &v.FileHash, &v.IsManaged, &v.Format, &v.Quality, &v.DownloadedAt,
+			&v.WatchPosition, &v.WatchCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan video: %w", err)
+		}
+		videos = append(videos, v)
+	}
+	return videos, nil
+}
+
+// DeleteVideoByID removes a video by its ID
+func (db *DB) DeleteVideoByID(id string) error {
+	query := `DELETE FROM videos WHERE id = ?`
+	_, err := db.conn.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete video: %w", err)
+	}
+	return nil
+}
+
 // ListVideosWithHash retrieves videos with full info including hash and managed status
 func (db *DB) ListVideosWithHash(opts ListVideosOptions) ([]Video, error) {
 	where := []string{"1=1"}
