@@ -38,8 +38,14 @@ func (a *App) VerifyAndRepairDownloads() error {
 				ext = "mp3"
 			}
 			
+			// Get format ID for finding the specific version
+			formatID := ""
+			if dl.FormatID != nil {
+				formatID = *dl.FormatID
+			}
+			
 			// Look for the file
-			foundPath := findDownloadedFile(downloadPath, youtubeID, ext)
+			foundPath := findDownloadedFile(downloadPath, youtubeID, formatID, ext)
 			
 			if foundPath != "" {
 				// File exists! Mark as completed
@@ -100,7 +106,13 @@ func (a *App) CheckDownloadStatus(downloadID string) (map[string]interface{}, er
 			ext = "mp3"
 		}
 		
-		filePath = findDownloadedFile(downloadPath, youtubeID, ext)
+		// Get format ID for finding the specific version
+		formatID := ""
+		if dl.FormatID != nil {
+			formatID = *dl.FormatID
+		}
+		
+		filePath = findDownloadedFile(downloadPath, youtubeID, formatID, ext)
 	}
 
 	result := map[string]interface{}{

@@ -465,9 +465,15 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		ext = "mp3"
 	}
 
+	// Get format ID for finding the specific version
+	formatID := ""
+	if dl.FormatID != nil {
+		formatID = *dl.FormatID
+	}
+
 	// Find the actual downloaded file in the output directory
-	// yt-dlp sanitizes filenames, so we need to search for files with the YouTube ID
-	filePath := findDownloadedFile(outputDir, youtubeID, ext)
+	// yt-dlp sanitizes filenames, so we need to search for files with the YouTube ID and format
+	filePath := findDownloadedFile(outputDir, youtubeID, formatID, ext)
 	if filePath == "" {
 		// Fallback: try to construct the path (may not exist if yt-dlp sanitized differently)
 		filename := fmt.Sprintf("%s.%s", title, ext)
@@ -483,6 +489,16 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		fileSize = info.Size()
 	}
 
+	// Check if file is in our managed folder
+	isManaged := a.fm != nil && a.fm.IsManagedFile(filePath)
+	
+	// Create unique content identifier: YouTube ID + Format
+	// This allows multiple versions (e.g., 720p vs 1080p) of same video
+	contentHash := youtubeID
+	if formatID != "" {
+		contentHash = youtubeID + "_" + formatID
+	}
+
 	// Create video record
 	video := &db.Video{
 		ID:            uuid.New().String(),
@@ -490,6 +506,8 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		Title:         title,
 		FilePath:      filePath,
 		FileSize:      fileSize,
+		FileHash:      contentHash, // Unique ID for this specific version
+		IsManaged:     isManaged,
 		DownloadedAt:  time.Now(),
 		WatchPosition: 0,
 		WatchCount:    0,
@@ -570,10 +588,6 @@ func extractYoutubeID(videoURL string) string {
 
 	return ""
 }
-
-// findDownloadedFile searches for the downloaded file in the output directory
-// yt-dlp includes the video ID in the filename, so we search for files containing the ID
-
 
 // GetIncompleteDownloads returns all downloads that are not completed (for restoring queue)
 func (a *App) GetIncompleteDownloads() ([]db.Download, error) {
