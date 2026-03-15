@@ -8,98 +8,100 @@ import (
 )
 
 // findDownloadedFile searches for the downloaded file in the output directory
-// Looks for files containing the YouTube ID AND format (for multiple versions support)
-// If formatID is empty, falls back to just matching YouTube ID
+// Uses strict matching to avoid linking wrong files when multiple versions exist
+// Priority order:
+//   1. Files with [youtubeID][formatID] pattern (exact format match)
+//   2. Files with [youtubeID][any_number] pattern (format was resolved)
+//   3. Files with [youtubeID] pattern (backward compat, strict bracket matching)
+//   4. Most recently modified media file (within 30s window, last resort)
 func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
-	// Read directory contents
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
 		return ""
 	}
 
-	// Build the expected format suffix for matching
-	// New format: %(title)s [%(id)s][%(format_id)s].%(ext)s
-	formatSuffix := ""
+	// Determine expected media type based on quality/format
+	isAudioFormat := ext == "mp3" || ext == "m4a" || ext == "ogg" ||
+		strings.Contains(formatID, "audio")
+
+	// Helper to check if file is expected media type
+	isExpectedType := func(filename string) bool {
+		lower := strings.ToLower(filename)
+		if isAudioFormat {
+			// For audio downloads, prioritize audio extensions
+			return strings.HasSuffix(lower, ".mp3") ||
+				strings.HasSuffix(lower, ".m4a") ||
+				strings.HasSuffix(lower, ".ogg") ||
+				strings.HasSuffix(lower, ".mp4") // mp3 can be in mp4 container
+		}
+		// For video downloads, look for video extensions
+		return strings.HasSuffix(lower, ".mp4") ||
+			strings.HasSuffix(lower, ".webm") ||
+			strings.HasSuffix(lower, ".mkv") ||
+			strings.HasSuffix(lower, ".avi")
+	}
+
+	// Helper to check if file is any media type
+	isMediaFile := func(filename string) bool {
+		lower := strings.ToLower(filename)
+		return strings.HasSuffix(lower, ".mp4") ||
+			strings.HasSuffix(lower, ".webm") ||
+			strings.HasSuffix(lower, ".mkv") ||
+			strings.HasSuffix(lower, ".avi") ||
+			strings.HasSuffix(lower, ".mp3") ||
+			strings.HasSuffix(lower, ".m4a") ||
+			strings.HasSuffix(lower, ".ogg")
+	}
+
+	// PASS 1: Exact format match [youtubeID][formatID]
 	if formatID != "" {
-		formatSuffix = "[" + formatID + "]"
-	}
-
-	// First pass: Look for files with BOTH YouTube ID AND format ID
-	// This works when format_id in template matches the format selector
-	if formatSuffix != "" {
 		for _, entry := range entries {
 			if entry.IsDir() {
 				continue
 			}
 			name := entry.Name()
-			// Check if filename contains both the YouTube ID and format ID
-			if strings.Contains(name, youtubeID) && strings.Contains(name, formatSuffix) {
-				// Check extension (video or audio)
-				lowerName := strings.ToLower(name)
-				if strings.HasSuffix(lowerName, ".mp4") ||
-					strings.HasSuffix(lowerName, ".webm") ||
-					strings.HasSuffix(lowerName, ".mkv") ||
-					strings.HasSuffix(lowerName, ".mp3") ||
-					strings.HasSuffix(lowerName, ".m4a") ||
-					strings.HasSuffix(lowerName, ".ogg") {
-					return filepath.Join(outputDir, name)
-				}
-			}
-		}
-	}
-
-	// Second pass: Look for files with YouTube ID and ANY format specifier
-	// This handles cases where yt-dlp resolved the format selector to a different code
-	// e.g., "bestvideo[height<=1080]+bestaudio" -> "18"
-	// We look for pattern: [youtubeID][digits] which indicates format-specific file
-	if formatSuffix != "" {
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			// Match pattern: [youtubeID][number] - this indicates a specific format
-			if strings.Contains(name, "["+youtubeID+"][") {
-				// Check extension
-				lowerName := strings.ToLower(name)
-				if strings.HasSuffix(lowerName, "."+ext) ||
-					strings.HasSuffix(lowerName, ".mp4") ||
-					strings.HasSuffix(lowerName, ".webm") ||
-					strings.HasSuffix(lowerName, ".mkv") ||
-					strings.HasSuffix(lowerName, ".mp3") ||
-					strings.HasSuffix(lowerName, ".m4a") ||
-					strings.HasSuffix(lowerName, ".ogg") {
-					return filepath.Join(outputDir, name)
-				}
-			}
-		}
-	}
-
-	// Third pass: Look for files with just the YouTube ID (backward compatibility)
-	// This handles older downloads without format in filename
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		// Check if filename contains the YouTube ID
-		if strings.Contains(name, youtubeID) {
-			// Check extension (video or audio)
-			lowerName := strings.ToLower(name)
-			if strings.HasSuffix(lowerName, ".mp4") ||
-				strings.HasSuffix(lowerName, ".webm") ||
-				strings.HasSuffix(lowerName, ".mkv") ||
-				strings.HasSuffix(lowerName, ".mp3") ||
-				strings.HasSuffix(lowerName, ".m4a") ||
-				strings.HasSuffix(lowerName, ".ogg") {
+			// Look for exact pattern: [youtubeID][formatID]
+			if strings.Contains(name, "["+youtubeID+"]["+formatID+"]") &&
+				isExpectedType(name) {
 				return filepath.Join(outputDir, name)
 			}
 		}
 	}
 
-	// Fourth pass: Look for files modified in the last 30 seconds
-	// This is a last resort - only for very recent downloads
-	// Use a shorter window to avoid matching wrong files
+	// PASS 2: Format resolved to different code [youtubeID][digits]
+	if formatID != "" {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			// Match pattern: [youtubeID][number] - specific format was used
+			if strings.Contains(name, "["+youtubeID+"][") &&
+				!strings.Contains(name, "["+youtubeID+"]["+formatID+"]") &&
+				isExpectedType(name) {
+				return filepath.Join(outputDir, name)
+			}
+		}
+	}
+
+	// PASS 3: Backward compatibility [youtubeID] only (no format)
+	// STRICT: Must be surrounded by brackets to avoid matching IDs in titles
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Match pattern: [youtubeID].ext or [youtubeID]_something.ext
+		// The ID must be in brackets to be valid
+		if strings.Contains(name, "["+youtubeID+"]") &&
+			!strings.Contains(name, "["+youtubeID+"][") && // Exclude format-specific files
+			isExpectedType(name) {
+			return filepath.Join(outputDir, name)
+		}
+	}
+
+	// PASS 4: Last resort - most recently modified media file within 30s window
+	// This handles edge cases but with strict time limit to avoid wrong matches
 	cutoff := time.Now().Add(-30 * time.Second)
 	var mostRecent os.DirEntry
 	var mostRecentTime time.Time
@@ -109,22 +111,24 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 			continue
 		}
 
+		name := entry.Name()
+		if !isMediaFile(name) {
+			continue
+		}
+
 		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
 
-		// Check if file is a video/audio file and was modified very recently
-		lowerName := strings.ToLower(entry.Name())
-		isMedia := strings.HasSuffix(lowerName, ".mp4") ||
-			strings.HasSuffix(lowerName, ".webm") ||
-			strings.HasSuffix(lowerName, ".mkv") ||
-			strings.HasSuffix(lowerName, ".mp3") ||
-			strings.HasSuffix(lowerName, ".m4a") ||
-			strings.HasSuffix(lowerName, ".ogg")
-
-		if isMedia && info.ModTime().After(cutoff) {
-			if info.ModTime().After(mostRecentTime) {
+		// Only consider files modified very recently
+		if info.ModTime().After(cutoff) && info.ModTime().After(mostRecentTime) {
+			// For audio downloads, prefer audio files; for video, prefer video
+			if isExpectedType(name) {
+				mostRecent = entry
+				mostRecentTime = info.ModTime()
+			} else if mostRecent == nil {
+				// Only use non-preferred type if nothing else found
 				mostRecent = entry
 				mostRecentTime = info.ModTime()
 			}
