@@ -11,7 +11,8 @@ import (
 // Config holds all user-configurable settings
 type Config struct {
 	// Downloads
-	DownloadPath           string `json:"download_path"`
+	UserSelectedPath       string `json:"user_selected_path"` // Path user selected (parent)
+	DownloadPath           string `json:"download_path"`      // Actual path we use (YTed subfolder)
 	MaxConcurrentDownloads int    `json:"max_concurrent_downloads"`
 	DefaultQuality         string `json:"default_quality"`
 	FilenameTemplate       string `json:"filename_template"`
@@ -60,7 +61,7 @@ func DefaultConfig(appDataDir string) *Config {
 		DownloadPath:           defaultDownloadPath,
 		MaxConcurrentDownloads: 3,
 		DefaultQuality:         "best",
-		FilenameTemplate:       "%(title)s [%(id)s].%(ext)s",
+		FilenameTemplate:       "%(title)s [%(id)s][%(format_id)s].%(ext)s",
 		Theme:                  "dark",
 		AccentColor:            "#ff0000",
 		SidebarCollapsed:       false,
@@ -130,9 +131,10 @@ func (m *Manager) Load() error {
 		homeDir, _ := os.UserHomeDir()
 		cfg.LogExportPath = filepath.Join(homeDir, "Downloads")
 	}
-	// Ensure filename template includes YouTube ID for file tracking
-	if cfg.FilenameTemplate == "" || cfg.FilenameTemplate == "%(title)s.%(ext)s" {
-		cfg.FilenameTemplate = "%(title)s [%(id)s].%(ext)s"
+	// Ensure filename template includes YouTube ID and format for unique identification
+	// Format ID is included to allow multiple versions (e.g., 720p vs 1080p) of same video
+	if cfg.FilenameTemplate == "" || cfg.FilenameTemplate == "%(title)s.%(ext)s" || cfg.FilenameTemplate == "%(title)s [%(id)s].%(ext)s" {
+		cfg.FilenameTemplate = "%(title)s [%(id)s][%(format_id)s].%(ext)s"
 	}
 
 	m.config = &cfg
