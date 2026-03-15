@@ -61,7 +61,7 @@ func DefaultConfig(appDataDir string) *Config {
 		DownloadPath:           defaultDownloadPath,
 		MaxConcurrentDownloads: 3,
 		DefaultQuality:         "best",
-		FilenameTemplate:       "%(title).100s [%(id)s][%(format_id)s].%(ext)s",
+		FilenameTemplate:       "%(title).60s [%(id)s][%(format_id)s].%(ext)s",
 		Theme:                  "dark",
 		AccentColor:            "#ff0000",
 		SidebarCollapsed:       false,
@@ -143,7 +143,7 @@ func (m *Manager) Load() error {
 		cfg.FilenameTemplate == "%(title)s.%(ext)s" || 
 		cfg.FilenameTemplate == "%(title)s [%(id)s].%(ext)s" ||
 		cfg.FilenameTemplate == "%(title)s [%(id)s][%(format_id)s].%(ext)s" {
-		cfg.FilenameTemplate = "%(title).100s [%(id)s][%(format_id)s].%(ext)s"
+		cfg.FilenameTemplate = "%(title).60s [%(id)s][%(format_id)s].%(ext)s"
 	}
 
 	m.config = &cfg
