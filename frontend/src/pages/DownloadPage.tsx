@@ -297,40 +297,52 @@ export function DownloadPage() {
   };
 
   const formatETA = (eta: string) => {
-    if (!eta || eta === '0s' || eta === '') return '';
+    if (!eta || eta === '0s' || eta === '' || eta === '0') return '';
     
-    // Parse the duration string (Go format like "2h30m15s" or "1m30s" or "45s")
+    // Handle Go duration format: "2h30m15.5s", "1m30s", "45.5s", "100ms"
+    // Extract hours, minutes, seconds using regex-like parsing
     let totalSeconds = 0;
-    let currentNum = '';
     
-    for (const char of eta) {
-      if (char >= '0' && char <= '9') {
-        currentNum += char;
-      } else if (char === 'h') {
-        totalSeconds += parseInt(currentNum || '0') * 3600;
-        currentNum = '';
-      } else if (char === 'm') {
-        totalSeconds += parseInt(currentNum || '0') * 60;
-        currentNum = '';
-      } else if (char === 's') {
-        totalSeconds += parseInt(currentNum || '0');
-        currentNum = '';
-      }
+    // Match hours: number followed by 'h'
+    const hoursMatch = eta.match(/(\d+)h/);
+    if (hoursMatch) {
+      totalSeconds += parseInt(hoursMatch[1]) * 3600;
+    }
+    
+    // Match minutes: number followed by 'm' (but not 'ms')
+    const minsMatch = eta.match(/(\d+)m(?!s)/);
+    if (minsMatch) {
+      totalSeconds += parseInt(minsMatch[1]) * 60;
+    }
+    
+    // Match seconds: number (possibly with decimal) followed by 's'
+    const secsMatch = eta.match(/(\d+(?:\.\d+)?)s/);
+    if (secsMatch) {
+      totalSeconds += parseFloat(secsMatch[1]);
+    }
+    
+    // Match milliseconds: number followed by 'ms'
+    const msMatch = eta.match(/(\d+)ms/);
+    if (msMatch) {
+      totalSeconds += parseInt(msMatch[1]) / 1000;
     }
     
     if (totalSeconds === 0) return '';
     
+    // Round to nearest second for display
+    const roundedSeconds = Math.round(totalSeconds);
+    
     // Format for human readability
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
+    const days = Math.floor(roundedSeconds / 86400);
+    const hours = Math.floor((roundedSeconds % 86400) / 3600);
+    const mins = Math.floor((roundedSeconds % 3600) / 60);
+    const secs = roundedSeconds % 60;
     
     if (days > 0) {
-      return `${days}d ${hours}h`;
+      return `${days}d ${hours}h ${mins}m`;
     }
     if (hours > 0) {
-      return `${hours}h ${mins}m`;
+      return `${hours}h ${mins}m ${secs}s`;
     }
     if (mins > 0) {
       return `${mins}m ${secs}s`;
