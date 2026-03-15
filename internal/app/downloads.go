@@ -634,6 +634,23 @@ func (a *App) RestoreDownloadQueue() error {
 		"count": len(downloads),
 	})
 	
+	// Reset downloads that were 'downloading' to 'pending' so they can be retried
+	// This handles app crashes/restarts during active downloads
+	for _, dl := range downloads {
+		if dl.Status == "downloading" {
+			logger.Info("Download", "Resetting stuck download to pending", map[string]string{
+				"id": dl.ID,
+			})
+			if err := a.db.UpdateDownloadStatus(dl.ID, "pending"); err != nil {
+				logger.Error("Download", "Failed to reset download status", err, map[string]string{
+					"id": dl.ID,
+				})
+			} else {
+				dl.Status = "pending" // Update local copy for event emission
+			}
+		}
+	}
+	
 	// Emit event for each download so frontend can add them to the queue
 	for _, dl := range downloads {
 		// Convert db.Download to DownloadResult
