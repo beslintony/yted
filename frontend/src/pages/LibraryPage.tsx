@@ -24,7 +24,7 @@ import {
   IconSortAscending,
   IconSortDescending,
 } from '@tabler/icons-react';
-import { useLibraryStore } from '../stores';
+import { useLibraryStore, useNotifications } from '../stores';
 import { ListVideos, GetLibraryStats, OpenFolder, OpenFile, DeleteVideo } from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
@@ -37,9 +37,10 @@ export function LibraryPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [stats, setStats] = useState({ total_videos: 0, total_size: 0 });
 
-  const { setVideos: setStoreVideos } = useLibraryStore();
+  const { setVideos: setStoreVideos, removeVideo: removeStoreVideo } = useLibraryStore();
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
+  const { success, error, warning, confirm } = useNotifications();
 
   useEffect(() => {
     loadVideos();
@@ -82,30 +83,48 @@ export function LibraryPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await DeleteVideo(id);
-      loadVideos();
-    } catch (err) {
-      console.error('Failed to delete video:', err);
-    }
+  const handleDelete = async (video: app.VideoResult) => {
+    const isManaged = video.file_path?.includes('YTed') || false;
+    const fileSize = video.file_size || 0;
+    const sizeText = fileSize > 0 ? ` (${formatFileSize(fileSize)})` : '';
+    
+    confirm({
+      title: 'Delete Video?',
+      message: isManaged 
+        ? `"${video.title}" will be removed from the library and the file${sizeText} will be deleted from your computer. This action cannot be undone.`
+        : `"${video.title}" will be removed from the library. The file will remain on your computer.`,
+      confirmLabel: 'Delete',
+      confirmColor: 'red',
+      onConfirm: async () => {
+        try {
+          await DeleteVideo(video.id, true);
+          removeStoreVideo(video.id);
+          loadVideos();
+          loadStats();
+          success('Video Deleted', `"${video.title}" has been removed from your library`);
+        } catch (err: any) {
+          console.error('Failed to delete video:', err);
+          error('Delete Failed', err?.message || 'Failed to delete video');
+        }
+      },
+    });
   };
 
-  const handlePlayVideo = async (filePath: string) => {
+  const handlePlayVideo = async (filePath: string, title?: string) => {
     try {
       await OpenFile(filePath);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to open video:', err);
-      alert('Failed to open video: ' + (err as Error).message);
+      error('Playback Failed', err?.message || 'Failed to open video file');
     }
   };
 
   const handleOpenFolder = async (filePath: string) => {
     try {
       await OpenFolder(filePath);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to open folder:', err);
-      alert('Failed to open folder: ' + (err as Error).message);
+      error('Open Failed', err?.message || 'Failed to open containing folder');
     }
   };
 
@@ -236,7 +255,7 @@ export function LibraryPage() {
             <VideoCard
               key={video.id}
               video={video}
-              onDelete={() => handleDelete(video.id)}
+              onDelete={() => handleDelete(video)}
               dark={dark}
             />
           ))}
@@ -247,7 +266,7 @@ export function LibraryPage() {
             <VideoListItem
               key={video.id}
               video={video}
-              onDelete={() => handleDelete(video.id)}
+              onDelete={() => handleDelete(video)}
               dark={dark}
             />
           ))}
