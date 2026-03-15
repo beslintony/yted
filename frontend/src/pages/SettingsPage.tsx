@@ -25,7 +25,7 @@ import {
   IconTrash,
   IconEdit,
 } from '@tabler/icons-react';
-import { useSettingsStore } from '../stores';
+import { useSettingsStore, useNotifications } from '../stores';
 import { GetSettings, SaveSettings, ShowOpenDirectoryDialog, ClearDownloadCache, ClearCompletedDownloadsCache, ClearCompletedDownloads } from '../../wailsjs/go/app/App';
 import { config } from '../../wailsjs/go/models';
 
@@ -49,6 +49,8 @@ export function SettingsPage() {
     setDefaultQuality,
     saveSettings: saveSettingsToStore,
   } = useSettingsStore();
+
+  const { success, error, warning, confirm } = useNotifications();
 
   const dark = colorScheme === 'dark';
 
@@ -103,10 +105,13 @@ export function SettingsPage() {
         setColorScheme('light');
       }
       
+      success('Settings Saved', 'Your settings have been saved successfully');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('Failed to save settings:', err);
-      setSaveError(err?.message || 'Failed to save settings');
+      const msg = err?.message || 'Failed to save settings';
+      setSaveError(msg);
+      error('Save Failed', msg);
     } finally {
       setSaving(false);
     }
@@ -542,15 +547,21 @@ export function SettingsPage() {
                 variant="light" 
                 color="orange"
                 leftSection={<IconTrash size={16} />}
-                onClick={async () => {
-                  if (confirm('Clear all download cache? This will remove pending and completed downloads from the database.')) {
-                    try {
-                      await ClearDownloadCache();
-                      alert('Download cache cleared successfully');
-                    } catch (err) {
-                      alert('Failed to clear download cache: ' + err);
-                    }
-                  }
+                onClick={() => {
+                  confirm({
+                    title: 'Clear Download Cache?',
+                    message: 'This will remove ALL pending and completed downloads from the database. This action cannot be undone.',
+                    confirmLabel: 'Clear All',
+                    confirmColor: 'orange',
+                    onConfirm: async () => {
+                      try {
+                        await ClearDownloadCache();
+                        success('Cache Cleared', 'Download cache has been cleared successfully');
+                      } catch (err: any) {
+                        error('Clear Failed', 'Failed to clear download cache: ' + err?.message);
+                      }
+                    },
+                  });
                 }}
               >
                 Clear Download Cache
@@ -562,15 +573,21 @@ export function SettingsPage() {
                 variant="light" 
                 color="gray"
                 leftSection={<IconTrash size={16} />}
-                onClick={async () => {
-                  if (confirm('Clear completed downloads from cache?')) {
-                    try {
-                      await ClearCompletedDownloadsCache();
-                      alert('Completed downloads cache cleared successfully');
-                    } catch (err) {
-                      alert('Failed to clear completed downloads: ' + err);
-                    }
-                  }
+                onClick={() => {
+                  confirm({
+                    title: 'Clear Completed Downloads?',
+                    message: 'This will remove completed download records from the database. Active downloads will not be affected.',
+                    confirmLabel: 'Clear Completed',
+                    confirmColor: 'orange',
+                    onConfirm: async () => {
+                      try {
+                        await ClearCompletedDownloadsCache();
+                        success('Cache Cleared', 'Completed downloads cache has been cleared');
+                      } catch (err: any) {
+                        error('Clear Failed', 'Failed to clear completed downloads: ' + err?.message);
+                      }
+                    },
+                  });
                 }}
               >
                 Clear Completed Only
@@ -582,15 +599,21 @@ export function SettingsPage() {
                 variant="light" 
                 color="gray"
                 leftSection={<IconTrash size={16} />}
-                onClick={async () => {
-                  if (confirm('Clear completed downloads from queue?')) {
-                    try {
-                      await ClearCompletedDownloads();
-                      alert('Completed downloads cleared from queue');
-                    } catch (err) {
-                      alert('Failed to clear completed downloads: ' + err);
-                    }
-                  }
+                onClick={() => {
+                  confirm({
+                    title: 'Clear Queue History?',
+                    message: 'This will remove completed downloads from the queue view. Downloads will remain in the library.',
+                    confirmLabel: 'Clear Queue',
+                    confirmColor: 'gray',
+                    onConfirm: async () => {
+                      try {
+                        await ClearCompletedDownloads();
+                        success('Queue Cleared', 'Completed downloads cleared from queue');
+                      } catch (err: any) {
+                        error('Clear Failed', 'Failed to clear queue: ' + err?.message);
+                      }
+                    },
+                  });
                 }}
               >
                 Clear Queue Completed
