@@ -29,6 +29,9 @@ type Config struct {
 	SpeedLimitKbps *int    `json:"speed_limit_kbps"`
 	ProxyURL       *string `json:"proxy_url"`
 
+	// Logging
+	LogExportPath string `json:"log_export_path"`
+
 	// Presets
 	DownloadPresets []DownloadPreset `json:"download_presets"`
 }
@@ -46,6 +49,7 @@ type DownloadPreset struct {
 func DefaultConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	defaultDownloadPath := filepath.Join(homeDir, "Downloads", "YTed")
+	defaultLogExportPath := filepath.Join(homeDir, "Downloads")
 
 	return &Config{
 		DownloadPath:           defaultDownloadPath,
@@ -59,6 +63,7 @@ func DefaultConfig() *Config {
 		RememberPosition:       true,
 		SpeedLimitKbps:         nil,
 		ProxyURL:               nil,
+		LogExportPath:          defaultLogExportPath,
 		DownloadPresets: []DownloadPreset{
 			{ID: "1", Name: "Best Quality", Format: "best", Quality: "best", Extension: "mp4"},
 			{ID: "2", Name: "1080p", Format: "bestvideo[height<=1080]+bestaudio", Quality: "1080p", Extension: "mp4"},

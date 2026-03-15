@@ -60,9 +60,8 @@ export function LoggerViewer() {
 
   const handleExport = async () => {
     try {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `yted-logs-${timestamp}.txt`;
-      await ExportLogs(filename);
+      // ExportLogs now uses the configured log export path
+      await ExportLogs('');
     } catch (err) {
       console.error('Failed to export logs:', err);
     }

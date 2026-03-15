@@ -82,6 +82,13 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.ytdl = ytdl.NewClient(ytdlConfig)
 	a.logger.Info("YTDLP", "yt-dlp client initialized")
+	
+	// Install yt-dlp binary
+	if err := a.ytdl.Install(ctx); err != nil {
+		a.logger.Error("YTDLP", "Failed to install yt-dlp", err)
+	} else {
+		a.logger.Info("YTDLP", "yt-dlp installed successfully")
+	}
 
 	// Ensure download directory exists
 	if err := os.MkdirAll(cfgManager.Get().DownloadPath, 0755); err != nil {
