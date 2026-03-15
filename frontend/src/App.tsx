@@ -4,7 +4,6 @@ import {
   Navbar,
   Header,
   Footer,
-  Aside,
   Text,
   MediaQuery,
   Burger,
@@ -24,28 +23,9 @@ import {
   IconMoon,
 } from '@tabler/icons-react';
 import { useSettingsStore } from './stores';
-
-// Placeholder components - will be implemented in separate commits
-const DownloadPage = () => (
-  <div>
-    <Text size="xl" fw={700} mb="md">Downloads</Text>
-    <Text c="dimmed">Download queue will be implemented here</Text>
-  </div>
-);
-
-const LibraryPage = () => (
-  <div>
-    <Text size="xl" fw={700} mb="md">Library</Text>
-    <Text c="dimmed">Video library will be implemented here</Text>
-  </div>
-);
-
-const SettingsPage = () => (
-  <div>
-    <Text size="xl" fw={700} mb="md">Settings</Text>
-    <Text c="dimmed">Settings will be implemented here</Text>
-  </div>
-);
+import { DownloadPage } from './pages/DownloadPage';
+import { LibraryPage } from './pages/LibraryPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   const theme = useMantineTheme();
@@ -107,15 +87,8 @@ function App() {
           </Navbar.Section>
         </Navbar>
       }
-      aside={
-        <MediaQuery smallerThan="sm" styles={{ display: 'none' }}>
-          <Aside p="md" hiddenBreakpoint="sm" width={{ sm: 200, lg: 300 }}>
-            <Text>Right sidebar content</Text>
-          </Aside>
-        </MediaQuery>
-      }
       footer={
-        <Footer height={60} p="md">
+        <Footer height={40} p="xs">
           <Group position="apart">
             <Text size="xs" c="dimmed">
               YTed v1.0.0
@@ -127,7 +100,7 @@ function App() {
         </Footer>
       }
       header={
-        <Header height={{ base: 50, md: 70 }} p="md">
+        <Header height={{ base: 50, md: 60 }} p="sm">
           <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
             <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
               <Burger
