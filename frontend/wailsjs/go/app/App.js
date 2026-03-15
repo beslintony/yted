@@ -14,6 +14,10 @@ export function CancelDownload(arg1) {
   return window['go']['app']['App']['CancelDownload'](arg1);
 }
 
+export function CheckDownloadStatus(arg1) {
+  return window['go']['app']['App']['CheckDownloadStatus'](arg1);
+}
+
 export function ClearCompletedDownloads() {
   return window['go']['app']['App']['ClearCompletedDownloads']();
 }
@@ -150,6 +154,10 @@ export function ShowSaveDialog(arg1) {
   return window['go']['app']['App']['ShowSaveDialog'](arg1);
 }
 
+export function SyncDownloadWithFile(arg1) {
+  return window['go']['app']['App']['SyncDownloadWithFile'](arg1);
+}
+
 export function UpdateDownloadPreset(arg1, arg2) {
   return window['go']['app']['App']['UpdateDownloadPreset'](arg1, arg2);
 }
@@ -164,4 +172,8 @@ export function UpdateWatchPosition(arg1, arg2) {
 
 export function ValidateURL(arg1) {
   return window['go']['app']['App']['ValidateURL'](arg1);
+}
+
+export function VerifyAndRepairDownloads() {
+  return window['go']['app']['App']['VerifyAndRepairDownloads']();
 }

@@ -10,6 +10,8 @@ export function AddDownloadPreset(arg1:config.DownloadPreset):Promise<void>;
 
 export function CancelDownload(arg1:string):Promise<void>;
 
+export function CheckDownloadStatus(arg1:string):Promise<Record<string, any>>;
+
 export function ClearCompletedDownloads():Promise<void>;
 
 export function ClearCompletedDownloadsCache():Promise<void>;
@@ -78,6 +80,8 @@ export function ShowOpenDirectoryDialog():Promise<string>;
 
 export function ShowSaveDialog(arg1:string):Promise<string>;
 
+export function SyncDownloadWithFile(arg1:string):Promise<void>;
+
 export function UpdateDownloadPreset(arg1:string,arg2:config.DownloadPreset):Promise<void>;
 
 export function UpdateSetting(arg1:string,arg2:any):Promise<void>;
@@ -85,3 +89,5 @@ export function UpdateSetting(arg1:string,arg2:any):Promise<void>;
 export function UpdateWatchPosition(arg1:string,arg2:number):Promise<void>;
 
 export function ValidateURL(arg1:string):Promise<boolean>;
+
+export function VerifyAndRepairDownloads():Promise<void>;

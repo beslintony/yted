@@ -138,10 +138,10 @@ function App() {
                     borderRadius: 8,
                   }}
                 >
-                  <Group gap={12} wrap="nowrap">
+                  <Group gap={12} wrap="nowrap" style={{ justifyContent: sidebarCollapsed ? 'center' : 'flex-start', width: '100%' }}>
                     <Icon size={20} />
                     {!sidebarCollapsed && (
-                      <span style={{ fontSize: 14, fontWeight: 500 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, textAlign: 'left' }}>
                         {item.label}
                       </span>
                     )}
