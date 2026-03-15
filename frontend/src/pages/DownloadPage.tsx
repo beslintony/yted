@@ -119,13 +119,45 @@ export function DownloadPage() {
         startDownload(data.id);
       }
     });
+    // Listen for restored downloads from previous session
+    const cancelRestored = EventsOn('download:restored', (data: any) => {
+      if (data?.id && data?.url) {
+        // Add restored download to the store
+        addDownload(data.url, {
+          id: data.youtube_id || '',
+          title: data.title || 'Restored Download',
+          channel: data.channel || '',
+          channelId: '',
+          duration: 0,
+          description: '',
+          thumbnail: data.thumbnail_url || '',
+          formats: [],
+        }, {
+          formatId: data.format_id || 'best',
+          quality: data.quality || 'best',
+          ext: 'mp4',
+          resolution: '',
+          fps: 0,
+          vcodec: '',
+          acodec: '',
+          filesize: 0,
+        }, data.id);
+        // Set the correct status
+        if (data.status === 'downloading') {
+          startDownload(data.id);
+        } else if (data.status === 'error') {
+          failDownload(data.id, data.error_message || 'Unknown error');
+        }
+      }
+    });
     return () => {
       cancelProgress();
       cancelCompleted();
       cancelError();
       cancelStarted();
+      cancelRestored();
     };
-  }, [updateProgress, completeDownload, failDownload, startDownload]);
+  }, [updateProgress, completeDownload, failDownload, startDownload, addDownload]);
 
   const handleFetchInfo = async () => {
     if (!url.trim()) {

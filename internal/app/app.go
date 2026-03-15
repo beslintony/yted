@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"yted/internal/config"
@@ -112,6 +113,11 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Error("App", "Failed to create download directory", err)
 	}
 
+	// Restore incomplete downloads from previous session
+	if err := a.RestoreDownloadQueue(); err != nil {
+		a.logger.Error("App", "Failed to restore download queue", err)
+	}
+
 	a.logger.Info("App", "YTed started successfully")
 }
 
@@ -171,19 +177,22 @@ func (a *App) ShowSaveDialog(defaultFilename string) (string, error) {
 	})
 }
 
-// OpenFile opens a file with the default application
+// OpenFile opens a file with the default application using xdg-open
 func (a *App) OpenFile(path string) error {
 	// Verify file exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return fmt.Errorf("file not found: %s", path)
 	}
 
-	// Use runtime OpenFileDialog to open with default application
-	// On Linux, we'll use xdg-open via a shell command
-	return openWithDefaultApp(a.ctx, path)
+	// Use xdg-open to open file with default application (Linux)
+	cmd := exec.Command("xdg-open", path)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	return nil
 }
 
-// OpenFolder opens the folder containing the file and selects it
+// OpenFolder opens the folder containing the file
 func (a *App) OpenFolder(filePath string) error {
 	// Get the directory containing the file
 	dir := filepath.Dir(filePath)
@@ -193,22 +202,10 @@ func (a *App) OpenFolder(filePath string) error {
 		return fmt.Errorf("folder not found: %s", dir)
 	}
 
-	// Open the folder
-	return openFolder(a.ctx, dir)
-}
-
-// openWithDefaultApp opens a file with the system's default application
-func openWithDefaultApp(ctx context.Context, path string) error {
-	// Use Wails runtime to open with default application
-	// This works cross-platform
-	runtime.BrowserOpenURL(ctx, "file://"+path)
-	return nil
-}
-
-// openFolder opens a folder in the system's file manager
-func openFolder(ctx context.Context, dir string) error {
-	// Use Wails runtime to open folder
-	// On most systems, this will open the file manager
-	runtime.BrowserOpenURL(ctx, "file://"+dir)
+	// Use xdg-open to open folder (Linux)
+	cmd := exec.Command("xdg-open", dir)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to open folder: %w", err)
+	}
 	return nil
 }

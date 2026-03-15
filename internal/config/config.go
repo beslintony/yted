@@ -60,7 +60,7 @@ func DefaultConfig(appDataDir string) *Config {
 		DownloadPath:           defaultDownloadPath,
 		MaxConcurrentDownloads: 3,
 		DefaultQuality:         "best",
-		FilenameTemplate:       "%(title)s.%(ext)s",
+		FilenameTemplate:       "%(title)s [%(id)s].%(ext)s",
 		Theme:                  "dark",
 		AccentColor:            "#ff0000",
 		SidebarCollapsed:       false,

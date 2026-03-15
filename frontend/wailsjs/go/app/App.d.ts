@@ -12,6 +12,10 @@ export function CancelDownload(arg1:string):Promise<void>;
 
 export function ClearCompletedDownloads():Promise<void>;
 
+export function ClearCompletedDownloadsCache():Promise<void>;
+
+export function ClearDownloadCache():Promise<void>;
+
 export function ClearLogs():Promise<void>;
 
 export function DeleteVideo(arg1:string):Promise<void>;
@@ -29,6 +33,8 @@ export function GetDownloadPresets():Promise<Array<config.DownloadPreset>>;
 export function GetDownloads():Promise<Array<db.Download>>;
 
 export function GetDownloadsByStatus(arg1:string):Promise<Array<db.Download>>;
+
+export function GetIncompleteDownloads():Promise<Array<db.Download>>;
 
 export function GetLibraryStats():Promise<Record<string, any>>;
 
@@ -55,6 +61,8 @@ export function OpenFolder(arg1:string):Promise<void>;
 export function PauseDownload(arg1:string):Promise<void>;
 
 export function RemoveDownloadPreset(arg1:string):Promise<void>;
+
+export function RestoreDownloadQueue():Promise<void>;
 
 export function ResumeDownload(arg1:string):Promise<void>;
 

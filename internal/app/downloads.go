@@ -609,3 +609,79 @@ func findDownloadedFile(outputDir, youtubeID, ext string) string {
 
 	return ""
 }
+
+
+// GetIncompleteDownloads returns all downloads that are not completed (for restoring queue)
+func (a *App) GetIncompleteDownloads() ([]db.Download, error) {
+	if a.db == nil {
+		return nil, nil
+	}
+	return a.db.GetIncompleteDownloads()
+}
+
+// RestoreDownloadQueue loads incomplete downloads from database and adds them to the queue
+func (a *App) RestoreDownloadQueue() error {
+	logger := applog.GetLogger()
+	
+	if a.db == nil {
+		return nil
+	}
+	
+	downloads, err := a.db.GetIncompleteDownloads()
+	if err != nil {
+		logger.Error("Download", "Failed to restore download queue", err)
+		return err
+	}
+	
+	if len(downloads) == 0 {
+		return nil
+	}
+	
+	logger.Info("Download", "Restoring download queue", map[string]int{
+		"count": len(downloads),
+	})
+	
+	// Emit event for each download so frontend can add them to the queue
+	for _, dl := range downloads {
+		runtime.EventsEmit(a.ctx, "download:restored", dl)
+	}
+	
+	// Start processing downloads
+	go a.processDownloads()
+	
+	return nil
+}
+
+// ClearDownloadCache removes all download records from the database
+func (a *App) ClearDownloadCache() error {
+	logger := applog.GetLogger()
+	
+	if a.db == nil {
+		return nil
+	}
+	
+	if err := a.db.ClearAllDownloads(); err != nil {
+		logger.Error("Download", "Failed to clear download cache", err)
+		return err
+	}
+	
+	logger.Info("Download", "Download cache cleared")
+	return nil
+}
+
+// ClearCompletedDownloadsCache removes only completed download records
+func (a *App) ClearCompletedDownloadsCache() error {
+	logger := applog.GetLogger()
+	
+	if a.db == nil {
+		return nil
+	}
+	
+	if err := a.db.ClearCompletedDownloads(); err != nil {
+		logger.Error("Download", "Failed to clear completed downloads cache", err)
+		return err
+	}
+	
+	logger.Info("Download", "Completed downloads cache cleared")
+	return nil
+}
