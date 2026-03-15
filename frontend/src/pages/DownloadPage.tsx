@@ -30,7 +30,7 @@ import {
   IconVideo,
 } from '@tabler/icons-react';
 import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
-import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads } from '../../wailsjs/go/app/App';
+import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 
@@ -659,7 +659,15 @@ export function DownloadPage() {
                         <Tooltip label="Retry download">
                           <ActionIcon 
                             size="sm" 
-                            onClick={() => retryDownload(download.id)}
+                            onClick={async () => {
+                              try {
+                                await RetryDownload(download.id);
+                                retryDownload(download.id);
+                              } catch (err) {
+                                console.error('Failed to retry download:', err);
+                                showError('Retry Failed', 'Failed to restart download');
+                              }
+                            }}
                             variant="light"
                             color="blue"
                           >
