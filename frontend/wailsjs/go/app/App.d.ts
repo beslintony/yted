@@ -12,6 +12,8 @@ export function CancelDownload(arg1:string):Promise<void>;
 
 export function CheckDownloadStatus(arg1:string):Promise<Record<string, any>>;
 
+export function CleanupOrphanedFiles(arg1:boolean):Promise<Record<string, any>>;
+
 export function ClearCompletedDownloads():Promise<void>;
 
 export function ClearCompletedDownloadsCache():Promise<void>;
@@ -20,13 +22,19 @@ export function ClearDownloadCache():Promise<void>;
 
 export function ClearLogs():Promise<void>;
 
-export function DeleteVideo(arg1:string):Promise<void>;
+export function ClearTempFiles():Promise<Record<string, any>>;
+
+export function DeleteVideo(arg1:string,arg2:boolean):Promise<void>;
+
+export function DeleteVideoWithConfirmation(arg1:string):Promise<Record<string, any>>;
 
 export function ExportLogs(arg1:string):Promise<void>;
 
 export function GetAllLogs():Promise<Array<app.LogEntry>>;
 
 export function GetAppName():Promise<string>;
+
+export function GetCacheInfo():Promise<app.CacheInfo>;
 
 export function GetChannels():Promise<Array<string>>;
 
@@ -63,6 +71,8 @@ export function OpenFolder(arg1:string):Promise<void>;
 export function PauseDownload(arg1:string):Promise<void>;
 
 export function RemoveDownloadPreset(arg1:string):Promise<void>;
+
+export function RepairLibrary():Promise<Record<string, any>>;
 
 export function RestoreDownloadQueue():Promise<void>;
 

@@ -1,5 +1,29 @@
 export namespace app {
 	
+	export class CacheInfo {
+	    download_count: number;
+	    completed_count: number;
+	    pending_count: number;
+	    video_count: number;
+	    total_library_size: number;
+	    orphaned_files_count: number;
+	    orphaned_files_size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CacheInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.download_count = source["download_count"];
+	        this.completed_count = source["completed_count"];
+	        this.pending_count = source["pending_count"];
+	        this.video_count = source["video_count"];
+	        this.total_library_size = source["total_library_size"];
+	        this.orphaned_files_count = source["orphaned_files_count"];
+	        this.orphaned_files_size = source["orphaned_files_size"];
+	    }
+	}
 	export class ListVideosOptions {
 	    search: string;
 	    channel: string;
@@ -152,6 +176,7 @@ export namespace config {
 	    }
 	}
 	export class Config {
+	    user_selected_path: string;
 	    download_path: string;
 	    max_concurrent_downloads: number;
 	    default_quality: string;
@@ -174,6 +199,7 @@ export namespace config {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.user_selected_path = source["user_selected_path"];
 	        this.download_path = source["download_path"];
 	        this.max_concurrent_downloads = source["max_concurrent_downloads"];
 	        this.default_quality = source["default_quality"];

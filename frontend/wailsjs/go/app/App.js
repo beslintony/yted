@@ -18,6 +18,10 @@ export function CheckDownloadStatus(arg1) {
   return window['go']['app']['App']['CheckDownloadStatus'](arg1);
 }
 
+export function CleanupOrphanedFiles(arg1) {
+  return window['go']['app']['App']['CleanupOrphanedFiles'](arg1);
+}
+
 export function ClearCompletedDownloads() {
   return window['go']['app']['App']['ClearCompletedDownloads']();
 }
@@ -34,8 +38,16 @@ export function ClearLogs() {
   return window['go']['app']['App']['ClearLogs']();
 }
 
-export function DeleteVideo(arg1) {
-  return window['go']['app']['App']['DeleteVideo'](arg1);
+export function ClearTempFiles() {
+  return window['go']['app']['App']['ClearTempFiles']();
+}
+
+export function DeleteVideo(arg1, arg2) {
+  return window['go']['app']['App']['DeleteVideo'](arg1, arg2);
+}
+
+export function DeleteVideoWithConfirmation(arg1) {
+  return window['go']['app']['App']['DeleteVideoWithConfirmation'](arg1);
 }
 
 export function ExportLogs(arg1) {
@@ -48,6 +60,10 @@ export function GetAllLogs() {
 
 export function GetAppName() {
   return window['go']['app']['App']['GetAppName']();
+}
+
+export function GetCacheInfo() {
+  return window['go']['app']['App']['GetCacheInfo']();
 }
 
 export function GetChannels() {
@@ -120,6 +136,10 @@ export function PauseDownload(arg1) {
 
 export function RemoveDownloadPreset(arg1) {
   return window['go']['app']['App']['RemoveDownloadPreset'](arg1);
+}
+
+export function RepairLibrary() {
+  return window['go']['app']['App']['RepairLibrary']();
 }
 
 export function RestoreDownloadQueue() {
