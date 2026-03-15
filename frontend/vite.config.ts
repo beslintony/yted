@@ -9,4 +9,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/tests/setup.ts',
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress 'use client' directive warnings from Mantine
+        if (warning.message?.includes('use client')) return;
+        warn(warning);
+      },
+    },
+  },
 })
