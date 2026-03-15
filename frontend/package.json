@@ -16,6 +16,7 @@
     "@mantine/modals": "^8.3.17",
     "@mantine/notifications": "^8.3.17",
     "@tabler/icons-react": "^3.40.0",
+    "caniuse-lite": "^1.0.30001779",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zustand": "^5.0.11"
