@@ -32,6 +32,8 @@ export function GetDownloadsByStatus(arg1:string):Promise<Array<db.Download>>;
 
 export function GetLibraryStats():Promise<Record<string, any>>;
 
+export function GetLogExportPath():Promise<string>;
+
 export function GetLogs(arg1:number):Promise<Array<app.LogEntry>>;
 
 export function GetSettings():Promise<config.Config>;
@@ -59,6 +61,8 @@ export function ResumeDownload(arg1:string):Promise<void>;
 export function RetryDownload(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:config.Config):Promise<void>;
+
+export function SetLogExportPath(arg1:string):Promise<void>;
 
 export function ShowError(arg1:string):Promise<void>;
 

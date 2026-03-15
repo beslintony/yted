@@ -17,6 +17,7 @@ interface SettingsState extends UserSettings {
   setRememberPosition: (remember: boolean) => void;
   setSpeedLimit: (limit: number | null) => void;
   setProxyUrl: (url: string | null) => void;
+  setLogExportPath: (path: string) => void;
   addDownloadPreset: (preset: Omit<DownloadPreset, 'id'>) => void;
   removeDownloadPreset: (id: string) => void;
   updateDownloadPreset: (id: string, preset: Partial<DownloadPreset>) => void;
@@ -51,6 +52,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setSpeedLimit: (limit) => set({ speedLimitKbps: limit }),
   
   setProxyUrl: (url) => set({ proxyUrl: url }),
+  
+  setLogExportPath: (path) => set({ logExportPath: path }),
   
   addDownloadPreset: (preset) => {
     const id = crypto.randomUUID();
@@ -101,6 +104,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         rememberPosition: state.rememberPosition,
         speedLimitKbps: state.speedLimitKbps,
         proxyUrl: state.proxyUrl,
+        logExportPath: state.logExportPath,
         downloadPresets: state.downloadPresets,
       };
       // TODO: Save to Go backend

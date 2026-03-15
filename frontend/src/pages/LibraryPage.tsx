@@ -27,6 +27,7 @@ import {
 import { useLibraryStore } from '../stores';
 import { ListVideos, GetLibraryStats, OpenFolder, DeleteVideo } from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
+import { EventsOn } from '../../wailsjs/runtime';
 
 export function LibraryPage() {
   const [videos, setVideos] = useState<app.VideoResult[]>([]);
@@ -43,6 +44,16 @@ export function LibraryPage() {
   useEffect(() => {
     loadVideos();
     loadStats();
+    
+    // Listen for library updates (when a new download completes)
+    const cancelLibraryUpdate = EventsOn('library:updated', () => {
+      loadVideos();
+      loadStats();
+    });
+    
+    return () => {
+      cancelLibraryUpdate();
+    };
   }, [search, sortBy, sortDesc]);
 
   const loadVideos = async () => {

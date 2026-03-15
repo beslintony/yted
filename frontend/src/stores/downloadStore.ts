@@ -7,13 +7,14 @@ interface DownloadState {
   error: string | null;
   
   // Actions
-  addDownload: (url: string, info?: VideoInfo, format?: VideoFormat) => string;
+  addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => string;
   removeDownload: (id: string) => void;
   startDownload: (id: string) => void;
   pauseDownload: (id: string) => void;
   resumeDownload: (id: string) => void;
   retryDownload: (id: string) => void;
   updateProgress: (id: string, progress: number) => void;
+  updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string }) => void;
   completeDownload: (id: string) => void;
   failDownload: (id: string, error: string) => void;
   clearCompleted: () => void;
@@ -28,8 +29,8 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  addDownload: (url, info, format) => {
-    const id = crypto.randomUUID();
+  addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => {
+    const id = existingId || crypto.randomUUID();
     const newDownload: Download = {
       id,
       url,
@@ -92,6 +93,14 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set((state) => ({
       downloads: state.downloads.map((d) =>
         d.id === id ? { ...d, progress: Math.min(100, Math.max(0, progress)) } : d
+      ),
+    }));
+  },
+
+  updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string }) => {
+    set((state) => ({
+      downloads: state.downloads.map((d) =>
+        d.id === id ? { ...d, ...info } : d
       ),
     }));
   },

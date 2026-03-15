@@ -7,6 +7,7 @@ import {
   ActionIcon,
   Stack,
   useMantineColorScheme,
+  Drawer,
 } from '@mantine/core';
 import {
   IconDownload,
@@ -14,16 +15,19 @@ import {
   IconSettings,
   IconSun,
   IconMoon,
+  IconFileText,
 } from '@tabler/icons-react';
 import { useSettingsStore } from './stores';
 import { DownloadPage } from './pages/DownloadPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { LoggerViewer } from './components/LoggerViewer';
 
 function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [mobileOpened, setMobileOpened] = useState(false);
   const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
+  const [loggerOpened, setLoggerOpened] = useState(false);
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
 
   const dark = colorScheme === 'dark';
@@ -53,16 +57,26 @@ function App() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            {/* Hamburger first */}
+            {/* Desktop hamburger - toggles sidebar */}
+            <Burger
+              opened={!sidebarCollapsed}
+              onClick={toggleSidebar}
+              size="sm"
+              color={dark ? '#c1c2c5' : '#495057'}
+              aria-label="Toggle sidebar"
+            />
+            
+            {/* Mobile hamburger - toggles mobile menu */}
             <Burger
               opened={mobileOpened}
               onClick={() => setMobileOpened((o) => !o)}
               hiddenFrom="sm"
               size="sm"
               color={dark ? '#c1c2c5' : '#495057'}
+              aria-label="Toggle mobile menu"
             />
             
-            {/* Logo second - no text */}
+            {/* Logo */}
             <Tooltip label="YTed v1.0.0">
               <img 
                 src="/logo.svg" 
@@ -72,16 +86,28 @@ function App() {
             </Tooltip>
           </Group>
           
-          <Tooltip label={dark ? "Switch to light mode" : "Switch to dark mode"}>
-            <ActionIcon 
-              variant="subtle" 
-              onClick={handleThemeToggle}
-              color="gray"
-              size="lg"
-            >
-              {dark ? <IconSun size={22} /> : <IconMoon size={22} />}
-            </ActionIcon>
-          </Tooltip>
+          <Group gap="xs">
+            <Tooltip label="View logs">
+              <ActionIcon 
+                variant="subtle" 
+                onClick={() => setLoggerOpened(true)}
+                color="gray"
+                size="lg"
+              >
+                <IconFileText size={22} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label={dark ? "Switch to light mode" : "Switch to dark mode"}>
+              <ActionIcon 
+                variant="subtle" 
+                onClick={handleThemeToggle}
+                color="gray"
+                size="lg"
+              >
+                {dark ? <IconSun size={22} /> : <IconMoon size={22} />}
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         </Group>
       </AppShell.Header>
 
@@ -143,6 +169,18 @@ function App() {
           </span>
         </Group>
       </AppShell.Footer>
+      
+      {/* Logger Drawer */}
+      <Drawer
+        opened={loggerOpened}
+        onClose={() => setLoggerOpened(false)}
+        title="Application Logs"
+        position="right"
+        size="lg"
+        padding="md"
+      >
+        <LoggerViewer />
+      </Drawer>
     </AppShell>
   );
 }

@@ -14,6 +14,7 @@ import {
   Alert,
   ScrollArea,
   useMantineColorScheme,
+  Select,
 } from '@mantine/core';
 import {
   IconDownload,
@@ -26,10 +27,11 @@ import {
   IconLink,
   IconX,
   IconSearch,
+  IconVideo,
 } from '@tabler/icons-react';
-import { useDownloadStore } from '../stores';
-import { GetVideoInfo, AddDownload, ValidateURL } from '../../wailsjs/go/app/App';
-import { app } from '../../wailsjs/go/models';
+import { useDownloadStore, useSettingsStore } from '../stores';
+import { GetVideoInfo, AddDownload, ValidateURL, GetSettings } from '../../wailsjs/go/app/App';
+import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 
 export function DownloadPage() {
@@ -38,6 +40,9 @@ export function DownloadPage() {
   const [videoInfo, setVideoInfo] = useState<app.VideoInfoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [presets, setPresets] = useState<config.DownloadPreset[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   
   const { 
     downloads, 
@@ -46,21 +51,81 @@ export function DownloadPage() {
     pauseDownload, 
     resumeDownload, 
     retryDownload, 
-    updateProgress 
+    updateProgress,
+    updateDownloadInfo,
+    startDownload,
+    completeDownload,
+    failDownload,
   } = useDownloadStore();
   
+  const { defaultQuality } = useSettingsStore();
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
 
+  // Load presets from settings
+  useEffect(() => {
+    const loadPresets = async () => {
+      try {
+        const settings = await GetSettings();
+        if (settings && settings.download_presets) {
+          setPresets(settings.download_presets);
+          // Set default preset based on defaultQuality
+          const defaultPreset = settings.download_presets.find(
+            (p: config.DownloadPreset) => p.quality === defaultQuality
+          );
+          if (defaultPreset) {
+            setSelectedPreset(defaultPreset.id);
+          } else if (settings.download_presets.length > 0) {
+            setSelectedPreset(settings.download_presets[0].id);
+          }
+        }
+        setSettingsLoaded(true);
+      } catch (err) {
+        console.error('Failed to load presets:', err);
+        setSettingsLoaded(true);
+      }
+    };
+    loadPresets();
+  }, [defaultQuality]);
+
   // Listen for download progress events from backend
   useEffect(() => {
-    const cancel = EventsOn('download:progress', (data: any) => {
+    const cancelProgress = EventsOn('download:progress', (data: any) => {
       if (data && data.id && data.progress !== undefined) {
         updateProgress(data.id, data.progress);
+        // Also update speed, eta, and size if provided
+        if (data.speed || data.eta || data.size) {
+          updateDownloadInfo(data.id, {
+            speed: data.speed,
+            eta: data.eta,
+            size: data.size,
+          });
+        }
       }
     });
-    return () => cancel();
-  }, [updateProgress]);
+    const cancelCompleted = EventsOn('download:completed', (data: any) => {
+      const id = typeof data === 'string' ? data : data?.id;
+      if (id) {
+        completeDownload(id);
+      }
+    });
+    const cancelError = EventsOn('download:error', (data: any) => {
+      if (data?.id && data?.error) {
+        failDownload(data.id, data.error);
+      }
+    });
+    const cancelStarted = EventsOn('download:started', (data: any) => {
+      if (data?.id) {
+        startDownload(data.id);
+      }
+    });
+    return () => {
+      cancelProgress();
+      cancelCompleted();
+      cancelError();
+      cancelStarted();
+    };
+  }, [updateProgress, completeDownload, failDownload, startDownload]);
 
   const handleFetchInfo = async () => {
     if (!url.trim()) {
@@ -102,21 +167,20 @@ export function DownloadPage() {
     setError(null);
     
     try {
-      // Find best format
-      const format = videoInfo.formats?.find(f => 
-        f.resolution?.includes('1080') || f.resolution?.includes('720')
-      ) || videoInfo.formats?.[0];
+      // Get selected preset
+      const preset = presets.find(p => p.id === selectedPreset);
       
-      const formatId = format?.format_id || 'best';
-      const quality = format?.quality || 'best';
+      // Use preset values or defaults
+      const formatId = preset?.format || 'best';
+      const quality = preset?.quality || 'best';
       
-      console.log('Adding download:', { url, formatId, quality, title: videoInfo.title });
+      console.log('Adding download:', { url, formatId, quality, title: videoInfo.title, preset: preset?.name });
       
-      // Call backend to add download
+      // Call backend to add download - this returns the backend ID
       const id = await AddDownload(url, formatId, quality);
       console.log('Download added with ID:', id);
       
-      // Add to local store for immediate UI update
+      // Add to local store with the backend ID
       addDownload(url, {
         id: videoInfo.id,
         title: videoInfo.title,
@@ -127,15 +191,15 @@ export function DownloadPage() {
         thumbnail: videoInfo.thumbnail,
         formats: videoInfo.formats as any,
       }, {
-        formatId: format?.format_id || 'best',
-        ext: format?.ext || 'mp4',
-        resolution: format?.resolution || '',
-        fps: format?.fps || 0,
-        vcodec: format?.vcodec || '',
-        acodec: format?.acodec || '',
-        filesize: format?.filesize || 0,
-        quality: format?.quality || 'best',
-      });
+        formatId: preset?.format || 'best',
+        ext: preset?.extension || 'mp4',
+        resolution: '',
+        fps: 0,
+        vcodec: '',
+        acodec: '',
+        filesize: 0,
+        quality: preset?.quality || 'best',
+      }, id);  // Pass the backend ID
       
       // Clear the form after successful add
       setUrl('');
@@ -272,6 +336,29 @@ export function DownloadPage() {
                   <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>
                     Duration: {formatDuration(videoInfo.duration)}
                   </Text>
+                  
+                  {/* Preset Selector */}
+                  {settingsLoaded && presets.length > 0 && (
+                    <Select
+                      label="Download Preset"
+                      description="Choose quality and format"
+                      value={selectedPreset}
+                      onChange={(value) => value && setSelectedPreset(value)}
+                      data={presets.map(p => ({
+                        value: p.id,
+                        label: `${p.name} (${p.quality}, .${p.extension})`,
+                      }))}
+                      w={250}
+                      size="sm"
+                      styles={{
+                        input: {
+                          background: dark ? '#141517' : '#f8f9fa',
+                          color: dark ? '#c1c2c5' : '#212529',
+                        },
+                      }}
+                    />
+                  )}
+                  
                   <Group justify="flex-end" mt="xs">
                     <Tooltip label="Add to download queue">
                       <Button 
@@ -280,6 +367,7 @@ export function DownloadPage() {
                         color="yted"
                         loading={adding}
                         leftSection={<IconDownload size={16} />}
+                        disabled={!selectedPreset && presets.length > 0}
                       >
                         Download
                       </Button>
@@ -442,7 +530,7 @@ export function DownloadPage() {
                     </Group>
                     
                     {download.status === 'downloading' && (
-                      <Tooltip label={`${Math.round(download.progress)}% complete`}>
+                      <Tooltip label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ETA: ${download.eta}` : ''}`}>
                         <Progress
                           value={download.progress}
                           size="sm"
@@ -452,9 +540,21 @@ export function DownloadPage() {
                         />
                       </Tooltip>
                     )}
-                    <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
-                      {Math.round(download.progress)}%
-                    </Text>
+                    <Group gap={8}>
+                      <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                        {Math.round(download.progress)}%
+                      </Text>
+                      {download.status === 'downloading' && download.speed && (
+                        <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                          {download.speed}
+                        </Text>
+                      )}
+                      {download.status === 'downloading' && download.eta && (
+                        <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                          ETA: {download.eta}
+                        </Text>
+                      )}
+                    </Group>
                   </Stack>
                 </Group>
                 
@@ -469,15 +569,5 @@ export function DownloadPage() {
         </Stack>
       </ScrollArea>
     </Stack>
-  );
-}
-
-// Icon placeholder
-function IconVideo({ size, color }: { size: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2">
-      <rect x="2" y="2" width="20" height="20" rx="2" />
-      <polygon points="10 8 16 12 10 16" fill="currentColor" />
-    </svg>
   );
 }

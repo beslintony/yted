@@ -58,6 +58,10 @@ export function GetLibraryStats() {
   return window['go']['app']['App']['GetLibraryStats']();
 }
 
+export function GetLogExportPath() {
+  return window['go']['app']['App']['GetLogExportPath']();
+}
+
 export function GetLogs(arg1) {
   return window['go']['app']['App']['GetLogs'](arg1);
 }
@@ -112,6 +116,10 @@ export function RetryDownload(arg1) {
 
 export function SaveSettings(arg1) {
   return window['go']['app']['App']['SaveSettings'](arg1);
+}
+
+export function SetLogExportPath(arg1) {
+  return window['go']['app']['App']['SetLogExportPath'](arg1);
 }
 
 export function ShowError(arg1) {

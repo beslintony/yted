@@ -35,6 +35,9 @@ export interface Download {
   formatId?: string;
   quality?: string;
   errorMessage?: string;
+  speed?: string;
+  eta?: string;
+  size?: string;
   createdAt: number;
   startedAt?: number;
   completedAt?: number;
@@ -89,6 +92,9 @@ export interface UserSettings {
   speedLimitKbps: number | null;
   proxyUrl: string | null;
   
+  // Logging
+  logExportPath: string;
+  
   // Presets
   downloadPresets: DownloadPreset[];
 }
@@ -105,6 +111,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   rememberPosition: true,
   speedLimitKbps: null,
   proxyUrl: null,
+  logExportPath: '', // Will be set to ~/Downloads on init
   downloadPresets: [
     { id: '1', name: 'Best Quality', format: 'best', quality: 'best', extension: 'mp4' },
     { id: '2', name: '1080p', format: 'bestvideo[height<=1080]+bestaudio', quality: '1080p', extension: 'mp4' },

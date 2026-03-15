@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -209,26 +210,49 @@ type DownloadOptions struct {
 
 // Download downloads a video
 func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions, callback ProgressCallback) error {
+	log.Printf("[YTDLP] Starting download for URL: %s", url)
+	log.Printf("[YTDLP] Output directory: %s", opts.OutputDir)
+	log.Printf("[YTDLP] Format: %s, Quality: %s", opts.Format, opts.Quality)
+
+	// Ensure output directory exists
+	if err := os.MkdirAll(opts.OutputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
 	outputTemplate := filepath.Join(opts.OutputDir, c.config.FilenameTemplate)
+	log.Printf("[YTDLP] Output template: %s", outputTemplate)
 
-	dl := c.dl.
+	// Create a FRESH command for each download (don't reuse c.dl)
+	dl := ytdlp.New().
 		Output(outputTemplate).
-		NoWarnings()
+		NoWarnings().
+		NoOverwrites().
+		YesPlaylist().
+		Continue()
 
-	// Apply format selection
+	// Apply format selection - ALWAYS set a format
 	if opts.Quality == "audio" {
+		log.Println("[YTDLP] Using audio-only format (mp3)")
 		dl = dl.ExtractAudio().AudioFormat("mp3")
-	} else if opts.Format != "" {
+	} else if opts.Format != "" && opts.Format != "best" {
+		// Use specific format if provided
+		log.Printf("[YTDLP] Using specific format: %s", opts.Format)
 		dl = dl.Format(opts.Format)
+	} else {
+		// Default to best quality video+audio
+		log.Println("[YTDLP] Using default format: best")
+		dl = dl.Format("best")
 	}
 
 	// Apply proxy if configured
 	if opts.ProxyURL != nil && *opts.ProxyURL != "" {
+		log.Printf("[YTDLP] Using proxy: %s", *opts.ProxyURL)
 		dl = dl.Proxy(*opts.ProxyURL)
 	}
 
 	// Apply global proxy if set
 	if c.config.ProxyURL != nil && *c.config.ProxyURL != "" {
+		log.Printf("[YTDLP] Using global proxy: %s", *c.config.ProxyURL)
 		dl = dl.Proxy(*c.config.ProxyURL)
 	}
 
@@ -239,10 +263,31 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 			if update.TotalBytes > 0 {
 				percent = float64(update.DownloadedBytes) / float64(update.TotalBytes) * 100
 			}
+			
+			// Calculate speed and ETA
+			var speed, eta string
+			if !update.Started.IsZero() {
+				elapsed := time.Since(update.Started).Seconds()
+				if elapsed > 0 && update.DownloadedBytes > 0 {
+					bytesPerSec := float64(update.DownloadedBytes) / elapsed
+					speed = FormatFileSize(int64(bytesPerSec)) + "/s"
+					
+					if update.TotalBytes > 0 && bytesPerSec > 0 {
+						remainingBytes := update.TotalBytes - update.DownloadedBytes
+						remainingSecs := float64(remainingBytes) / bytesPerSec
+						eta = time.Duration(remainingSecs * float64(time.Second)).String()
+					}
+				}
+			}
+			
 			progress := DownloadProgress{
 				Percent: percent,
 				Status:  string(update.Status),
+				Speed:   speed,
+				ETA:     eta,
+				Size:    FormatFileSize(int64(update.TotalBytes)),
 			}
+			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s)", percent, update.Status, speed, eta)
 			callback(progress)
 		})
 	}
@@ -250,12 +295,22 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	// Add speed limit if configured
 	if c.config.SpeedLimitKbps != nil && *c.config.SpeedLimitKbps > 0 {
 		limitStr := fmt.Sprintf("%dk", *c.config.SpeedLimitKbps)
+		log.Printf("[YTDLP] Using speed limit: %s", limitStr)
 		dl = dl.LimitRate(limitStr)
 	}
 
 	// Run download
-	if _, err := dl.Run(ctx, url); err != nil {
+	log.Println("[YTDLP] Executing yt-dlp...")
+	result, err := dl.Run(ctx, url)
+	if err != nil {
+		log.Printf("[YTDLP] Download failed: %v", err)
 		return fmt.Errorf("download failed: %w", err)
+	}
+
+	log.Printf("[YTDLP] Download completed successfully")
+	log.Printf("[YTDLP] Output: %s", result.Stdout)
+	if result.Stderr != "" {
+		log.Printf("[YTDLP] Stderr: %s", result.Stderr)
 	}
 
 	return nil

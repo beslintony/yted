@@ -124,6 +124,17 @@ export function SettingsPage() {
     }
   };
 
+  const handleBrowseLogExportPath = async () => {
+    try {
+      const path = await ShowOpenDirectoryDialog();
+      if (path) {
+        setSettings((s) => s ? { ...s, log_export_path: path } as any : null);
+      }
+    } catch (err) {
+      console.error('Failed to browse:', err);
+    }
+  };
+
   const handleReset = () => {
     if (originalSettings) {
       setSettings(JSON.parse(JSON.stringify(originalSettings)));
@@ -422,6 +433,42 @@ export function SettingsPage() {
               },
             }}
           />
+        </Stack>
+      </Paper>
+
+      {/* Logging */}
+      <Paper 
+        p="md" 
+        withBorder
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+      >
+        <Stack gap="md">
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Logging</Text>
+          
+          <Group align="flex-end" gap="sm">
+            <TextInput
+              label="Log Export Path"
+              description="Where exported logs are saved"
+              value={settings.log_export_path || ''}
+              readOnly
+              style={{ flex: 1 }}
+              styles={{
+                input: {
+                  background: dark ? '#1a1b1e' : '#f8f9fa',
+                  color: dark ? '#c1c2c5' : '#212529',
+                },
+              }}
+            />
+            <Button
+              variant="light"
+              leftSection={<IconFolder size={16} />}
+              onClick={handleBrowseLogExportPath}
+              color="yted"
+            >
+              Browse
+            </Button>
+          </Group>
         </Stack>
       </Paper>
 

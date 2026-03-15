@@ -3,6 +3,10 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -401,6 +405,11 @@ func (a *App) startDownload(dl db.Download) {
 		logger.Error("Download", "Failed to mark download as completed", err, map[string]string{"id": dl.ID})
 	}
 
+	// Add to library - construct the expected file path
+	// The file was downloaded to opts.OutputDir with the filename template
+	// We need to add this to the videos table
+	go a.addDownloadToLibrary(dl, opts.OutputDir)
+
 	logger.Info("Download", "Download completed successfully", map[string]string{"id": dl.ID})
 	runtime.EventsEmit(a.ctx, "download:completed", dl.ID)
 
@@ -411,4 +420,137 @@ func (a *App) startDownload(dl db.Download) {
 // ValidateURL checks if a URL is valid
 func (a *App) ValidateURL(url string) bool {
 	return ytdl.IsValidURL(url)
+}
+
+// addDownloadToLibrary adds a completed download to the video library
+func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
+	logger := applog.GetLogger()
+	
+	// Extract YouTube ID from URL
+	youtubeID := extractYoutubeID(dl.URL)
+	if youtubeID == "" {
+		logger.Warn("Download", "Could not extract YouTube ID from URL", map[string]string{"url": dl.URL})
+		return
+	}
+	
+	// Get video info if we have the URL
+	ctx := context.Background()
+	var videoInfo *ytdl.VideoInfo
+	var err error
+	
+	if dl.Title == nil || *dl.Title == "" {
+		videoInfo, err = a.ytdl.GetInfo(ctx, dl.URL)
+		if err != nil {
+			logger.Warn("Download", "Could not get video info for library", map[string]string{"error": err.Error()})
+		}
+	}
+	
+	// Build file path - yt-dlp uses the output template
+	// We need to estimate the filename - it's typically "title.ext"
+	var title string
+	if dl.Title != nil {
+		title = *dl.Title
+	} else if videoInfo != nil {
+		title = videoInfo.Title
+	} else {
+		title = youtubeID
+	}
+	
+	// Determine file extension based on format
+	ext := "mp4"
+	if dl.Quality != nil && *dl.Quality == "audio" {
+		ext = "mp3"
+	} else if dl.FormatID != nil && strings.Contains(*dl.FormatID, "audio") {
+		ext = "mp3"
+	}
+	
+	// Clean title for filename (basic cleaning)
+	filename := fmt.Sprintf("%s.%s", title, ext)
+	filePath := filepath.Join(outputDir, filename)
+	
+	// Create video record
+	video := &db.Video{
+		ID:            uuid.New().String(),
+		YoutubeID:     youtubeID,
+		Title:         title,
+		FilePath:      filePath,
+		DownloadedAt:  time.Now(),
+		WatchPosition: 0,
+		WatchCount:    0,
+	}
+	
+	// Add optional fields
+	if dl.Channel != nil {
+		video.Channel = *dl.Channel
+	}
+	if dl.ThumbnailURL != nil {
+		video.ThumbnailURL = *dl.ThumbnailURL
+	}
+	if dl.Quality != nil {
+		video.Quality = *dl.Quality
+	}
+	if dl.FormatID != nil {
+		video.Format = *dl.FormatID
+	}
+	
+	// Get duration and description from video info if available
+	if videoInfo != nil {
+		video.Duration = videoInfo.Duration
+		video.Description = videoInfo.Description
+		video.ChannelID = videoInfo.ChannelID
+		if videoInfo.Channel != "" && video.Channel == "" {
+			video.Channel = videoInfo.Channel
+		}
+		if videoInfo.Thumbnail != "" && video.ThumbnailURL == "" {
+			video.ThumbnailURL = videoInfo.Thumbnail
+		}
+	}
+	
+	// Save to database
+	if err := a.db.CreateVideo(video); err != nil {
+		logger.Error("Download", "Failed to add video to library", err, map[string]string{
+			"youtube_id": youtubeID,
+			"title":      title,
+		})
+		return
+	}
+	
+	logger.Info("Download", "Video added to library", map[string]string{
+		"id":         video.ID,
+		"youtube_id": youtubeID,
+		"title":      title,
+	})
+	
+	// Emit event to refresh library
+	runtime.EventsEmit(a.ctx, "library:updated", video)
+}
+
+// extractYoutubeID extracts the YouTube video ID from a URL
+func extractYoutubeID(videoURL string) string {
+	parsedURL, err := url.Parse(videoURL)
+	if err != nil {
+		return ""
+	}
+	
+	// Handle youtu.be short URLs
+	if strings.Contains(parsedURL.Host, "youtu.be") {
+		path := strings.TrimPrefix(parsedURL.Path, "/")
+		return strings.Split(path, "/")[0]
+	}
+	
+	// Handle youtube.com URLs
+	query := parsedURL.Query()
+	if v := query.Get("v"); v != "" {
+		return v
+	}
+	
+	// Handle shorts URLs
+	if strings.Contains(parsedURL.Path, "/shorts/") {
+		parts := strings.Split(parsedURL.Path, "/shorts/")
+		if len(parts) > 1 {
+			return strings.Split(parts[1], "/")[0]
+		}
+	}
+	
+	return ""
 }

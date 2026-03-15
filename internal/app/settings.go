@@ -82,6 +82,10 @@ func (a *App) UpdateSetting(key string, value interface{}) error {
 			} else if v, ok := value.(string); ok {
 				cfg.ProxyURL = &v
 			}
+		case "log_export_path":
+			if v, ok := value.(string); ok {
+				cfg.LogExportPath = v
+			}
 		}
 	})
 
