@@ -55,7 +55,7 @@ export function LibraryPage() {
         offset: 0,
       });
       setVideos(result || []);
-      setStoreVideos(result || []);
+      setStoreVideos(result as any || []);
     } catch (err) {
       console.error('Failed to load videos:', err);
     }
@@ -184,7 +184,7 @@ export function LibraryPage() {
 
   function VideoCard({ video, onDelete }: { video: app.VideoResult; onDelete: () => void }) {
     return (
-      <Paper withBorder radius="md" overflow="hidden">
+      <Paper withBorder radius="md" sx={{ overflow: 'hidden' }}>
         <div style={{ position: 'relative' }}>
           <Image
             src={video.thumbnail_url || '/logo.svg'}

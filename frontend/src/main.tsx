@@ -1,11 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { MantineProvider, DirectionProvider } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
-import '@mantine/dates/styles.css';
+// Mantine v6 styles are included in components
 
 import { theme } from './theme';
 import App from './App';
@@ -15,13 +13,11 @@ const root = createRoot(container!);
 
 root.render(
   <React.StrictMode>
-    <DirectionProvider>
-      <MantineProvider theme={theme} defaultColorScheme="dark">
-        <ModalsProvider>
-          <Notifications position="top-right" />
-          <App />
-        </ModalsProvider>
-      </MantineProvider>
-    </DirectionProvider>
+    <MantineProvider theme={{...theme, colorScheme: 'dark'}}>
+      <ModalsProvider>
+        <Notifications position="top-right" />
+        <App />
+      </ModalsProvider>
+    </MantineProvider>
   </React.StrictMode>
 );

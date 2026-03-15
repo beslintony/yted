@@ -242,9 +242,9 @@ export function DownloadPage() {
                   </Stack>
                 </Group>
                 
-                {download.error_message && (
+                {download.errorMessage && (
                   <Alert color="red" mt="sm" py="xs">
-                    <Text size="xs">{download.error_message}</Text>
+                    <Text size="xs">{download.errorMessage}</Text>
                   </Alert>
                 )}
               </Paper>

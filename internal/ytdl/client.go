@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -35,24 +34,17 @@ func NewClient(config *ClientConfig) *Client {
 	}
 }
 
-// Install ensures yt-dlp is installed
+// Install ensures yt-dlp is installed via go-ytdlp auto-install
 func (c *Client) Install(ctx context.Context) error {
-	log.Println("Checking yt-dlp installation...")
+	log.Println("Ensuring yt-dlp is available...")
 	
-	// Try to find yt-dlp in PATH first
-	if _, err := exec.LookPath("yt-dlp"); err == nil {
-		log.Println("yt-dlp found in PATH")
-		return nil
-	}
-
-	// Auto-install yt-dlp
-	log.Println("yt-dlp not found, installing...")
+	// go-ytdlp will auto-download yt-dlp if not found in PATH
 	_, err := ytdlp.Install(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to install yt-dlp: %w", err)
 	}
 
-	log.Println("yt-dlp installed successfully")
+	log.Println("yt-dlp is ready")
 	return nil
 }
 
