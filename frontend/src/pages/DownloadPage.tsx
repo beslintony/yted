@@ -88,7 +88,6 @@ export function DownloadPage() {
     setError(null);
     
     try {
-      // Use best quality format by default
       const formatId = videoInfo.formats?.find(f => f.resolution?.includes('1080') || f.resolution?.includes('720'))?.format_id 
         || videoInfo.formats?.[0]?.format_id 
         || 'best';
@@ -96,10 +95,6 @@ export function DownloadPage() {
       
       const id = await AddDownload(url, formatId, quality);
       setDownloadId(id);
-      
-      // Don't clear the form - let user see what they downloaded
-      // setUrl('');
-      // setVideoInfo(null);
     } catch (err: any) {
       setError(err?.message || 'Failed to add download');
     } finally {
@@ -141,53 +136,50 @@ export function DownloadPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Find the current download in the store
   const currentDownload = downloadId ? downloads.find(d => d.id === downloadId) : null;
 
   return (
-    <Stack spacing="lg">
+    <Stack gap="lg">
       <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Downloads</Text>
       
       {/* URL Input */}
       <Paper 
         p="md" 
         withBorder 
-        sx={{ 
-          background: dark ? '#25262b' : '#fff',
-          borderColor: dark ? '#373a40' : '#dee2e6',
-        }}
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
-        <Stack spacing="md">
+        <Stack gap="md">
           <TextInput
             placeholder="Paste YouTube URL here..."
-            icon={<IconLink size={16} />}
+            leftSection={<IconLink size={16} />}
             value={url}
             onChange={(e) => setUrl(e.currentTarget.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFetchInfo()}
             disabled={loading || downloading}
             size="md"
-            sx={{
-              '& input': {
+            styles={{
+              input: {
                 background: dark ? '#141517' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
             rightSection={
-              url && (
+              url ? (
                 <ActionIcon onClick={handleClear} color="gray" variant="subtle">
                   <IconX size={16} />
                 </ActionIcon>
-              )
+              ) : undefined
             }
           />
           
-          <Group position="right">
+          <Group justify="flex-end">
             <Button
               onClick={handleFetchInfo}
               loading={loading}
-              leftIcon={<IconDownload size={16} />}
+              leftSection={<IconDownload size={16} />}
               disabled={!url.trim() || loading}
-              color="red"
+              color="yted"
             >
               Get Info
             </Button>
@@ -203,12 +195,10 @@ export function DownloadPage() {
             <Paper 
               p="md" 
               withBorder 
-              sx={{ 
-                background: dark ? '#1a1b1e' : '#f8f9fa',
-                borderColor: dark ? '#373a40' : '#dee2e6',
-              }}
+              bg={dark ? '#1a1b1e' : '#f8f9fa'}
+              style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
             >
-              <Group align="flex-start" noWrap>
+              <Group align="flex-start" wrap="nowrap">
                 {videoInfo.thumbnail ? (
                   <img
                     src={videoInfo.thumbnail}
@@ -224,9 +214,9 @@ export function DownloadPage() {
                 ) : (
                   <Paper 
                     w={160} 
-                    h={90} 
-                    sx={{ 
-                      background: dark ? '#2c2e33' : '#e9ecef',
+                    h={90}
+                    bg={dark ? '#2c2e33' : '#e9ecef'}
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -236,7 +226,7 @@ export function DownloadPage() {
                     <IconVideo size={32} color={dark ? '#5c5f66' : '#adb5bd'} />
                   </Paper>
                 )}
-                <Stack spacing="xs" sx={{ flex: 1 }}>
+                <Stack gap="xs" style={{ flex: 1 }}>
                   <Text fw={600} lineClamp={2} c={dark ? '#fff' : '#000'}>
                     {videoInfo.title || 'Unknown Title'}
                   </Text>
@@ -256,7 +246,7 @@ export function DownloadPage() {
                         .join(', ')}
                     </Text>
                   )}
-                  <Group position="right" mt="xs">
+                  <Group justify="flex-end" mt="xs">
                     {currentDownload ? (
                       <Badge 
                         size="lg" 
@@ -271,9 +261,9 @@ export function DownloadPage() {
                       <Button 
                         size="sm" 
                         onClick={handleDownload} 
-                        color="red"
+                        color="yted"
                         loading={downloading}
-                        leftIcon={<IconDownload size={16} />}
+                        leftSection={<IconDownload size={16} />}
                       >
                         Download
                       </Button>
@@ -287,7 +277,7 @@ export function DownloadPage() {
                   value={currentDownload.progress}
                   size="sm"
                   mt="md"
-                  color="red"
+                  color="yted"
                   radius="xs"
                 />
               )}
@@ -297,7 +287,7 @@ export function DownloadPage() {
       </Paper>
 
       {/* Download Queue */}
-      <Group position="apart">
+      <Group justify="space-between">
         <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
           Queue ({downloads.length})
         </Text>
@@ -313,18 +303,16 @@ export function DownloadPage() {
         )}
       </Group>
       
-      <ScrollArea sx={{ height: 'calc(100vh - 450px)' }}>
-        <Stack spacing="sm">
+      <ScrollArea h="calc(100vh - 450px)">
+        <Stack gap="sm">
           {downloads.length === 0 ? (
             <Paper 
               p="xl" 
               withBorder
-              sx={{
-                background: dark ? '#25262b' : '#fff',
-                borderColor: dark ? '#373a40' : '#dee2e6',
-              }}
+              bg={dark ? '#25262b' : '#fff'}
+              style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
             >
-              <Text c={dark ? 'dimmed' : 'gray.6'} align="center">
+              <Text c={dark ? 'dimmed' : 'gray.6'} ta="center">
                 No downloads yet. Paste a YouTube URL above to get started.
               </Text>
             </Paper>
@@ -334,13 +322,11 @@ export function DownloadPage() {
                 key={download.id} 
                 p="sm" 
                 withBorder
-                sx={{
-                  background: dark ? '#25262b' : '#fff',
-                  borderColor: dark ? '#373a40' : '#dee2e6',
-                }}
+                bg={dark ? '#25262b' : '#fff'}
+                style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
               >
-                <Group position="apart" align="flex-start">
-                  <Group spacing="sm" align="flex-start" noWrap>
+                <Group justify="space-between" align="flex-start">
+                  <Group gap="sm" align="flex-start" wrap="nowrap">
                     {download.thumbnail ? (
                       <img
                         src={download.thumbnail}
@@ -356,9 +342,9 @@ export function DownloadPage() {
                     ) : (
                       <Paper 
                         w={80} 
-                        h={45} 
-                        sx={{ 
-                          background: dark ? '#2c2e33' : '#e9ecef',
+                        h={45}
+                        bg={dark ? '#2c2e33' : '#e9ecef'}
+                        style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -368,14 +354,14 @@ export function DownloadPage() {
                         <IconVideo size={20} color={dark ? '#5c5f66' : '#adb5bd'} />
                       </Paper>
                     )}
-                    <Stack spacing={4}>
-                      <Text size="sm" fw={500} lineClamp={1} sx={{ maxWidth: 300 }} c={dark ? '#fff' : '#000'}>
+                    <Stack gap={4}>
+                      <Text size="sm" fw={500} lineClamp={1} style={{ maxWidth: 300 }} c={dark ? '#fff' : '#000'}>
                         {download.title || 'Loading...'}
                       </Text>
                       <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
                         {download.channel || download.url}
                       </Text>
-                      <Group spacing="xs">
+                      <Group gap="xs">
                         <Badge 
                           size="sm" 
                           color={getStatusColor(download.status)} 
@@ -392,8 +378,8 @@ export function DownloadPage() {
                     </Stack>
                   </Group>
                   
-                  <Stack spacing="xs" align="flex-end">
-                    <Group spacing={4}>
+                  <Stack gap="xs" align="flex-end">
+                    <Group gap={4}>
                       {download.status === 'downloading' && (
                         <Tooltip label="Pause">
                           <ActionIcon 
@@ -447,7 +433,7 @@ export function DownloadPage() {
                         value={download.progress}
                         size="sm"
                         w={100}
-                        color="red"
+                        color="yted"
                         radius="xs"
                       />
                     )}
@@ -458,7 +444,7 @@ export function DownloadPage() {
                 </Group>
                 
                 {download.errorMessage && (
-                  <Alert color="red" mt="sm" py="xs" sx={{ background: dark ? '#2c1b1b' : '#fff5f5' }}>
+                  <Alert color="red" mt="sm" p="xs" bg={dark ? '#2c1b1b' : '#fff5f5'}>
                     <Text size="xs">{download.errorMessage}</Text>
                   </Alert>
                 )}

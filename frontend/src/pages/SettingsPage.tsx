@@ -8,15 +8,14 @@ import {
   Select,
   Group,
   Button,
-  Divider,
   Switch,
-  ColorInput,
   ActionIcon,
   Tooltip,
   Table,
   Modal,
   Badge,
   useMantineColorScheme,
+  ColorInput,
 } from '@mantine/core';
 import {
   IconFolder,
@@ -31,7 +30,7 @@ import { GetSettings, SaveSettings, ShowOpenDirectoryDialog } from '../../wailsj
 import { config } from '../../wailsjs/go/models';
 
 export function SettingsPage() {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [settings, setSettings] = useState<config.Config | null>(null);
   const [originalSettings, setOriginalSettings] = useState<config.Config | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,16 +42,11 @@ export function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const {
-    theme: userTheme,
     setTheme,
     toggleSidebar,
     setDownloadPath,
     setMaxConcurrentDownloads,
     setDefaultQuality,
-    downloadPresets,
-    addDownloadPreset,
-    removeDownloadPreset,
-    updateDownloadPreset,
     saveSettings: saveSettingsToStore,
   } = useSettingsStore();
 
@@ -62,7 +56,6 @@ export function SettingsPage() {
     loadSettings();
   }, []);
 
-  // Track changes
   useEffect(() => {
     if (originalSettings && settings) {
       const changed = JSON.stringify(originalSettings) !== JSON.stringify(settings);
@@ -77,7 +70,6 @@ export function SettingsPage() {
         setSettings(result);
         setOriginalSettings(JSON.parse(JSON.stringify(result)));
         
-        // Sync with store
         setDownloadPath(result.download_path);
         setMaxConcurrentDownloads(result.max_concurrent_downloads);
         setDefaultQuality(result.default_quality as any);
@@ -103,17 +95,12 @@ export function SettingsPage() {
       setHasChanges(false);
       setSaveSuccess(true);
       
-      // Also save to store
       await saveSettingsToStore();
       
-      // Apply theme if changed
-      if (settings.theme !== userTheme) {
-        setTheme(settings.theme as any);
-        if (settings.theme === 'dark' && colorScheme !== 'dark') {
-          toggleColorScheme('dark');
-        } else if (settings.theme === 'light' && colorScheme !== 'light') {
-          toggleColorScheme('light');
-        }
+      if (settings.theme === 'dark' && colorScheme !== 'dark') {
+        setColorScheme('dark');
+      } else if (settings.theme === 'light' && colorScheme !== 'light') {
+        setColorScheme('light');
       }
       
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -146,10 +133,10 @@ export function SettingsPage() {
   const handleThemeChange = (value: string) => {
     setSettings((s) => s ? { ...s, theme: value } as any : null);
     setTheme(value as any);
-    if (value === 'dark' && colorScheme !== 'dark') {
-      toggleColorScheme('dark');
-    } else if (value === 'light' && colorScheme !== 'light') {
-      toggleColorScheme('light');
+    if (value === 'dark') {
+      setColorScheme('dark');
+    } else if (value === 'light') {
+      setColorScheme('light');
     }
   };
 
@@ -166,8 +153,8 @@ export function SettingsPage() {
   }
 
   return (
-    <Stack spacing="lg">
-      <Group position="apart">
+    <Stack gap="lg">
+      <Group justify="space-between">
         <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Settings</Text>
         {hasChanges && (
           <Badge color="yellow" variant="filled">Unsaved Changes</Badge>
@@ -175,13 +162,13 @@ export function SettingsPage() {
       </Group>
 
       {saveError && (
-        <Paper p="sm" withBorder sx={{ background: '#2c1b1b', borderColor: '#c92a2a' }}>
+        <Paper p="sm" withBorder bg="#2c1b1b" style={{ borderColor: '#c92a2a' }}>
           <Text c="red">{saveError}</Text>
         </Paper>
       )}
 
       {saveSuccess && (
-        <Paper p="sm" withBorder sx={{ background: '#1b2c1b', borderColor: '#2ac92a' }}>
+        <Paper p="sm" withBorder bg="#1b2c1b" style={{ borderColor: '#2ac92a' }}>
           <Text c="green">Settings saved successfully!</Text>
         </Paper>
       )}
@@ -190,21 +177,19 @@ export function SettingsPage() {
       <Paper 
         p="md" 
         withBorder
-        sx={{
-          background: dark ? '#25262b' : '#fff',
-          borderColor: dark ? '#373a40' : '#dee2e6',
-        }}
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
-        <Stack spacing="md">
+        <Stack gap="md">
           <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Downloads</Text>
           
-          <Group align="flex-end">
+          <Group align="flex-end" gap="sm">
             <TextInput
               label="Download Path"
               description="Where downloaded videos are saved"
               value={settings.download_path}
               readOnly
-              sx={{ flex: 1 }}
+              style={{ flex: 1 }}
               styles={{
                 input: {
                   background: dark ? '#1a1b1e' : '#f8f9fa',
@@ -214,9 +199,9 @@ export function SettingsPage() {
             />
             <Button
               variant="light"
-              leftIcon={<IconFolder size={16} />}
+              leftSection={<IconFolder size={16} />}
               onClick={handleBrowseDownloadPath}
-              color="red"
+              color="yted"
             >
               Browse
             </Button>
@@ -279,46 +264,46 @@ export function SettingsPage() {
       <Paper 
         p="md" 
         withBorder
-        sx={{
-          background: dark ? '#25262b' : '#fff',
-          borderColor: dark ? '#373a40' : '#dee2e6',
-        }}
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
-        <Stack spacing="md">
-          <Group position="apart">
+        <Stack gap="md">
+          <Group justify="space-between">
             <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Download Presets</Text>
             <Button
               size="sm"
-              leftIcon={<IconPlus size={16} />}
+              leftSection={<IconPlus size={16} />}
               onClick={() => {
                 setEditingPreset(null);
                 setPresetModalOpen(true);
               }}
-              color="red"
+              color="yted"
             >
               Add Preset
             </Button>
           </Group>
 
           <Table>
-            <thead>
-              <tr style={{ color: dark ? '#c1c2c5' : '#495057' }}>
-                <th>Name</th>
-                <th>Format</th>
-                <th>Quality</th>
-                <th>Extension</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th c={dark ? '#c1c2c5' : '#495057'}>Name</Table.Th>
+                <Table.Th c={dark ? '#c1c2c5' : '#495057'}>Format</Table.Th>
+                <Table.Th c={dark ? '#c1c2c5' : '#495057'}>Quality</Table.Th>
+                <Table.Th c={dark ? '#c1c2c5' : '#495057'}>Extension</Table.Th>
+                <Table.Th c={dark ? '#c1c2c5' : '#495057'}>Actions</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
               {settings.download_presets?.map((preset) => (
-                <tr key={preset.id}>
-                  <td style={{ color: dark ? '#fff' : '#000' }}>{preset.name}</td>
-                  <td><code style={{ color: dark ? '#c1c2c5' : '#495057' }}>{preset.format}</code></td>
-                  <td><Badge color="red">{preset.quality}</Badge></td>
-                  <td style={{ color: dark ? '#c1c2c5' : '#495057' }}>{preset.extension}</td>
-                  <td>
-                    <Group spacing={4}>
+                <Table.Tr key={preset.id}>
+                  <Table.Td c={dark ? '#fff' : '#000'}>{preset.name}</Table.Td>
+                  <Table.Td>
+                    <code style={{ color: dark ? '#c1c2c5' : '#495057' }}>{preset.format}</code>
+                  </Table.Td>
+                  <Table.Td><Badge color="yted">{preset.quality}</Badge></Table.Td>
+                  <Table.Td c={dark ? '#c1c2c5' : '#495057'}>{preset.extension}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
                       <Tooltip label="Edit">
                         <ActionIcon
                           size="sm"
@@ -343,10 +328,10 @@ export function SettingsPage() {
                         </ActionIcon>
                       </Tooltip>
                     </Group>
-                  </td>
-                </tr>
+                  </Table.Td>
+                </Table.Tr>
               ))}
-            </tbody>
+            </Table.Tbody>
           </Table>
         </Stack>
       </Paper>
@@ -355,18 +340,16 @@ export function SettingsPage() {
       <Paper 
         p="md" 
         withBorder
-        sx={{
-          background: dark ? '#25262b' : '#fff',
-          borderColor: dark ? '#373a40' : '#dee2e6',
-        }}
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
-        <Stack spacing="md">
+        <Stack gap="md">
           <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>UI</Text>
 
           <Select
             label="Theme"
             value={settings.theme}
-            onChange={handleThemeChange}
+            onChange={(v) => v && handleThemeChange(v)}
             data={[
               { value: 'dark', label: 'Dark' },
               { value: 'light', label: 'Light' },
@@ -408,12 +391,10 @@ export function SettingsPage() {
       <Paper 
         p="md" 
         withBorder
-        sx={{
-          background: dark ? '#25262b' : '#fff',
-          borderColor: dark ? '#373a40' : '#dee2e6',
-        }}
+        bg={dark ? '#25262b' : '#fff'}
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
-        <Stack spacing="md">
+        <Stack gap="md">
           <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Player</Text>
 
           <NumberInput
@@ -445,11 +426,11 @@ export function SettingsPage() {
       </Paper>
 
       {/* Actions */}
-      <Group position="right">
+      <Group justify="flex-end">
         {hasChanges && (
           <Button 
             variant="light" 
-            leftIcon={<IconRefresh size={16} />} 
+            leftSection={<IconRefresh size={16} />} 
             onClick={handleReset}
             color="gray"
           >
@@ -457,112 +438,113 @@ export function SettingsPage() {
           </Button>
         )}
         <Button 
-          leftIcon={<IconDeviceFloppy size={16} />} 
+          leftSection={<IconDeviceFloppy size={16} />} 
           onClick={handleSave}
           loading={saving}
           disabled={!hasChanges}
-          color="red"
+          color="yted"
         >
           Save Settings
         </Button>
       </Group>
 
       {/* Preset Modal */}
-      <PresetModal
-        opened={presetModalOpen}
-        onClose={() => setPresetModalOpen(false)}
-        preset={editingPreset}
-        onSave={(preset) => {
-          const currentPresets = settings.download_presets || [];
-          if (editingPreset) {
-            const updatedPresets = currentPresets.map((p) =>
-              p.id === preset.id ? preset : p
-            );
-            updateSetting('download_presets', updatedPresets);
-          } else {
-            const newPreset = { ...preset, id: crypto.randomUUID() };
-            updateSetting('download_presets', [...currentPresets, newPreset]);
-          }
-          setPresetModalOpen(false);
-        }}
-      />
+      <Modal 
+        opened={presetModalOpen} 
+        onClose={() => setPresetModalOpen(false)} 
+        title={editingPreset ? 'Edit Preset' : 'Add Preset'}
+      >
+        <PresetForm
+          preset={editingPreset}
+          onSave={(preset) => {
+            const currentPresets = settings.download_presets || [];
+            if (editingPreset) {
+              const updatedPresets = currentPresets.map((p) =>
+                p.id === preset.id ? preset : p
+              );
+              updateSetting('download_presets', updatedPresets);
+            } else {
+              const newPreset = { ...preset, id: crypto.randomUUID() };
+              updateSetting('download_presets', [...currentPresets, newPreset]);
+            }
+            setPresetModalOpen(false);
+          }}
+          onCancel={() => setPresetModalOpen(false)}
+        />
+      </Modal>
     </Stack>
   );
+}
 
-  function PresetModal({
-    opened,
-    onClose,
-    preset,
-    onSave,
-  }: {
-    opened: boolean;
-    onClose: () => void;
-    preset: config.DownloadPreset | null;
-    onSave: (preset: config.DownloadPreset) => void;
-  }) {
-    const [name, setName] = useState(preset?.name || '');
-    const [format, setFormat] = useState(preset?.format || 'best');
-    const [quality, setQuality] = useState(preset?.quality || 'best');
-    const [extension, setExtension] = useState(preset?.extension || 'mp4');
+function PresetForm({
+  preset,
+  onSave,
+  onCancel,
+}: {
+  preset: config.DownloadPreset | null;
+  onSave: (preset: config.DownloadPreset) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(preset?.name || '');
+  const [format, setFormat] = useState(preset?.format || 'best');
+  const [quality, setQuality] = useState(preset?.quality || 'best');
+  const [extension, setExtension] = useState(preset?.extension || 'mp4');
 
-    useEffect(() => {
-      setName(preset?.name || '');
-      setFormat(preset?.format || 'best');
-      setQuality(preset?.quality || 'best');
-      setExtension(preset?.extension || 'mp4');
-    }, [preset]);
+  useEffect(() => {
+    setName(preset?.name || '');
+    setFormat(preset?.format || 'best');
+    setQuality(preset?.quality || 'best');
+    setExtension(preset?.extension || 'mp4');
+  }, [preset]);
 
-    return (
-      <Modal opened={opened} onClose={onClose} title={preset ? 'Edit Preset' : 'Add Preset'}>
-        <Stack spacing="md">
-          <TextInput
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
-            placeholder="e.g., 1080p Video"
-          />
-          <TextInput
-            label="Format"
-            value={format}
-            onChange={(e) => setFormat(e.currentTarget.value)}
-            placeholder="e.g., bestvideo[height<=1080]+bestaudio"
-          />
-          <Select
-            label="Quality"
-            value={quality}
-            onChange={(v) => v && setQuality(v)}
-            data={[
-              { value: 'best', label: 'Best' },
-              { value: '1080p', label: '1080p' },
-              { value: '720p', label: '720p' },
-              { value: '480p', label: '480p' },
-              { value: 'audio', label: 'Audio' },
-            ]}
-          />
-          <TextInput
-            label="Extension"
-            value={extension}
-            onChange={(e) => setExtension(e.currentTarget.value)}
-            placeholder="e.g., mp4"
-          />
-          <Group position="right" mt="md">
-            <Button variant="light" onClick={onClose}>Cancel</Button>
-            <Button
-              onClick={() => onSave({
-                id: preset?.id || '',
-                name,
-                format,
-                quality,
-                extension,
-              } as any)}
-              disabled={!name || !format}
-              color="red"
-            >
-              Save
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-    );
-  }
+  return (
+    <Stack gap="md">
+      <TextInput
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.currentTarget.value)}
+        placeholder="e.g., 1080p Video"
+      />
+      <TextInput
+        label="Format"
+        value={format}
+        onChange={(e) => setFormat(e.currentTarget.value)}
+        placeholder="e.g., bestvideo[height<=1080]+bestaudio"
+      />
+      <Select
+        label="Quality"
+        value={quality}
+        onChange={(v) => v && setQuality(v)}
+        data={[
+          { value: 'best', label: 'Best' },
+          { value: '1080p', label: '1080p' },
+          { value: '720p', label: '720p' },
+          { value: '480p', label: '480p' },
+          { value: 'audio', label: 'Audio' },
+        ]}
+      />
+      <TextInput
+        label="Extension"
+        value={extension}
+        onChange={(e) => setExtension(e.currentTarget.value)}
+        placeholder="e.g., mp4"
+      />
+      <Group justify="flex-end" mt="md">
+        <Button variant="light" onClick={onCancel}>Cancel</Button>
+        <Button
+          onClick={() => onSave({
+            id: preset?.id || '',
+            name,
+            format,
+            quality,
+            extension,
+          } as any)}
+          disabled={!name || !format}
+          color="yted"
+        >
+          Save
+        </Button>
+      </Group>
+    </Stack>
+  );
 }
