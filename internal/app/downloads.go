@@ -583,6 +583,21 @@ func (a *App) GetIncompleteDownloads() ([]db.Download, error) {
 	return a.db.GetIncompleteDownloads()
 }
 
+// DownloadResult is exposed to frontend for queue restoration
+type DownloadResult struct {
+	ID           string  `json:"id"`
+	URL          string  `json:"url"`
+	Status       string  `json:"status"`
+	Progress     float64 `json:"progress"`
+	Title        string  `json:"title"`
+	Channel      string  `json:"channel"`
+	ThumbnailURL string  `json:"thumbnail_url"`
+	FormatID     string  `json:"format_id"`
+	Quality      string  `json:"quality"`
+	ErrorMessage string  `json:"error_message"`
+	YoutubeID    string  `json:"youtube_id"`
+}
+
 // RestoreDownloadQueue loads incomplete downloads from database and adds them to the queue
 func (a *App) RestoreDownloadQueue() error {
 	logger := applog.GetLogger()
@@ -607,7 +622,36 @@ func (a *App) RestoreDownloadQueue() error {
 	
 	// Emit event for each download so frontend can add them to the queue
 	for _, dl := range downloads {
-		runtime.EventsEmit(a.ctx, "download:restored", dl)
+		// Convert db.Download to DownloadResult
+		result := DownloadResult{
+			ID:        dl.ID,
+			URL:       dl.URL,
+			Status:    dl.Status,
+			Progress:  dl.Progress,
+			YoutubeID: extractYoutubeID(dl.URL),
+		}
+		
+		// Handle pointer fields
+		if dl.Title != nil {
+			result.Title = *dl.Title
+		}
+		if dl.Channel != nil {
+			result.Channel = *dl.Channel
+		}
+		if dl.ThumbnailURL != nil {
+			result.ThumbnailURL = *dl.ThumbnailURL
+		}
+		if dl.FormatID != nil {
+			result.FormatID = *dl.FormatID
+		}
+		if dl.Quality != nil {
+			result.Quality = *dl.Quality
+		}
+		if dl.ErrorMessage != nil {
+			result.ErrorMessage = *dl.ErrorMessage
+		}
+		
+		runtime.EventsEmit(a.ctx, "download:restored", result)
 	}
 	
 	// Start processing downloads
