@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 
@@ -127,11 +126,11 @@ func (a *App) ShowSaveDialog(defaultFilename string) (string, error) {
 }
 
 // OpenFile opens a file with the default application
-func (a *App) OpenFile(path string) error {
-	return runtime.OpenFile(a.ctx, path)
+func (a *App) OpenFile(path string) {
+	runtime.BrowserOpenURL(a.ctx, "file://"+path)
 }
 
 // OpenFolder opens a folder in the file manager
-func (a *App) OpenFolder(path string) error {
-	return runtime.OpenDirectory(a.ctx, path)
+func (a *App) OpenFolder(path string) {
+	runtime.BrowserOpenURL(a.ctx, "file://"+path)
 }
