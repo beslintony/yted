@@ -18,6 +18,10 @@ export function CheckDownloadStatus(arg1) {
   return window['go']['app']['App']['CheckDownloadStatus'](arg1);
 }
 
+export function CleanUpDuplicateVideos() {
+  return window['go']['app']['App']['CleanUpDuplicateVideos']();
+}
+
 export function CleanupOrphanedFiles(arg1) {
   return window['go']['app']['App']['CleanupOrphanedFiles'](arg1);
 }

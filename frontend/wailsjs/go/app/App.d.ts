@@ -12,6 +12,8 @@ export function CancelDownload(arg1:string):Promise<void>;
 
 export function CheckDownloadStatus(arg1:string):Promise<Record<string, any>>;
 
+export function CleanUpDuplicateVideos():Promise<void>;
+
 export function CleanupOrphanedFiles(arg1:boolean):Promise<Record<string, any>>;
 
 export function ClearCompletedDownloads():Promise<void>;

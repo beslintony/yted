@@ -418,7 +418,7 @@ func (a *App) startDownload(dl db.Download) {
 	}
 
 	// Perform download
-	err := a.ytdl.Download(ctx, dl.URL, opts, progressCallback)
+	err = a.ytdl.Download(ctx, dl.URL, opts, progressCallback)
 	if err != nil {
 		logger.Error("Download", "Download failed", err, map[string]string{"id": dl.ID})
 		a.db.FailDownload(dl.ID, err.Error())
