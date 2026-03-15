@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"yted/internal/db"
@@ -16,6 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+var libraryMutex sync.Mutex
 
 // VideoInfoResult is exposed to frontend
 type VideoInfoResult struct {
@@ -516,6 +519,9 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 	// Check if file is in our managed folder
 	isManaged := a.fm != nil && a.fm.IsManagedFile(filePath)
 	
+	libraryMutex.Lock()
+	defer libraryMutex.Unlock()
+
 	// Create unique content identifier: YouTube ID + Format
 	// This allows multiple versions (e.g., 720p vs 1080p) of same video
 	contentHash := youtubeID
