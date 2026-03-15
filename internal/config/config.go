@@ -73,10 +73,15 @@ func DefaultConfig(appDataDir string) *Config {
 		LogExportPath:          defaultLogExportPath,
 		MaxLogSessions:         10,
 		DownloadPresets: []DownloadPreset{
-			{ID: "1", Name: "Best Quality", Format: "best", Quality: "best", Extension: "mp4"},
-			{ID: "2", Name: "1080p", Format: "bestvideo[height<=1080]+bestaudio", Quality: "1080p", Extension: "mp4"},
-			{ID: "3", Name: "720p", Format: "bestvideo[height<=720]+bestaudio", Quality: "720p", Extension: "mp4"},
-			{ID: "4", Name: "Audio Only", Format: "bestaudio", Quality: "audio", Extension: "mp3"},
+			// High quality presets with explicit format selection
+			{ID: "1", Name: "4K (2160p)", Format: "bestvideo[height<=2160][vcodec^=avc1]+bestaudio/bestvideo[height<=2160]+bestaudio", Quality: "2160p", Extension: "mp4"},
+			{ID: "2", Name: "1440p (2K)", Format: "bestvideo[height<=1440][vcodec^=avc1]+bestaudio/bestvideo[height<=1440]+bestaudio", Quality: "1440p", Extension: "mp4"},
+			{ID: "3", Name: "1080p HD", Format: "bestvideo[height<=1080][vcodec^=avc1]+bestaudio/bestvideo[height<=1080]+bestaudio", Quality: "1080p", Extension: "mp4"},
+			{ID: "4", Name: "720p HD", Format: "bestvideo[height<=720][vcodec^=avc1]+bestaudio/bestvideo[height<=720]+bestaudio", Quality: "720p", Extension: "mp4"},
+			{ID: "5", Name: "480p", Format: "bestvideo[height<=480]+bestaudio/best[height<=480]", Quality: "480p", Extension: "mp4"},
+			{ID: "6", Name: "Best Available", Format: "bestvideo+bestaudio/best", Quality: "best", Extension: "mp4"},
+			{ID: "7", Name: "Audio Only (MP3)", Format: "bestaudio", Quality: "audio", Extension: "mp3"},
+			{ID: "8", Name: "Audio Only (M4A)", Format: "bestaudio[ext=m4a]", Quality: "audio", Extension: "m4a"},
 		},
 	}
 }
