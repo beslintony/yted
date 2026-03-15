@@ -22,6 +22,7 @@ type App struct {
 	config *config.Manager
 	ytdl   *ytdl.Client
 	logger *applog.Logger
+	fm     *FileManager
 }
 
 // NewApp creates a new App application struct
@@ -91,9 +92,19 @@ func (a *App) Startup(ctx context.Context) {
 	a.db = database
 	a.logger.Info("Database", "Database initialized")
 
+	// Initialize file manager
+	a.fm = NewFileManager(cfgManager)
+	if err := a.fm.EnsureYTedFolder(); err != nil {
+		a.logger.Error("App", "Failed to ensure YTed folder", err)
+	} else {
+		a.logger.Info("App", "File manager initialized", map[string]string{
+			"path": a.fm.GetDownloadPath(),
+		})
+	}
+
 	// Initialize ytdl client
 	ytdlConfig := &ytdl.ClientConfig{
-		DownloadPath:     cfgManager.Get().DownloadPath,
+		DownloadPath:     a.fm.GetDownloadPath(),
 		FilenameTemplate: cfgManager.Get().FilenameTemplate,
 		ProxyURL:         cfgManager.Get().ProxyURL,
 		SpeedLimitKbps:   cfgManager.Get().SpeedLimitKbps,
@@ -109,7 +120,7 @@ func (a *App) Startup(ctx context.Context) {
 	}
 
 	// Ensure download directory exists
-	if err := os.MkdirAll(cfgManager.Get().DownloadPath, 0755); err != nil {
+	if err := os.MkdirAll(a.fm.GetDownloadPath(), 0755); err != nil {
 		a.logger.Error("App", "Failed to create download directory", err)
 	}
 
