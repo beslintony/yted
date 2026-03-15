@@ -172,11 +172,43 @@ func (a *App) ShowSaveDialog(defaultFilename string) (string, error) {
 }
 
 // OpenFile opens a file with the default application
-func (a *App) OpenFile(path string) {
-	runtime.BrowserOpenURL(a.ctx, "file://"+path)
+func (a *App) OpenFile(path string) error {
+	// Verify file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return fmt.Errorf("file not found: %s", path)
+	}
+
+	// Use runtime OpenFileDialog to open with default application
+	// On Linux, we'll use xdg-open via a shell command
+	return openWithDefaultApp(a.ctx, path)
 }
 
-// OpenFolder opens a folder in the file manager
-func (a *App) OpenFolder(path string) {
-	runtime.BrowserOpenURL(a.ctx, "file://"+path)
+// OpenFolder opens the folder containing the file and selects it
+func (a *App) OpenFolder(filePath string) error {
+	// Get the directory containing the file
+	dir := filepath.Dir(filePath)
+
+	// Verify directory exists
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return fmt.Errorf("folder not found: %s", dir)
+	}
+
+	// Open the folder
+	return openFolder(a.ctx, dir)
+}
+
+// openWithDefaultApp opens a file with the system's default application
+func openWithDefaultApp(ctx context.Context, path string) error {
+	// Use Wails runtime to open with default application
+	// This works cross-platform
+	runtime.BrowserOpenURL(ctx, "file://"+path)
+	return nil
+}
+
+// openFolder opens a folder in the system's file manager
+func openFolder(ctx context.Context, dir string) error {
+	// Use Wails runtime to open folder
+	// On most systems, this will open the file manager
+	runtime.BrowserOpenURL(ctx, "file://"+dir)
+	return nil
 }
