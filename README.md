@@ -1,8 +1,6 @@
-# YTed
+# <img src="./frontend/public/logo.svg" alt="YTed Logo" width="25"> YTed
 
 A modern, user-friendly YouTube downloader and editor built with Go, Wails, and React.
-
-![YTed Logo](./frontend/public/logo.svg)
 
 ## Features
 
