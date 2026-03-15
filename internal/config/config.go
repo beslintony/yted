@@ -61,7 +61,7 @@ func DefaultConfig(appDataDir string) *Config {
 		DownloadPath:           defaultDownloadPath,
 		MaxConcurrentDownloads: 3,
 		DefaultQuality:         "best",
-		FilenameTemplate:       "%(title)s [%(id)s][%(format_id)s].%(ext)s",
+		FilenameTemplate:       "%(title).100s [%(id)s][%(format_id)s].%(ext)s",
 		Theme:                  "dark",
 		AccentColor:            "#ff0000",
 		SidebarCollapsed:       false,
@@ -138,8 +138,12 @@ func (m *Manager) Load() error {
 	}
 	// Ensure filename template includes YouTube ID and format for unique identification
 	// Format ID is included to allow multiple versions (e.g., 720p vs 1080p) of same video
-	if cfg.FilenameTemplate == "" || cfg.FilenameTemplate == "%(title)s.%(ext)s" || cfg.FilenameTemplate == "%(title)s [%(id)s].%(ext)s" {
-		cfg.FilenameTemplate = "%(title)s [%(id)s][%(format_id)s].%(ext)s"
+	// Title is truncated to 100 chars to prevent "file name too long" errors
+	if cfg.FilenameTemplate == "" || 
+		cfg.FilenameTemplate == "%(title)s.%(ext)s" || 
+		cfg.FilenameTemplate == "%(title)s [%(id)s].%(ext)s" ||
+		cfg.FilenameTemplate == "%(title)s [%(id)s][%(format_id)s].%(ext)s" {
+		cfg.FilenameTemplate = "%(title).100s [%(id)s][%(format_id)s].%(ext)s"
 	}
 
 	m.config = &cfg

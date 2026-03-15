@@ -280,6 +280,7 @@ func (fm *FileManager) GetFolderSize() (int64, error) {
 }
 
 // SanitizeFilename removes characters that could be problematic in filenames
+// and limits the length to prevent "file name too long" errors
 func SanitizeFilename(name string) string {
 	// Replace problematic characters
 	replacer := strings.NewReplacer(
@@ -293,7 +294,19 @@ func SanitizeFilename(name string) string {
 		">", "-",
 		"|", "-",
 	)
-	return replacer.Replace(name)
+	name = replacer.Replace(name)
+
+	// Limit filename length to prevent "file name too long" errors
+	// Max filename length is typically 255 bytes on Linux/Unix
+	// Leave room for: [youtubeID][formatID].ext.part (approx 40 chars)
+	// Safe limit: 100 characters for the title portion
+	const maxTitleLen = 100
+	if len(name) > maxTitleLen {
+		// Truncate and add ellipsis to indicate truncation
+		name = name[:maxTitleLen-3] + "..."
+	}
+
+	return name
 }
 
 // formatFileSize formats bytes to human readable string
