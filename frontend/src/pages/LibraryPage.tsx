@@ -25,7 +25,7 @@ import {
   IconSortDescending,
 } from '@tabler/icons-react';
 import { useLibraryStore } from '../stores';
-import { ListVideos, GetLibraryStats, OpenFolder, DeleteVideo } from '../../wailsjs/go/app/App';
+import { ListVideos, GetLibraryStats, OpenFolder, OpenFile, DeleteVideo } from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 
@@ -36,7 +36,7 @@ export function LibraryPage() {
   const [sortDesc, setSortDesc] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [stats, setStats] = useState({ total_videos: 0, total_size: 0 });
-  
+
   const { setVideos: setStoreVideos } = useLibraryStore();
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
@@ -44,13 +44,13 @@ export function LibraryPage() {
   useEffect(() => {
     loadVideos();
     loadStats();
-    
+
     // Listen for library updates (when a new download completes)
     const cancelLibraryUpdate = EventsOn('library:updated', () => {
       loadVideos();
       loadStats();
     });
-    
+
     return () => {
       cancelLibraryUpdate();
     };
@@ -91,6 +91,24 @@ export function LibraryPage() {
     }
   };
 
+  const handlePlayVideo = async (filePath: string) => {
+    try {
+      await OpenFile(filePath);
+    } catch (err) {
+      console.error('Failed to open video:', err);
+      alert('Failed to open video: ' + (err as Error).message);
+    }
+  };
+
+  const handleOpenFolder = async (filePath: string) => {
+    try {
+      await OpenFolder(filePath);
+    } catch (err) {
+      console.error('Failed to open folder:', err);
+      alert('Failed to open folder: ' + (err as Error).message);
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -118,8 +136,8 @@ export function LibraryPage() {
       </Group>
 
       {/* Filters */}
-      <Paper 
-        p="sm" 
+      <Paper
+        p="sm"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
@@ -186,8 +204,8 @@ export function LibraryPage() {
 
       {/* Videos */}
       {videos.length === 0 ? (
-        <Paper 
-          p="xl" 
+        <Paper
+          p="xl"
           withBorder
           bg={dark ? '#25262b' : '#fff'}
           style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
@@ -222,8 +240,8 @@ export function LibraryPage() {
 
   function VideoCard({ video, onDelete, dark }: { video: app.VideoResult; onDelete: () => void; dark: boolean }) {
     return (
-      <Paper 
-        withBorder 
+      <Paper
+        withBorder
         radius="md"
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6', overflow: 'hidden' }}
@@ -250,12 +268,12 @@ export function LibraryPage() {
             <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>{formatFileSize(video.file_size)}</Text>
             <Group gap={4}>
               <Tooltip label="Play video">
-                <ActionIcon size="sm" variant="subtle">
+                <ActionIcon size="sm" variant="subtle" onClick={() => handlePlayVideo(video.file_path)}>
                   <IconPlayerPlay size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Open containing folder">
-                <ActionIcon size="sm" variant="subtle" onClick={() => OpenFolder(video.file_path)}>
+                <ActionIcon size="sm" variant="subtle" onClick={() => handleOpenFolder(video.file_path)}>
                   <IconFolder size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -273,8 +291,8 @@ export function LibraryPage() {
 
   function VideoListItem({ video, onDelete, dark }: { video: app.VideoResult; onDelete: () => void; dark: boolean }) {
     return (
-      <Paper 
-        p="sm" 
+      <Paper
+        p="sm"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
@@ -301,12 +319,12 @@ export function LibraryPage() {
           </Group>
           <Group gap={4}>
             <Tooltip label="Play video">
-              <ActionIcon variant="subtle">
+              <ActionIcon variant="subtle" onClick={() => handlePlayVideo(video.file_path)}>
                 <IconPlayerPlay size={18} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Open containing folder">
-              <ActionIcon variant="subtle" onClick={() => OpenFolder(video.file_path)}>
+              <ActionIcon variant="subtle" onClick={() => handleOpenFolder(video.file_path)}>
                 <IconFolder size={18} />
               </ActionIcon>
             </Tooltip>
