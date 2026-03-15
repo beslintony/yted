@@ -136,21 +136,31 @@ jobs:
       - name: Build macOS AMD64
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          wails build -platform darwin/amd64 -ldflags "-s -w" -o YTed-amd64
+          wails build -platform darwin/amd64 -ldflags "-s -w"
 
       - name: Build macOS ARM64
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          wails build -platform darwin/arm64 -ldflags "-s -w" -o YTed-arm64
+          wails build -platform darwin/arm64 -ldflags "-s -w"
 
       - name: List build directory
         run: ls -la build/bin/
+
+      - name: Package macOS apps
+        run: |
+          cd build/bin
+          for app in *.app; do
+            if [ -d "$app" ]; then
+              zip -r "${app%.app}.zip" "$app"
+            fi
+          done
+          ls -la
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: YTed-macos
-          path: build/bin/*
+          path: build/bin/*.zip
           if-no-files-found: warn
 
   # Create Release (only on tags)
