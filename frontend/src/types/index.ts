@@ -145,7 +145,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   downloadPath: '', // Will be set to ~/Downloads/YTed on init
   maxConcurrentDownloads: 3,
   defaultQuality: 'best',
-  filenameTemplate: '%(title)s.%(ext)s',
+  filenameTemplate: '%(title).100s [%(id)s][%(format_id)s].%(ext)s',
   theme: 'dark',
   accentColor: '#ff0000',
   sidebarCollapsed: false,
