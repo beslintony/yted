@@ -8,44 +8,48 @@ import (
 )
 
 func TestFindDownloadedFile(t *testing.T) {
-	// Create temp directory for testing
-	tempDir := t.TempDir()
-	
 	// Test case 1: File with [youtubeID][formatID] pattern
-	youtubeID := "dQw4w9WgXcQ"
-	formatID := "18"
-	
-	// Create test files
-	expectedFile := filepath.Join(tempDir, "Video Title ["+youtubeID+"]["+formatID+"].mp4")
-	err := os.WriteFile(expectedFile, []byte("test"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	
-	// Find the file
-	result := findDownloadedFile(tempDir, youtubeID, formatID, "mp4")
-	if result != expectedFile {
-		t.Errorf("findDownloadedFile() = %q, want %q", result, expectedFile)
-	}
+	t.Run("exact format match", func(t *testing.T) {
+		tempDir := t.TempDir()
+		youtubeID := "dQw4w9WgXcQ"
+		formatID := "18"
+		
+		expectedFile := filepath.Join(tempDir, "Video Title ["+youtubeID+"]["+formatID+"].mp4")
+		err := os.WriteFile(expectedFile, []byte("test"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+		
+		result := findDownloadedFile(tempDir, youtubeID, formatID, "mp4")
+		if result != expectedFile {
+			t.Errorf("findDownloadedFile() = %q, want %q", result, expectedFile)
+		}
+	})
 	
 	// Test case 2: File with just [youtubeID] pattern (backward compat)
-	youtubeID2 := "abc123"
-	expectedFile2 := filepath.Join(tempDir, "Another Video ["+youtubeID2+"].mp4")
-	err = os.WriteFile(expectedFile2, []byte("test"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	
-	result2 := findDownloadedFile(tempDir, youtubeID2, "", "mp4")
-	if result2 != expectedFile2 {
-		t.Errorf("findDownloadedFile() = %q, want %q", result2, expectedFile2)
-	}
+	t.Run("backward compat", func(t *testing.T) {
+		tempDir := t.TempDir()
+		youtubeID := "abc123"
+		expectedFile := filepath.Join(tempDir, "Another Video ["+youtubeID+"].mp4")
+		err := os.WriteFile(expectedFile, []byte("test"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+		
+		result := findDownloadedFile(tempDir, youtubeID, "", "mp4")
+		if result != expectedFile {
+			t.Errorf("findDownloadedFile() = %q, want %q", result, expectedFile)
+		}
+	})
 	
 	// Test case 3: Non-existent file
-	result3 := findDownloadedFile(tempDir, "nonexistent", "99", "mp4")
-	if result3 != "" {
-		t.Errorf("findDownloadedFile() = %q, want empty string", result3)
-	}
+	t.Run("non-existent", func(t *testing.T) {
+		tempDir := t.TempDir()
+		result := findDownloadedFile(tempDir, "nonexistent", "99", "mp4")
+		if result != "" {
+			t.Errorf("findDownloadedFile() = %q, want empty string", result)
+		}
+	})
 }
 
 func TestFindDownloadedFileTypeMatching(t *testing.T) {
