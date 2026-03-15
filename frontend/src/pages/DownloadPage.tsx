@@ -192,13 +192,19 @@ export function DownloadPage() {
         startDownload(data.id);
       }
     });
-      return () => {
+    const cancelRetried = EventsOn('download:retried', (id: string) => {
+      if (id) {
+        retryDownload(id);
+      }
+    });
+    return () => {
       cancelProgress();
       cancelCompleted();
       cancelError();
       cancelStarted();
+      cancelRetried();
     };
-  }, [updateProgress, completeDownload, failDownload, startDownload, addDownload]);
+  }, [updateProgress, completeDownload, failDownload, startDownload, addDownload, retryDownload]);
 
   const handleFetchInfo = async () => {
     if (!url.trim()) {
