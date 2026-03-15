@@ -30,7 +30,7 @@ import {
   IconVideo,
 } from '@tabler/icons-react';
 import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
-import { GetVideoInfo, AddDownload, ValidateURL, GetSettings } from '../../wailsjs/go/app/App';
+import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 
@@ -63,7 +63,7 @@ export function DownloadPage() {
   const dark = colorScheme === 'dark';
   const { success, error: showError, warning } = useNotifications();
 
-  // Load presets from settings
+  // Load presets from settings and restore download queue
   useEffect(() => {
     const loadPresets = async () => {
       try {
@@ -87,7 +87,59 @@ export function DownloadPage() {
       }
     };
     loadPresets();
-  }, [defaultQuality]);
+    
+    // Restore download queue from previous session
+    const restoreQueue = async () => {
+      try {
+        const queue = await GetDownloadQueue();
+        if (queue && queue.length > 0) {
+          console.log('Restoring download queue:', queue);
+          for (const data of queue) {
+            if (data?.id && data?.url) {
+              // Add restored download to the store with correct metadata
+              addDownload(data.url, {
+                id: data.youtube_id || data.id || '',
+                title: data.title || 'Restored Download',
+                channel: data.channel || '',
+                channelId: '',
+                duration: 0,
+                description: '',
+                thumbnail: data.thumbnail_url || '',
+                formats: [],
+              }, {
+                formatId: data.format_id || 'best',
+                quality: data.quality || 'best',
+                ext: 'mp4',
+                resolution: '',
+                fps: 0,
+                vcodec: '',
+                acodec: '',
+                filesize: 0,
+              }, data.id);
+              
+              // Set the correct status and progress
+              updateProgress(data.id, data.progress || 0);
+              
+              const backendStatus = data.status;
+              if (backendStatus === 'downloading') {
+                startDownload(data.id);
+              } else if (backendStatus === 'completed') {
+                completeDownload(data.id);
+              } else if (backendStatus === 'error') {
+                failDownload(data.id, data.error_message || 'Unknown error');
+              }
+              // 'pending' and 'paused' keep default status but with correct progress
+            }
+          }
+          // Tell backend to start processing pending downloads
+          await StartProcessingDownloads();
+        }
+      } catch (err) {
+        console.error('Failed to restore download queue:', err);
+      }
+    };
+    restoreQueue();
+  }, [defaultQuality, addDownload, updateProgress, startDownload, completeDownload, failDownload]);
 
   // Listen for download progress events from backend
   useEffect(() => {
@@ -136,52 +188,11 @@ export function DownloadPage() {
         startDownload(data.id);
       }
     });
-    // Listen for restored downloads from previous session
-    const cancelRestored = EventsOn('download:restored', (data: any) => {
-      if (data?.id && data?.url) {
-        // Map backend status to frontend status
-        const backendStatus = data.status;
-        
-        // Add restored download to the store with correct metadata
-        addDownload(data.url, {
-          id: data.youtube_id || data.id || '',
-          title: data.title || 'Restored Download',
-          channel: data.channel || '',
-          channelId: '',
-          duration: 0,
-          description: '',
-          thumbnail: data.thumbnail_url || '',
-          formats: [],
-        }, {
-          formatId: data.format_id || 'best',
-          quality: data.quality || 'best',
-          ext: 'mp4',
-          resolution: '',
-          fps: 0,
-          vcodec: '',
-          acodec: '',
-          filesize: 0,
-        }, data.id);
-        
-        // Set the correct status and progress based on restored data
-        updateProgress(data.id, data.progress || 0);
-        
-        if (backendStatus === 'downloading') {
-          startDownload(data.id);
-        } else if (backendStatus === 'completed') {
-          completeDownload(data.id);
-        } else if (backendStatus === 'error') {
-          failDownload(data.id, data.error_message || 'Unknown error');
-        }
-        // 'pending' and 'paused' keep default status but with correct progress
-      }
-    });
-    return () => {
+      return () => {
       cancelProgress();
       cancelCompleted();
       cancelError();
       cancelStarted();
-      cancelRestored();
     };
   }, [updateProgress, completeDownload, failDownload, startDownload, addDownload]);
 

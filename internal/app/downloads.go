@@ -612,30 +612,30 @@ type DownloadResult struct {
 	YoutubeID    string  `json:"youtube_id"`
 }
 
-// RestoreDownloadQueue loads incomplete downloads from database and adds them to the queue
-func (a *App) RestoreDownloadQueue() error {
+// GetDownloadQueue returns incomplete downloads for frontend to restore
+// This is called by the frontend after it's ready, instead of using events
+func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 	logger := applog.GetLogger()
 	
 	if a.db == nil {
-		return nil
+		return nil, nil
 	}
 	
 	downloads, err := a.db.GetIncompleteDownloads()
 	if err != nil {
-		logger.Error("Download", "Failed to restore download queue", err)
-		return err
+		logger.Error("Download", "Failed to get download queue", err)
+		return nil, err
 	}
 	
 	if len(downloads) == 0 {
-		return nil
+		return nil, nil
 	}
 	
-	logger.Info("Download", "Restoring download queue", map[string]int{
+	logger.Info("Download", "Returning download queue to frontend", map[string]int{
 		"count": len(downloads),
 	})
 	
 	// Reset downloads that were 'downloading' to 'pending' so they can be retried
-	// This handles app crashes/restarts during active downloads
 	for _, dl := range downloads {
 		if dl.Status == "downloading" {
 			logger.Info("Download", "Resetting stuck download to pending", map[string]string{
@@ -646,14 +646,14 @@ func (a *App) RestoreDownloadQueue() error {
 					"id": dl.ID,
 				})
 			} else {
-				dl.Status = "pending" // Update local copy for event emission
+				dl.Status = "pending"
 			}
 		}
 	}
 	
-	// Emit event for each download so frontend can add them to the queue
+	// Convert to DownloadResult
+	results := make([]DownloadResult, 0, len(downloads))
 	for _, dl := range downloads {
-		// Convert db.Download to DownloadResult
 		result := DownloadResult{
 			ID:        dl.ID,
 			URL:       dl.URL,
@@ -662,7 +662,6 @@ func (a *App) RestoreDownloadQueue() error {
 			YoutubeID: extractYoutubeID(dl.URL),
 		}
 		
-		// Handle pointer fields
 		if dl.Title != nil {
 			result.Title = *dl.Title
 		}
@@ -682,12 +681,23 @@ func (a *App) RestoreDownloadQueue() error {
 			result.ErrorMessage = *dl.ErrorMessage
 		}
 		
-		runtime.EventsEmit(a.ctx, "download:restored", result)
+		results = append(results, result)
 	}
 	
-	// Start processing downloads
+	return results, nil
+}
+
+// StartProcessingDownloads tells the backend to start processing the queue
+// This should be called by the frontend after restoring the queue
+func (a *App) StartProcessingDownloads() {
+	logger := applog.GetLogger()
+	logger.Info("Download", "Frontend requested to start processing downloads")
 	go a.processDownloads()
-	
+}
+
+// RestoreDownloadQueue is deprecated - use GetDownloadQueue + StartProcessingDownloads
+func (a *App) RestoreDownloadQueue() error {
+	// This is now handled by GetDownloadQueue which is called by frontend
 	return nil
 }
 
