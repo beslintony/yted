@@ -703,7 +703,7 @@ func (a *App) StartProcessingDownloads() {
 	logger.Info("Download", "StartProcessingDownloads called by frontend")
 	
 	if a.db == nil {
-		logger.Error("Download", "Cannot start processing - db is nil")
+		logger.Error("Download", "Cannot start processing - db is nil", fmt.Errorf("database not initialized"))
 		return
 	}
 	
