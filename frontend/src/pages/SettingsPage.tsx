@@ -86,7 +86,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
-        setSettings((s) => s ? { ...s, download_path: path } : null);
+        setSettings((s) => s ? { ...s, download_path: path } as any : null);
         setDownloadPath(path);
       }
     } catch (err) {
@@ -136,7 +136,7 @@ export function SettingsPage() {
             label="Max Concurrent Downloads"
             description="Number of simultaneous downloads (1-10)"
             value={settings.max_concurrent_downloads}
-            onChange={(v) => setSettings((s) => s ? { ...s, max_concurrent_downloads: v || 1 } : null)}
+            onChange={(v) => setSettings((s) => s ? { ...s, max_concurrent_downloads: v || 1 } as any : null)}
             min={1}
             max={10}
             w={200}
@@ -146,7 +146,7 @@ export function SettingsPage() {
             label="Default Quality"
             description="Preferred quality for new downloads"
             value={settings.default_quality}
-            onChange={(v) => v && setSettings((s) => s ? { ...s, default_quality: v } : null)}
+            onChange={(v) => v && setSettings((s) => s ? { ...s, default_quality: v } as any : null)}
             data={[
               { value: 'best', label: 'Best Quality' },
               { value: '1080p', label: '1080p' },
@@ -162,7 +162,7 @@ export function SettingsPage() {
             label="Filename Template"
             description="Template for output filenames (yt-dlp format)"
             value={settings.filename_template}
-            onChange={(e) => setSettings((s) => s ? { ...s, filename_template: e.currentTarget.value } : null)}
+            onChange={(e) => setSettings((s) => s ? { ...s, filename_template: e.currentTarget.value } as any : null)}
           />
         </Stack>
       </Paper>
@@ -240,7 +240,7 @@ export function SettingsPage() {
           <Select
             label="Theme"
             value={settings.theme}
-            onChange={(v) => v && setSettings((s) => s ? { ...s, theme: v } : null)}
+            onChange={(v) => v && setSettings((s) => s ? { ...s, theme: v } as any : null)}
             data={[
               { value: 'dark', label: 'Dark' },
               { value: 'light', label: 'Light' },
@@ -252,7 +252,7 @@ export function SettingsPage() {
           <ColorInput
             label="Accent Color"
             value={settings.accent_color}
-            onChange={(v) => setSettings((s) => s ? { ...s, accent_color: v } : null)}
+            onChange={(v) => setSettings((s) => s ? { ...s, accent_color: v } as any : null)}
             w={200}
           />
 
@@ -260,7 +260,7 @@ export function SettingsPage() {
             label="Collapse Sidebar"
             checked={settings.sidebar_collapsed}
             onChange={(e) => {
-              setSettings((s) => s ? { ...s, sidebar_collapsed: e.currentTarget.checked } : null);
+              setSettings((s) => s ? { ...s, sidebar_collapsed: e.currentTarget.checked } as any : null);
               toggleSidebar();
             }}
           />
@@ -275,7 +275,7 @@ export function SettingsPage() {
           <NumberInput
             label="Default Volume"
             value={settings.default_volume}
-            onChange={(v) => setSettings((s) => s ? { ...s, default_volume: v || 80 } : null)}
+            onChange={(v) => setSettings((s) => s ? { ...s, default_volume: v || 80 } as any : null)}
             min={0}
             max={100}
             w={200}
@@ -284,7 +284,7 @@ export function SettingsPage() {
           <Switch
             label="Remember Watch Position"
             checked={settings.remember_position}
-            onChange={(e) => setSettings((s) => s ? { ...s, remember_position: e.currentTarget.checked } : null)}
+            onChange={(e) => setSettings((s) => s ? { ...s, remember_position: e.currentTarget.checked } as any : null)}
           />
         </Stack>
       </Paper>
@@ -305,10 +305,11 @@ export function SettingsPage() {
         onClose={() => setPresetModalOpen(false)}
         preset={editingPreset}
         onSave={(preset) => {
+          const fixedPreset = { ...preset, quality: preset.quality as any };
           if (editingPreset) {
-            updateDownloadPreset(editingPreset.id, preset);
+            updateDownloadPreset(editingPreset.id, fixedPreset);
           } else {
-            addDownloadPreset(preset);
+            addDownloadPreset(fixedPreset as any);
           }
           setPresetModalOpen(false);
         }}
@@ -358,7 +359,7 @@ function PresetModal({
         <Select
           label="Quality"
           value={quality}
-          onChange={(v) => v && setQuality(v)}
+          onChange={(v) => v && setQuality(v as any)}
           data={[
             { value: 'best', label: 'Best' },
             { value: '1080p', label: '1080p' },

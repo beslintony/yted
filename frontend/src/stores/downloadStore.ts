@@ -124,5 +124,20 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set({ downloads: [] });
   },
 
+  getActiveDownloads: (): Download[] => {
+    const state = useDownloadStore.getState();
+    return state.downloads.filter((d: Download) => d.status === 'downloading');
+  },
+
+  getPendingDownloads: (): Download[] => {
+    const state = useDownloadStore.getState();
+    return state.downloads.filter((d: Download) => d.status === 'pending');
+  },
+
+  getCompletedDownloads: (): Download[] => {
+    const state = useDownloadStore.getState();
+    return state.downloads.filter((d: Download) => d.status === 'completed');
+  },
+
 
 }));

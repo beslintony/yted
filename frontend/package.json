@@ -11,10 +11,10 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.17",
-    "@mantine/hooks": "^8.3.17",
-    "@mantine/modals": "^8.3.17",
-    "@mantine/notifications": "^8.3.17",
+    "@mantine/core": "^6.0.22",
+    "@mantine/hooks": "^6.0.22",
+    "@mantine/modals": "^6.0.22",
+    "@mantine/notifications": "^6.0.22",
     "@tabler/icons-react": "^3.40.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -27,7 +27,7 @@
     "@types/react-dom": "^18.0.6",
     "@vitejs/plugin-react": "^2.0.1",
     "jsdom": "^29.0.0",
-    "typescript": "^4.6.4",
+    "typescript": "^5.9.3",
     "vite": "^3.0.7",
     "vitest": "^4.1.0"
   }
