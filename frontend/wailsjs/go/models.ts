@@ -282,6 +282,7 @@ export namespace db {
 	    thumbnail_url?: string;
 	    format_id?: string;
 	    quality?: string;
+	    duration?: number;
 	    error_message?: string;
 	    // Go type: time
 	    created_at: any;
@@ -305,6 +306,7 @@ export namespace db {
 	        this.thumbnail_url = source["thumbnail_url"];
 	        this.format_id = source["format_id"];
 	        this.quality = source["quality"];
+	        this.duration = source["duration"];
 	        this.error_message = source["error_message"];
 	        this.created_at = this.convertValues(source["created_at"], null);
 	        this.started_at = this.convertValues(source["started_at"], null);

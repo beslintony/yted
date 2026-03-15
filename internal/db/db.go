@@ -240,6 +240,7 @@ type Download struct {
 	ThumbnailURL  *string    `json:"thumbnail_url"`
 	FormatID      *string    `json:"format_id"`
 	Quality       *string    `json:"quality"`
+	Duration      *int       `json:"duration"`
 	ErrorMessage  *string    `json:"error_message"`
 	CreatedAt     time.Time  `json:"created_at"`
 	StartedAt     *time.Time `json:"started_at"`
@@ -257,6 +258,14 @@ func stringPtr(s sql.NullString) *string {
 func timePtr(t sql.NullTime) *time.Time {
 	if t.Valid {
 		return &t.Time
+	}
+	return nil
+}
+
+func intPtr(i sql.NullInt64) *int {
+	if i.Valid {
+		val := int(i.Int64)
+		return &val
 	}
 	return nil
 }
