@@ -221,6 +221,8 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	outputTemplate := filepath.Join(opts.OutputDir, c.config.FilenameTemplate)
 	log.Printf("[YTDLP] Output template: %s", outputTemplate)
+	log.Printf("[YTDLP] Config template: %s", c.config.FilenameTemplate)
+	log.Printf("[YTDLP] Output dir: %s", opts.OutputDir)
 
 	// Create a FRESH command for each download (don't reuse c.dl)
 	dl := ytdlp.New().
