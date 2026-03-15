@@ -113,6 +113,11 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Error("App", "Failed to create download directory", err)
 	}
 
+	// Verify and repair any downloads that have files but wrong status
+	if err := a.VerifyAndRepairDownloads(); err != nil {
+		a.logger.Error("App", "Failed to verify downloads", err)
+	}
+
 	// Restore incomplete downloads from previous session
 	if err := a.RestoreDownloadQueue(); err != nil {
 		a.logger.Error("App", "Failed to restore download queue", err)
