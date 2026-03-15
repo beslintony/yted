@@ -124,16 +124,10 @@ export function DownloadPage() {
       if (data?.id && data?.url) {
         // Map backend status to frontend status
         const backendStatus = data.status;
-        let frontendStatus: 'pending' | 'downloading' | 'paused' | 'completed' | 'error' = 'pending';
         
-        if (backendStatus === 'downloading') frontendStatus = 'downloading';
-        else if (backendStatus === 'completed') frontendStatus = 'completed';
-        else if (backendStatus === 'error') frontendStatus = 'error';
-        else if (backendStatus === 'paused') frontendStatus = 'paused';
-        
-        // Add restored download to the store with correct status
+        // Add restored download to the store with correct metadata
         addDownload(data.url, {
-          id: data.youtube_id || '',
+          id: data.youtube_id || data.id || '',
           title: data.title || 'Restored Download',
           channel: data.channel || '',
           channelId: '',
@@ -152,17 +146,17 @@ export function DownloadPage() {
           filesize: 0,
         }, data.id);
         
-        // Set the correct status and progress
+        // Set the correct status and progress based on restored data
+        updateProgress(data.id, data.progress || 0);
+        
         if (backendStatus === 'downloading') {
           startDownload(data.id);
         } else if (backendStatus === 'completed') {
           completeDownload(data.id);
         } else if (backendStatus === 'error') {
           failDownload(data.id, data.error_message || 'Unknown error');
-        } else if (backendStatus === 'paused') {
-          // For paused, we need to add it to store but mark as paused
-          updateProgress(data.id, data.progress || 0);
         }
+        // 'pending' and 'paused' keep default status but with correct progress
       }
     });
     return () => {
