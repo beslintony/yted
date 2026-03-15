@@ -29,7 +29,7 @@ import {
   IconSearch,
   IconVideo,
 } from '@tabler/icons-react';
-import { useDownloadStore, useSettingsStore } from '../stores';
+import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
 import { GetVideoInfo, AddDownload, ValidateURL, GetSettings } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
@@ -61,6 +61,7 @@ export function DownloadPage() {
   const { defaultQuality } = useSettingsStore();
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
+  const { success, error: showError, warning } = useNotifications();
 
   // Load presets from settings
   useEffect(() => {
@@ -107,11 +108,21 @@ export function DownloadPage() {
       const id = typeof data === 'string' ? data : data?.id;
       if (id) {
         completeDownload(id);
+        // Find the completed download to show notification
+        const completedDownload = downloads.find(d => d.id === id);
+        if (completedDownload) {
+          success('Download Complete', `"${completedDownload.title}" has finished downloading`);
+        }
       }
     });
     const cancelError = EventsOn('download:error', (data: any) => {
       if (data?.id && data?.error) {
         failDownload(data.id, data.error);
+        // Find the failed download to show notification
+        const failedDownload = downloads.find(d => d.id === data.id);
+        if (failedDownload) {
+          showError('Download Failed', `"${failedDownload.title}" failed: ${data.error}`);
+        }
       }
     });
     const cancelStarted = EventsOn('download:started', (data: any) => {
@@ -171,6 +182,7 @@ export function DownloadPage() {
   const handleFetchInfo = async () => {
     if (!url.trim()) {
       setError('Please enter a YouTube URL');
+      warning('Missing URL', 'Please enter a YouTube URL');
       return;
     }
     
@@ -182,17 +194,20 @@ export function DownloadPage() {
       const isValid = await ValidateURL(url);
       if (!isValid) {
         setError('Invalid YouTube URL. Please enter a valid YouTube video URL.');
+        showError('Invalid URL', 'Please enter a valid YouTube video URL');
         return;
       }
       
       const info = await GetVideoInfo(url);
       if (!info || !info.id) {
         setError('Could not fetch video information. Please check the URL and try again.');
+        showError('Fetch Failed', 'Could not fetch video information. Please check the URL and try again.');
         return;
       }
       setVideoInfo(info);
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch video info');
+      showError('Fetch Failed', err?.message || 'Failed to fetch video info');
     } finally {
       setLoading(false);
     }
@@ -201,6 +216,7 @@ export function DownloadPage() {
   const handleDownload = async () => {
     if (!videoInfo || !url) {
       setError('No video info available');
+      showError('No Video Info', 'Please fetch video information first');
       return;
     }
     
@@ -242,12 +258,16 @@ export function DownloadPage() {
         quality: preset?.quality || 'best',
       }, id);  // Pass the backend ID
       
+      // Show success notification
+      success('Download Added', `"${videoInfo.title}" has been added to the queue`);
+      
       // Clear the form after successful add
       setUrl('');
       setVideoInfo(null);
     } catch (err: any) {
       console.error('Failed to add download:', err);
       setError(err?.message || 'Failed to add download');
+      showError('Download Failed', err?.message || 'Failed to add download');
     } finally {
       setAdding(false);
     }
