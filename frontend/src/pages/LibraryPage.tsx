@@ -110,9 +110,27 @@ export function LibraryPage() {
   };
 
   const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTotalDuration = (seconds: number) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${mins}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -131,7 +149,7 @@ export function LibraryPage() {
       <Group justify="space-between">
         <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Library</Text>
         <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
-          {stats.total_videos} videos • {formatFileSize(stats.total_size)}
+          {stats.total_videos} videos • {formatFileSize(stats.total_size)} • {formatTotalDuration(videos.reduce((acc, v) => acc + (v.duration || 0), 0))} total
         </Text>
       </Group>
 

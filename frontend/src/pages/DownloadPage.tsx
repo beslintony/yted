@@ -282,6 +282,48 @@ export function DownloadPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatETA = (eta: string) => {
+    if (!eta || eta === '0s' || eta === '') return '';
+    
+    // Parse the duration string (Go format like "2h30m15s" or "1m30s" or "45s")
+    let totalSeconds = 0;
+    let currentNum = '';
+    
+    for (const char of eta) {
+      if (char >= '0' && char <= '9') {
+        currentNum += char;
+      } else if (char === 'h') {
+        totalSeconds += parseInt(currentNum || '0') * 3600;
+        currentNum = '';
+      } else if (char === 'm') {
+        totalSeconds += parseInt(currentNum || '0') * 60;
+        currentNum = '';
+      } else if (char === 's') {
+        totalSeconds += parseInt(currentNum || '0');
+        currentNum = '';
+      }
+    }
+    
+    if (totalSeconds === 0) return '';
+    
+    // Format for human readability
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
+
   return (
     <Stack gap="lg">
       <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Downloads</Text>
@@ -577,7 +619,7 @@ export function DownloadPage() {
                     </Group>
                     
                     {download.status === 'downloading' && (
-                      <Tooltip label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ETA: ${download.eta}` : ''}`}>
+                      <Tooltip label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ${formatETA(download.eta)} left` : ''}`}>
                         <Progress
                           value={download.progress}
                           size="sm"
@@ -596,9 +638,9 @@ export function DownloadPage() {
                           {download.speed}
                         </Text>
                       )}
-                      {download.status === 'downloading' && download.eta && (
+                      {download.status === 'downloading' && download.eta && formatETA(download.eta) && (
                         <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
-                          ETA: {download.eta}
+                          {formatETA(download.eta)} left
                         </Text>
                       )}
                     </Group>
