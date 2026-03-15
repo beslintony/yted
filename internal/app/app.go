@@ -129,10 +129,8 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Error("App", "Failed to verify downloads", err)
 	}
 
-	// Restore incomplete downloads from previous session
-	if err := a.RestoreDownloadQueue(); err != nil {
-		a.logger.Error("App", "Failed to restore download queue", err)
-	}
+	// Note: Download queue restoration is now handled by the frontend
+	// calling GetDownloadQueue() when it's ready
 
 	a.logger.Info("App", "YTed started successfully")
 }
