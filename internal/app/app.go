@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	applog "yted/internal/log"
 	"yted/internal/config"
 	"yted/internal/db"
 	"yted/internal/ytdl"
@@ -17,6 +17,7 @@ type App struct {
 	db     *db.DB
 	config *config.Manager
 	ytdl   *ytdl.Client
+	logger *applog.Logger
 }
 
 // NewApp creates a new App application struct
@@ -27,33 +28,50 @@ func NewApp() *App {
 // Startup is called when the app starts
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	a.logger = applog.GetLogger()
 
 	// Get app data directory
 	appDataDir, err := config.GetAppDataDir()
 	if err != nil {
-		log.Printf("Error getting app data dir: %v", err)
+		a.logger.Error("App", "Failed to get app data dir", err)
 		return
 	}
+
+	// Initialize logger with log directory
+	logDir := appDataDir + "/logs"
+	if err := a.logger.SetLogDir(logDir); err != nil {
+		a.logger.Error("App", "Failed to set log directory", err)
+	}
+
+	a.logger.Info("App", "Starting YTed", map[string]string{
+		"version": "1.0.0",
+		"appDir":  appDataDir,
+	})
 
 	// Initialize config
 	cfgManager, err := config.NewManager(appDataDir)
 	if err != nil {
-		log.Printf("Error initializing config: %v", err)
+		a.logger.Error("Config", "Failed to initialize config", err)
 		return
 	}
 	
 	if err := cfgManager.Load(); err != nil {
-		log.Printf("Error loading config: %v", err)
+		a.logger.Error("Config", "Failed to load config", err)
 	}
 	a.config = cfgManager
+	a.logger.Info("Config", "Configuration loaded", map[string]interface{}{
+		"downloadPath": cfgManager.Get().DownloadPath,
+		"theme":        cfgManager.Get().Theme,
+	})
 
 	// Initialize database
 	database, err := db.New(appDataDir)
 	if err != nil {
-		log.Printf("Error initializing database: %v", err)
+		a.logger.Error("Database", "Failed to initialize database", err)
 		return
 	}
 	a.db = database
+	a.logger.Info("Database", "Database initialized")
 
 	// Initialize ytdl client
 	ytdlConfig := &ytdl.ClientConfig{
@@ -63,31 +81,35 @@ func (a *App) Startup(ctx context.Context) {
 		SpeedLimitKbps:   cfgManager.Get().SpeedLimitKbps,
 	}
 	a.ytdl = ytdl.NewClient(ytdlConfig)
+	a.logger.Info("YTDLP", "yt-dlp client initialized")
 
 	// Ensure download directory exists
 	if err := os.MkdirAll(cfgManager.Get().DownloadPath, 0755); err != nil {
-		log.Printf("Error creating download directory: %v", err)
+		a.logger.Error("App", "Failed to create download directory", err)
 	}
 
-	log.Println("YTed started successfully")
+	a.logger.Info("App", "YTed started successfully")
 }
 
 // Shutdown is called when the app shuts down
 func (a *App) Shutdown(ctx context.Context) {
+	a.logger.Info("App", "Shutting down YTed")
+	
 	if a.config != nil {
 		if err := a.config.Save(); err != nil {
-			log.Printf("Error saving config: %v", err)
+			a.logger.Error("Config", "Failed to save config", err)
 		}
 	}
 	if a.db != nil {
 		if err := a.db.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
+			a.logger.Error("Database", "Failed to close database", err)
 		}
 	}
 }
 
 // DOMReady is called when the frontend is ready
 func (a *App) DOMReady(ctx context.Context) {
+	a.logger.Info("App", "Frontend DOM ready")
 	// Frontend is ready, can emit events now
 	runtime.EventsEmit(a.ctx, "app:ready", nil)
 }

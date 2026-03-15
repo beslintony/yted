@@ -17,6 +17,18 @@ export const theme: MantineThemeOverride = {
       '#cc0000',
       '#b30000',
     ],
+    dark: [
+      '#c1c2c5',
+      '#a6a7ab',
+      '#909296',
+      '#5c5f66',
+      '#373a40',
+      '#2c2e33',
+      '#25262b',
+      '#1a1b1e',
+      '#141517',
+      '#101113',
+    ],
   },
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   fontFamilyMonospace: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
@@ -31,5 +43,8 @@ export const theme: MantineThemeOverride = {
     md: '0 4px 8px rgba(0, 0, 0, 0.12)',
     lg: '0 8px 16px rgba(0, 0, 0, 0.14)',
     xl: '0 12px 24px rgba(0, 0, 0, 0.16)',
+  },
+  other: {
+    appName: 'YTed',
   },
 };
