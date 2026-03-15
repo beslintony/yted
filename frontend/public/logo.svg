@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Red square background with rounded corners -->
+  <rect width="200" height="200" rx="32" fill="#FF0000"/>
+  
+  <!-- Play button triangle (white, slightly offset for visual balance) -->
+  <path d="M 75 55 L 155 100 L 75 145 Z" fill="white"/>
+  
+  <!-- YTed text overlay (centered on the play button) -->
+  <text 
+    x="100" 
+    y="108" 
+    text-anchor="middle" 
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+    font-size="32" 
+    font-weight="800" 
+    fill="#FF0000"
+    style="letter-spacing: -1px;"
+  >YTed</text>
+</svg>

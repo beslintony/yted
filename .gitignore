@@ -1,3 +1,42 @@
-build/bin
-node_modules
-frontend/dist
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Build
+build/bin/
+build/darwin/
+build/windows/
+!build/appicon.png
+
+# Config & Data
+config/*.json
+!config/.gitkeep
+downloads/
+*.db
+*.db-journal
+
+# Logs
+*.log
+.logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

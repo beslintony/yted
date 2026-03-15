@@ -1,28 +1,178 @@
-import {useState} from 'react';
-import logo from './assets/images/logo-universal.png';
-import './App.css';
-import {Greet} from "../wailsjs/go/main/App";
+import { useState } from 'react';
+import {
+  AppShell,
+  Navbar,
+  Header,
+  Footer,
+  Aside,
+  Text,
+  MediaQuery,
+  Burger,
+  useMantineTheme,
+  Group,
+  ActionIcon,
+  Tooltip,
+  Stack,
+  rem,
+} from '@mantine/core';
+import {
+  IconDownload,
+  IconVideo,
+  IconSettings,
+  IconMenu2,
+  IconSun,
+  IconMoon,
+} from '@tabler/icons-react';
+import { useSettingsStore } from './stores';
+
+// Placeholder components - will be implemented in separate commits
+const DownloadPage = () => (
+  <div>
+    <Text size="xl" fw={700} mb="md">Downloads</Text>
+    <Text c="dimmed">Download queue will be implemented here</Text>
+  </div>
+);
+
+const LibraryPage = () => (
+  <div>
+    <Text size="xl" fw={700} mb="md">Library</Text>
+    <Text c="dimmed">Video library will be implemented here</Text>
+  </div>
+);
+
+const SettingsPage = () => (
+  <div>
+    <Text size="xl" fw={700} mb="md">Settings</Text>
+    <Text c="dimmed">Settings will be implemented here</Text>
+  </div>
+);
 
 function App() {
-    const [resultText, setResultText] = useState("Please enter your name below 👇");
-    const [name, setName] = useState('');
-    const updateName = (e: any) => setName(e.target.value);
-    const updateResultText = (result: string) => setResultText(result);
+  const theme = useMantineTheme();
+  const [opened, setOpened] = useState(false);
+  const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
+  const { theme: themeMode, toggleSidebar, sidebarCollapsed } = useSettingsStore();
 
-    function greet() {
-        Greet(name).then(updateResultText);
-    }
+  const navItems = [
+    { id: 'downloads' as const, label: 'Downloads', icon: IconDownload },
+    { id: 'library' as const, label: 'Library', icon: IconVideo },
+    { id: 'settings' as const, label: 'Settings', icon: IconSettings },
+  ];
 
-    return (
-        <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
-            </div>
-        </div>
-    )
+  return (
+    <AppShell
+      styles={{
+        main: {
+          background: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.colors.gray[0],
+        },
+      }}
+      navbarOffsetBreakpoint="sm"
+      asideOffsetBreakpoint="sm"
+      navbar={
+        <Navbar p="md" hiddenBreakpoint="sm" hidden={!opened} width={{ sm: 200, lg: sidebarCollapsed ? 80 : 250 }}>
+          <Navbar.Section grow>
+            <Stack spacing="xs">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <ActionIcon
+                    key={item.id}
+                    variant={isActive ? 'filled' : 'subtle'}
+                    color={isActive ? 'yted' : 'gray'}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setOpened(false);
+                    }}
+                    size="xl"
+                    sx={{
+                      width: sidebarCollapsed ? rem(50) : '100%',
+                      justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                      padding: sidebarCollapsed ? 0 : rem(12),
+                    }}
+                    title={item.label}
+                  >
+                    <Group spacing="sm" noWrap>
+                      <Icon size={20} />
+                      {!sidebarCollapsed && (
+                        <Text size="sm" fw={500}>
+                          {item.label}
+                        </Text>
+                      )}
+                    </Group>
+                  </ActionIcon>
+                );
+              })}
+            </Stack>
+          </Navbar.Section>
+        </Navbar>
+      }
+      aside={
+        <MediaQuery smallerThan="sm" styles={{ display: 'none' }}>
+          <Aside p="md" hiddenBreakpoint="sm" width={{ sm: 200, lg: 300 }}>
+            <Text>Right sidebar content</Text>
+          </Aside>
+        </MediaQuery>
+      }
+      footer={
+        <Footer height={60} p="md">
+          <Group position="apart">
+            <Text size="xs" c="dimmed">
+              YTed v1.0.0
+            </Text>
+            <Text size="xs" c="dimmed">
+              Ready
+            </Text>
+          </Group>
+        </Footer>
+      }
+      header={
+        <Header height={{ base: 50, md: 70 }} p="md">
+          <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+            <MediaQuery largerThan="sm" styles={{ display: 'none' }}>
+              <Burger
+                opened={opened}
+                onClick={() => setOpened((o) => !o)}
+                size="sm"
+                color={theme.colors.gray[6]}
+                mr="xl"
+              />
+            </MediaQuery>
+            
+            <Group position="apart" style={{ flex: 1 }}>
+              <Group spacing="sm">
+                <img
+                  src="/logo.svg"
+                  alt="YTed"
+                  style={{ height: 32, width: 32 }}
+                />
+                <Text fw={700} size="lg">YTed</Text>
+              </Group>
+              
+              <Group spacing="xs">
+                <Tooltip label="Toggle sidebar">
+                  <ActionIcon variant="subtle" onClick={toggleSidebar}>
+                    <IconMenu2 size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Toggle theme">
+                  <ActionIcon variant="subtle">
+                    {theme.colorScheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            </Group>
+          </div>
+        </Header>
+      }
+    >
+      <div style={{ padding: theme.spacing.md }}>
+        {activeTab === 'downloads' && <DownloadPage />}
+        {activeTab === 'library' && <LibraryPage />}
+        {activeTab === 'settings' && <SettingsPage />}
+      </div>
+    </AppShell>
+  );
 }
 
-export default App
+export default App;
