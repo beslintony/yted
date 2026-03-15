@@ -208,7 +208,8 @@ func (a *App) OpenFile(path string) error {
 	}
 
 	// Use xdg-open to open file with default application (Linux)
-	cmd := exec.Command("xdg-open", path)
+	// Use "--" to prevent path from being interpreted as flags (command injection protection)
+	cmd := exec.Command("xdg-open", "--", path)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
@@ -226,7 +227,8 @@ func (a *App) OpenFolder(filePath string) error {
 	}
 
 	// Use xdg-open to open folder (Linux)
-	cmd := exec.Command("xdg-open", dir)
+	// Use "--" to prevent path from being interpreted as flags (command injection protection)
+	cmd := exec.Command("xdg-open", "--", dir)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to open folder: %w", err)
 	}
