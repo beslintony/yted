@@ -28,7 +28,7 @@ import {
   IconSearch,
   IconVideo,
 } from '@tabler/icons-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
@@ -70,6 +70,13 @@ export function DownloadPage() {
   // Use refs to track processed events to prevent duplicates
   const processedEvents = useRef<Set<string>>(new Set());
 
+  // Wrapper to remove download and clear its processed events
+  const removeDownloadWithCleanup = useCallback((id: string) => {
+    processedEvents.current.delete(`completed_${id}`);
+    processedEvents.current.delete(`error_${id}`);
+    removeDownload(id);
+  }, [removeDownload]);
+
   // Load presets from settings
   useEffect(() => {
     const loadPresets = async () => {
@@ -106,7 +113,11 @@ export function DownloadPage() {
         
         if (queue && queue.length > 0) {
           for (const data of queue) {
-            if (data?.id && data?.url && !hasDownload(data.id)) {
+            if (!data?.id || !data?.url) continue;
+
+            const backendStatus = data.status;
+            
+            if (!hasDownload(data.id)) {
               // Add restored download to the store with correct metadata
               addDownload(data.url, {
                 id: data.youtube_id || data.id || '',
@@ -127,18 +138,17 @@ export function DownloadPage() {
                 acodec: '',
                 filesize: 0,
               }, data.id);
+            }
 
-              // Set the correct status and progress
-              updateProgress(data.id, data.progress || 0);
+            // Always sync status and progress from backend (fixes missed events)
+            updateProgress(data.id, data.progress || 0);
 
-              const backendStatus = data.status;
-              if (backendStatus === 'downloading') {
-                startDownload(data.id);
-              } else if (backendStatus === 'completed') {
-                completeDownload(data.id);
-              } else if (backendStatus === 'error') {
-                failDownload(data.id, data.error_message || 'Unknown error');
-              }
+            if (backendStatus === 'downloading') {
+              startDownload(data.id);
+            } else if (backendStatus === 'completed') {
+              completeDownload(data.id);
+            } else if (backendStatus === 'error') {
+              failDownload(data.id, data.error_message || 'Unknown error');
             }
           }
           // Tell backend to start processing pending downloads
@@ -199,6 +209,9 @@ export function DownloadPage() {
 
     const cancelRetried = EventsOn('download:retried', (retryId: string) => {
       if (retryId) {
+        // Clear processed events for this download so new events can be handled
+        processedEvents.current.delete(`completed_${retryId}`);
+        processedEvents.current.delete(`error_${retryId}`);
         retryDownload(retryId);
       }
     });
@@ -486,7 +499,7 @@ export function DownloadPage() {
               color="gray"
               size="xs"
               variant="subtle"
-              onClick={() => downloads.forEach(d => removeDownload(d.id))}
+              onClick={() => downloads.forEach(d => removeDownloadWithCleanup(d.id))}
             >
               Clear All
             </Button>
@@ -625,7 +638,7 @@ export function DownloadPage() {
                           color="red"
                           size="sm"
                           variant="light"
-                          onClick={() => removeDownload(download.id)}
+                          onClick={() => removeDownloadWithCleanup(download.id)}
                         >
                           <IconTrash size={14} />
                         </ActionIcon>

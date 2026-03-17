@@ -26,6 +26,48 @@ func (db *DB) CreateDownload(download *Download) error {
 	return nil
 }
 
+// GetActiveDownloadByURL checks if there's an active download for the given URL
+// Returns the download if found, nil if not found
+func (db *DB) GetActiveDownloadByURL(url string) (*Download, error) {
+	query := `
+		SELECT id, url, status, progress, title, channel, thumbnail_url,
+			format_id, quality, duration, error_message, created_at, started_at, completed_at
+		FROM downloads
+		WHERE url = ? AND status IN ('pending', 'downloading')
+		LIMIT 1
+	`
+	row := db.conn.QueryRow(query, url)
+
+	var d Download
+	var title, channel, thumbnailURL, formatID, quality, errorMsg sql.NullString
+	var duration sql.NullInt64
+	var startedAt, completedAt sql.NullTime
+
+	err := row.Scan(
+		&d.ID, &d.URL, &d.Status, &d.Progress,
+		&title, &channel, &thumbnailURL, &formatID, &quality, &duration, &errorMsg,
+		&d.CreatedAt, &startedAt, &completedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for existing download: %w", err)
+	}
+
+	d.Title = stringPtr(title)
+	d.Channel = stringPtr(channel)
+	d.ThumbnailURL = stringPtr(thumbnailURL)
+	d.FormatID = stringPtr(formatID)
+	d.Quality = stringPtr(quality)
+	d.Duration = intPtr(duration)
+	d.ErrorMessage = stringPtr(errorMsg)
+	d.StartedAt = timePtr(startedAt)
+	d.CompletedAt = timePtr(completedAt)
+
+	return &d, nil
+}
+
 // GetDownload retrieves a download by ID
 func (db *DB) GetDownload(id string) (*Download, error) {
 	query := `

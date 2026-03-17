@@ -24,6 +24,7 @@ type App struct {
 	ytdl   *ytdl.Client
 	logger *applog.Logger
 	fm     *FileManager
+	ffmpeg *FFmpegManager
 
 	// Mutex to prevent concurrent download processing
 	downloadMu sync.Mutex
@@ -121,6 +122,19 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Error("YTDLP", "Failed to install yt-dlp", err)
 	} else {
 		a.logger.Info("YTDLP", "yt-dlp installed successfully")
+	}
+
+	// Find and configure ffmpeg for video/audio merging
+	a.ffmpeg = NewFFmpegManager()
+	if ffmpegPath := a.ffmpeg.Find(); ffmpegPath != "" {
+		a.ytdl.SetFFmpegPath(ffmpegPath)
+		a.logger.Info("FFmpeg", "FFmpeg configured for video/audio merging", map[string]string{
+			"path": ffmpegPath,
+		})
+	} else {
+		a.logger.Warn("FFmpeg", "FFmpeg not found - video and audio may be downloaded separately", map[string]string{
+			"install_instructions": a.ffmpeg.InstallInstructions(),
+		})
 	}
 
 	// Ensure download directory exists

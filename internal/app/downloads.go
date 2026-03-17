@@ -98,6 +98,20 @@ func (a *App) AddDownload(videoURL string, formatID string, quality string) (str
 		return "", err
 	}
 
+	// Check for existing active download to prevent duplicates
+	existingDownload, err := a.db.GetActiveDownloadByURL(videoURL)
+	if err != nil {
+		logger.Error("Download", "Failed to check for existing download", err)
+		return "", err
+	}
+	if existingDownload != nil {
+		logger.Info("Download", "Download already in queue, returning existing ID", map[string]string{
+			"url": videoURL,
+			"id":  existingDownload.ID,
+		})
+		return existingDownload.ID, nil
+	}
+
 	download := &db.Download{
 		ID:       uuid.New().String(),
 		URL:      videoURL,

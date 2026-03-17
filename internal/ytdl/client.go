@@ -15,8 +15,9 @@ import (
 
 // Client wraps the go-ytdlp client
 type Client struct {
-	dl     *ytdlp.Command
-	config *ClientConfig
+	dl         *ytdlp.Command
+	config     *ClientConfig
+	ffmpegPath string
 }
 
 // ClientConfig contains configuration for the ytdl client
@@ -33,6 +34,12 @@ func NewClient(config *ClientConfig) *Client {
 		dl:     ytdlp.New(),
 		config: config,
 	}
+}
+
+// SetFFmpegPath sets the path to the ffmpeg binary for merging
+func (c *Client) SetFFmpegPath(path string) {
+	c.ffmpegPath = path
+	log.Printf("[YTDLP] FFmpeg path set to: %s", path)
 }
 
 // Install ensures yt-dlp is installed via go-ytdlp auto-install
@@ -252,6 +259,12 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	// IMPORTANT: Set merge output format to mp4 to ensure audio+video are merged
 	dl = dl.MergeOutputFormat("mp4")
+	
+	// Set ffmpeg location if available (required for merging video+audio)
+	if c.ffmpegPath != "" {
+		log.Printf("[YTDLP] Using ffmpeg for merging: %s", c.ffmpegPath)
+		dl = dl.FFmpegLocation(filepath.Dir(c.ffmpegPath))
+	}
 
 	// Apply proxy if configured
 	if opts.ProxyURL != nil && *opts.ProxyURL != "" {
@@ -376,6 +389,8 @@ func IsValidURL(url string) bool {
 		"https://youtu.be/",
 		"https://youtube.com/shorts/",
 		"https://www.youtube.com/shorts/",
+		"https://youtube.com/playlist",
+		"https://www.youtube.com/playlist",
 	}
 
 	for _, prefix := range validPrefixes {
