@@ -5,9 +5,9 @@ interface DownloadState {
   downloads: Download[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
-  addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => string;
+  addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => string | null;
   removeDownload: (id: string) => void;
   startDownload: (id: string) => void;
   pauseDownload: (id: string) => void;
@@ -19,9 +19,11 @@ interface DownloadState {
   failDownload: (id: string, error: string) => void;
   clearCompleted: () => void;
   clearAll: () => void;
+  setDownloads: (downloads: Download[]) => void;
   getActiveDownloads: () => Download[];
   getPendingDownloads: () => Download[];
   getCompletedDownloads: () => Download[];
+  hasDownload: (id: string) => boolean;
 }
 
 export const useDownloadStore = create<DownloadState>((set, get) => ({
@@ -31,6 +33,13 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
 
   addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => {
     const id = existingId || crypto.randomUUID();
+    
+    // Check if download already exists
+    if (get().hasDownload(id)) {
+      console.warn(`Download with id ${id} already exists, skipping`);
+      return null;
+    }
+
     const newDownload: Download = {
       id,
       url,
@@ -43,15 +52,10 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       quality: format?.quality,
       createdAt: Date.now(),
     };
-    set((state) => {
-      // Check if download already exists to prevent duplicates (e.g. from React StrictMode restoreQueue double firing)
-      if (state.downloads.some((d) => d.id === id)) {
-        return state;
-      }
-      return {
-        downloads: [newDownload, ...state.downloads],
-      };
-    });
+
+    set((state) => ({
+      downloads: [newDownload, ...state.downloads],
+    }));
     return id;
   },
 
@@ -64,7 +68,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   startDownload: (id) => {
     set((state) => ({
       downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, status: 'downloading', startedAt: Date.now() } : d
+        d.id === id ? { ...d, status: 'downloading' as DownloadStatus, startedAt: Date.now() } : d
       ),
     }));
   },
@@ -72,7 +76,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   pauseDownload: (id) => {
     set((state) => ({
       downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, status: 'paused' } : d
+        d.id === id ? { ...d, status: 'paused' as DownloadStatus } : d
       ),
     }));
   },
@@ -80,7 +84,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   resumeDownload: (id) => {
     set((state) => ({
       downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, status: 'downloading' } : d
+        d.id === id ? { ...d, status: 'downloading' as DownloadStatus } : d
       ),
     }));
   },
@@ -89,16 +93,17 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set((state) => ({
       downloads: state.downloads.map((d) =>
         d.id === id
-          ? { ...d, status: 'pending', progress: 0, errorMessage: undefined }
+          ? { ...d, status: 'pending' as DownloadStatus, progress: 0, errorMessage: undefined }
           : d
       ),
     }));
   },
 
   updateProgress: (id, progress) => {
+    const clampedProgress = Math.min(100, Math.max(0, progress));
     set((state) => ({
       downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, progress: Math.min(100, Math.max(0, progress)) } : d
+        d.id === id ? { ...d, progress: clampedProgress } : d
       ),
     }));
   },
@@ -115,7 +120,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set((state) => ({
       downloads: state.downloads.map((d) =>
         d.id === id
-          ? { ...d, status: 'completed', progress: 100, completedAt: Date.now() }
+          ? { ...d, status: 'completed' as DownloadStatus, progress: 100, completedAt: Date.now() }
           : d
       ),
     }));
@@ -124,7 +129,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   failDownload: (id, error) => {
     set((state) => ({
       downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, status: 'error', errorMessage: error } : d
+        d.id === id ? { ...d, status: 'error' as DownloadStatus, errorMessage: error } : d
       ),
     }));
   },
@@ -139,6 +144,10 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set({ downloads: [] });
   },
 
+  setDownloads: (downloads) => {
+    set({ downloads });
+  },
+
   getActiveDownloads: (): Download[] => {
     return get().downloads.filter((d: Download) => d.status === 'downloading');
   },
@@ -151,5 +160,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     return get().downloads.filter((d: Download) => d.status === 'completed');
   },
 
-
+  hasDownload: (id: string): boolean => {
+    return get().downloads.some((d) => d.id === id);
+  },
 }));

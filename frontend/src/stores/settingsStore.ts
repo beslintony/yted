@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { UserSettings, DEFAULT_SETTINGS, ThemeMode, QualityOption, DownloadPreset } from '../types';
+
 import { GetSettings, SaveSettings } from '../../wailsjs/go/app/App';
 import { config } from '../../wailsjs/go/models';
+import { DEFAULT_SETTINGS, DownloadPreset, QualityOption, ThemeMode, UserSettings } from '../types';
 
 interface SettingsState extends UserSettings {
   isLoading: boolean;
@@ -35,52 +36,51 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  setDownloadPath: (path) => set({ downloadPath: path }),
+  setDownloadPath: path => set({ downloadPath: path }),
 
-  setMaxConcurrentDownloads: (count) => set({ maxConcurrentDownloads: Math.max(1, Math.min(10, count)) }),
+  setMaxConcurrentDownloads: count =>
+    set({ maxConcurrentDownloads: Math.max(1, Math.min(10, count)) }),
 
-  setDefaultQuality: (quality) => set({ defaultQuality: quality }),
+  setDefaultQuality: quality => set({ defaultQuality: quality }),
 
-  setFilenameTemplate: (template) => set({ filenameTemplate: template }),
+  setFilenameTemplate: template => set({ filenameTemplate: template }),
 
-  setTheme: (theme) => set({ theme }),
+  setTheme: theme => set({ theme }),
 
-  setAccentColor: (color) => set({ accentColor: color }),
+  setAccentColor: color => set({ accentColor: color }),
 
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  toggleSidebar: () => set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-  setDefaultVolume: (volume) => set({ defaultVolume: Math.max(0, Math.min(100, volume)) }),
+  setDefaultVolume: volume => set({ defaultVolume: Math.max(0, Math.min(100, volume)) }),
 
-  setRememberPosition: (remember) => set({ rememberPosition: remember }),
+  setRememberPosition: remember => set({ rememberPosition: remember }),
 
-  setSpeedLimit: (limit) => set({ speedLimitKbps: limit }),
+  setSpeedLimit: limit => set({ speedLimitKbps: limit }),
 
-  setProxyUrl: (url) => set({ proxyUrl: url }),
+  setProxyUrl: url => set({ proxyUrl: url }),
 
-  setLogPath: (path) => set({ logPath: path }),
+  setLogPath: path => set({ logPath: path }),
 
-  setLogExportPath: (path) => set({ logExportPath: path }),
+  setLogExportPath: path => set({ logExportPath: path }),
 
-  setMaxLogSessions: (count) => set({ maxLogSessions: Math.max(1, Math.min(100, count)) }),
+  setMaxLogSessions: count => set({ maxLogSessions: Math.max(1, Math.min(100, count)) }),
 
-  addDownloadPreset: (preset) => {
+  addDownloadPreset: preset => {
     const id = crypto.randomUUID();
-    set((state) => ({
+    set(state => ({
       downloadPresets: [...state.downloadPresets, { ...preset, id }],
     }));
   },
 
-  removeDownloadPreset: (id) => {
-    set((state) => ({
-      downloadPresets: state.downloadPresets.filter((p) => p.id !== id),
+  removeDownloadPreset: id => {
+    set(state => ({
+      downloadPresets: state.downloadPresets.filter(p => p.id !== id),
     }));
   },
 
   updateDownloadPreset: (id, updates) => {
-    set((state) => ({
-      downloadPresets: state.downloadPresets.map((p) =>
-        p.id === id ? { ...p, ...updates } : p
-      ),
+    set(state => ({
+      downloadPresets: state.downloadPresets.map(p => (p.id === id ? { ...p, ...updates } : p)),
     }));
   },
 
@@ -105,20 +105,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           logPath: backendSettings.log_path,
           logExportPath: backendSettings.log_export_path,
           maxLogSessions: backendSettings.max_log_sessions,
-          downloadPresets: (backendSettings.download_presets || []).map((p: config.DownloadPreset) => ({
-            id: p.id,
-            name: p.name,
-            format: p.format,
-            quality: p.quality as QualityOption,
-            extension: p.extension,
-          })),
+          downloadPresets: (backendSettings.download_presets || []).map(
+            (p: config.DownloadPreset) => ({
+              id: p.id,
+              name: p.name,
+              format: p.format,
+              quality: p.quality as QualityOption,
+              extension: p.extension,
+            })
+          ),
         };
         set({ ...mappedSettings, isLoading: false });
       } else {
         set({ isLoading: false });
       }
     } catch (err) {
-      set({ error: err instanceof Error ? err.message : 'Failed to load settings', isLoading: false });
+      set({
+        error: err instanceof Error ? err.message : 'Failed to load settings',
+        isLoading: false,
+      });
     }
   },
 
@@ -153,7 +158,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       await SaveSettings(settings);
       set({ isLoading: false });
     } catch (err) {
-      set({ error: err instanceof Error ? err.message : 'Failed to save settings', isLoading: false });
+      set({
+        error: err instanceof Error ? err.message : 'Failed to save settings',
+        isLoading: false,
+      });
     }
   },
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+
 import { ExportLogs } from '../../wailsjs/go/app/App';
 
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
@@ -15,7 +16,7 @@ interface LogState {
   entries: LogEntry[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   addEntry: (entry: LogEntry) => void;
   setEntries: (entries: LogEntry[]) => void;
@@ -31,13 +32,13 @@ export const useLogStore = create<LogState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  addEntry: (entry) => {
-    set((state) => ({
+  addEntry: entry => {
+    set(state => ({
       entries: [...state.entries, entry].slice(-1000), // Keep last 1000 entries
     }));
   },
 
-  setEntries: (entries) => set({ entries }),
+  setEntries: entries => set({ entries }),
 
   clearLogs: () => set({ entries: [] }),
 
@@ -68,11 +69,11 @@ export const useLogStore = create<LogState>((set, get) => ({
     }
   },
 
-  getLogsByLevel: (level) => {
-    return get().entries.filter((e) => e.level === level);
+  getLogsByLevel: level => {
+    return get().entries.filter(e => e.level === level);
   },
 
-  getRecentLogs: (count) => {
+  getRecentLogs: count => {
     const { entries } = get();
     return entries.slice(-count);
   },

@@ -1,28 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
 import {
-  Paper,
-  Text,
-  Group,
-  Button,
-  ScrollArea,
-  Badge,
-  Stack,
   ActionIcon,
-  Tooltip,
+  Badge,
+  Button,
+  Group,
+  Paper,
+  ScrollArea,
   Select,
+  Stack,
+  Text,
   TextInput,
+  Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
-import {
-  IconTrash,
-  IconDownload,
-  IconRefresh,
-  IconSearch,
-  IconX,
-} from '@tabler/icons-react';
-import { useLogStore, LogEntry, LogLevel } from '../stores';
-import { GetLogs, ClearLogs, ExportLogs } from '../../wailsjs/go/app/App';
+
+import { IconDownload, IconRefresh, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
+
+import { ClearLogs, ExportLogs, GetLogs } from '../../wailsjs/go/app/App';
 import { EventsOn } from '../../wailsjs/runtime';
+import { LogEntry, LogLevel, useLogStore } from '../stores';
 
 export function LoggerViewer() {
   const { entries, setEntries, clearLogs, addEntry } = useLogStore();
@@ -68,8 +65,8 @@ export function LoggerViewer() {
   };
 
   const filteredEntries = entries
-    .filter((entry) => filter === 'ALL' || entry.level === filter)
-    .filter((entry) => {
+    .filter(entry => filter === 'ALL' || entry.level === filter)
+    .filter(entry => {
       if (!search) return true;
       const searchLower = search.toLowerCase();
       return (
@@ -99,7 +96,12 @@ export function LoggerViewer() {
       p="md"
       withBorder
       bg={dark ? '#25262b' : '#fff'}
-      style={{ borderColor: dark ? '#373a40' : '#dee2e6', height: '100%', display: 'flex', flexDirection: 'column' }}
+      style={{
+        borderColor: dark ? '#373a40' : '#dee2e6',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
     >
       <Group justify="space-between" mb="md">
         <Text fw={600} c={dark ? '#fff' : '#000'}>
@@ -127,7 +129,7 @@ export function LoggerViewer() {
       <Group gap="sm" mb="md">
         <Select
           value={filter}
-          onChange={(v) => setFilter(v as LogLevel | 'ALL')}
+          onChange={v => setFilter(v as LogLevel | 'ALL')}
           data={[
             { value: 'ALL', label: 'All Levels' },
             { value: 'DEBUG', label: 'Debug' },
@@ -147,7 +149,7 @@ export function LoggerViewer() {
         <TextInput
           placeholder="Search logs..."
           value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
+          onChange={e => setSearch(e.currentTarget.value)}
           size="sm"
           style={{ flex: 1 }}
           leftSection={<IconSearch size={14} />}
@@ -183,14 +185,13 @@ export function LoggerViewer() {
                 key={index}
                 p="xs"
                 bg="transparent"
-                style={{ borderBottom: `1px solid ${dark ? '#373a40' : '#e9ecef'}`, borderRadius: 0 }}
+                style={{
+                  borderBottom: `1px solid ${dark ? '#373a40' : '#e9ecef'}`,
+                  borderRadius: 0,
+                }}
               >
                 <Group gap="xs" align="flex-start" wrap="nowrap">
-                  <Badge
-                    size="xs"
-                    color={getLevelColor(entry.level)}
-                    style={{ minWidth: 60 }}
-                  >
+                  <Badge size="xs" color={getLevelColor(entry.level)} style={{ minWidth: 60 }}>
                     {entry.level}
                   </Badge>
                   <Text size="xs" c={dark ? 'dimmed' : 'gray.6'} style={{ minWidth: 130 }}>

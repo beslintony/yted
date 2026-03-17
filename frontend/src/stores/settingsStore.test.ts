@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useSettingsStore } from './settingsStore';
+import { beforeEach, describe, expect, it } from 'vitest';
+
 import { DEFAULT_SETTINGS } from '../types';
+import { useSettingsStore } from './settingsStore';
 
 describe('settingsStore', () => {
   beforeEach(() => {
@@ -23,13 +24,13 @@ describe('settingsStore', () => {
 
   it('should clamp max concurrent downloads between 1-10', () => {
     const { setMaxConcurrentDownloads } = useSettingsStore.getState();
-    
+
     setMaxConcurrentDownloads(15);
     expect(useSettingsStore.getState().maxConcurrentDownloads).toBe(10);
-    
+
     setMaxConcurrentDownloads(0);
     expect(useSettingsStore.getState().maxConcurrentDownloads).toBe(1);
-    
+
     setMaxConcurrentDownloads(5);
     expect(useSettingsStore.getState().maxConcurrentDownloads).toBe(5);
   });
@@ -37,10 +38,10 @@ describe('settingsStore', () => {
   it('should toggle sidebar', () => {
     const { toggleSidebar } = useSettingsStore.getState();
     const initial = useSettingsStore.getState().sidebarCollapsed;
-    
+
     toggleSidebar();
     expect(useSettingsStore.getState().sidebarCollapsed).toBe(!initial);
-    
+
     toggleSidebar();
     expect(useSettingsStore.getState().sidebarCollapsed).toBe(initial);
   });
@@ -48,14 +49,14 @@ describe('settingsStore', () => {
   it('should add download preset', () => {
     const { addDownloadPreset } = useSettingsStore.getState();
     const initialCount = useSettingsStore.getState().downloadPresets.length;
-    
+
     addDownloadPreset({
       name: 'Test Preset',
       format: 'best',
       quality: '720p',
       extension: 'mp4',
     });
-    
+
     expect(useSettingsStore.getState().downloadPresets).toHaveLength(initialCount + 1);
   });
 
@@ -63,7 +64,7 @@ describe('settingsStore', () => {
     const { removeDownloadPreset } = useSettingsStore.getState();
     const presets = useSettingsStore.getState().downloadPresets;
     const initialCount = presets.length;
-    
+
     if (presets.length > 0) {
       removeDownloadPreset(presets[0].id);
       expect(useSettingsStore.getState().downloadPresets).toHaveLength(initialCount - 1);
@@ -72,12 +73,12 @@ describe('settingsStore', () => {
 
   it('should reset to defaults', () => {
     const { setTheme, setDownloadPath, resetToDefaults } = useSettingsStore.getState();
-    
+
     setTheme('light');
     setDownloadPath('/custom');
-    
+
     resetToDefaults();
-    
+
     expect(useSettingsStore.getState().theme).toBe(DEFAULT_SETTINGS.theme);
     expect(useSettingsStore.getState().downloadPath).toBe(DEFAULT_SETTINGS.downloadPath);
   });

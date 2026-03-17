@@ -38,7 +38,11 @@ func NewClient(config *ClientConfig) *Client {
 // Install ensures yt-dlp is installed via go-ytdlp auto-install
 func (c *Client) Install(ctx context.Context) error {
 	log.Println("Ensuring yt-dlp is available...")
-	
+
+	// Create a timeout context for installation
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	// go-ytdlp will auto-download yt-dlp if not found in PATH
 	_, err := ytdlp.Install(ctx, nil)
 	if err != nil {
@@ -105,19 +109,20 @@ type rawVideoInfo struct {
 }
 
 type rawFormatInfo struct {
-	FormatID   string  `json:"format_id"`
-	Ext        string  `json:"ext"`
-	Resolution string  `json:"resolution"`
-	FPS        float64 `json:"fps"`
-	VCodec     string  `json:"vcodec"`
-	ACodec     string  `json:"acodec"`
-	FileSize   int64   `json:"filesize"`
-	FileSizeApprox int64 `json:"filesize_approx"`
-	Quality    float64 `json:"quality"`
+	FormatID       string  `json:"format_id"`
+	Ext            string  `json:"ext"`
+	Resolution     string  `json:"resolution"`
+	FPS            float64 `json:"fps"`
+	VCodec         string  `json:"vcodec"`
+	ACodec         string  `json:"acodec"`
+	FileSize       int64   `json:"filesize"`
+	FileSizeApprox int64   `json:"filesize_approx"`
+	Quality        float64 `json:"quality"`
 }
 
 // GetInfo extracts video information from URL
 func (c *Client) GetInfo(ctx context.Context, url string) (*VideoInfo, error) {
+	// Create command with context
 	result, err := c.dl.
 		NoWarnings().
 		Quiet().
@@ -229,7 +234,7 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		Output(outputTemplate).
 		NoWarnings().
 		NoOverwrites().
-		NoPlaylist().
+		NoPlaylist(). // Don't download playlists - single video only
 		Continue().
 		TrimFilenames(100)
 
@@ -262,37 +267,9 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	// Add progress parsing
 	if callback != nil {
 		dl = dl.ProgressFunc(100*time.Millisecond, func(update ytdlp.ProgressUpdate) {
-			var percent float64
-			if update.TotalBytes > 0 {
-				percent = float64(update.DownloadedBytes) / float64(update.TotalBytes) * 100
-			}
-			
-			// Calculate speed and ETA
-			var speed, etaStr string
-			var etaDuration time.Duration
-			if !update.Started.IsZero() {
-				elapsed := time.Since(update.Started).Seconds()
-				if elapsed > 0 && update.DownloadedBytes > 0 {
-					bytesPerSec := float64(update.DownloadedBytes) / elapsed
-					speed = FormatFileSize(int64(bytesPerSec)) + "/s"
-					
-					if update.TotalBytes > 0 && bytesPerSec > 0 {
-						remainingBytes := update.TotalBytes - update.DownloadedBytes
-						remainingSecs := float64(remainingBytes) / bytesPerSec
-						etaDuration = time.Duration(remainingSecs * float64(time.Second))
-						etaStr = FormatETA(etaDuration)
-					}
-				}
-			}
-			
-			progress := DownloadProgress{
-				Percent: percent,
-				Status:  string(update.Status),
-				Speed:   speed,
-				ETA:     etaStr,
-				Size:    FormatFileSize(int64(update.TotalBytes)),
-			}
-			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s)", percent, update.Status, speed, etaStr)
+			progress := calculateProgress(update)
+			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s)",
+				progress.Percent, update.Status, progress.Speed, progress.ETA)
 			callback(progress)
 		})
 	}
@@ -308,17 +285,61 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	log.Println("[YTDLP] Executing yt-dlp...")
 	result, err := dl.Run(ctx, url)
 	if err != nil {
+		// Check if context was cancelled
+		if ctx.Err() == context.Canceled {
+			log.Printf("[YTDLP] Download cancelled")
+			return fmt.Errorf("download cancelled")
+		}
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("[YTDLP] Download timeout")
+			return fmt.Errorf("download timeout")
+		}
 		log.Printf("[YTDLP] Download failed: %v", err)
 		return fmt.Errorf("download failed: %w", err)
 	}
 
 	log.Printf("[YTDLP] Download completed successfully")
-	log.Printf("[YTDLP] Output: %s", result.Stdout)
+	if result.Stdout != "" {
+		log.Printf("[YTDLP] Output: %s", result.Stdout)
+	}
 	if result.Stderr != "" {
 		log.Printf("[YTDLP] Stderr: %s", result.Stderr)
 	}
 
 	return nil
+}
+
+// calculateProgress calculates progress from ytdlp update
+func calculateProgress(update ytdlp.ProgressUpdate) DownloadProgress {
+	var percent float64
+	if update.TotalBytes > 0 {
+		percent = float64(update.DownloadedBytes) / float64(update.TotalBytes) * 100
+	}
+
+	// Calculate speed and ETA
+	var speed, etaStr string
+	if !update.Started.IsZero() {
+		elapsed := time.Since(update.Started).Seconds()
+		if elapsed > 0 && update.DownloadedBytes > 0 {
+			bytesPerSec := float64(update.DownloadedBytes) / elapsed
+			speed = FormatFileSize(int64(bytesPerSec)) + "/s"
+
+			if update.TotalBytes > 0 && bytesPerSec > 0 {
+				remainingBytes := update.TotalBytes - update.DownloadedBytes
+				remainingSecs := float64(remainingBytes) / bytesPerSec
+				etaDuration := time.Duration(remainingSecs * float64(time.Second))
+				etaStr = FormatETA(etaDuration)
+			}
+		}
+	}
+
+	return DownloadProgress{
+		Percent: percent,
+		Status:  string(update.Status),
+		Speed:   speed,
+		ETA:     etaStr,
+		Size:    FormatFileSize(int64(update.TotalBytes)),
+	}
 }
 
 // GetFormats returns available formats for a video
@@ -354,8 +375,6 @@ func IsValidURL(url string) bool {
 		"https://youtu.be/",
 		"https://youtube.com/shorts/",
 		"https://www.youtube.com/shorts/",
-		"https://youtube.com/playlist",
-		"https://www.youtube.com/playlist",
 	}
 
 	for _, prefix := range validPrefixes {
@@ -396,20 +415,20 @@ func FormatETA(d time.Duration) string {
 	if d <= 0 {
 		return ""
 	}
-	
+
 	// Cap at 99 days to avoid unrealistic values
 	const maxDuration = 99 * 24 * time.Hour
 	if d > maxDuration {
 		return ">99d"
 	}
-	
+
 	// Format based on magnitude
 	totalSeconds := int(d.Seconds())
 	days := totalSeconds / (24 * 3600)
 	hours := (totalSeconds % (24 * 3600)) / 3600
 	minutes := (totalSeconds % 3600) / 60
 	seconds := totalSeconds % 60
-	
+
 	if days > 0 {
 		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
 	}

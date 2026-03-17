@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { Video } from '../types';
+
 import { ListVideos } from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
+import { Video } from '../types';
 
 interface LibraryState {
   videos: Video[];
@@ -11,7 +12,7 @@ interface LibraryState {
   viewMode: 'grid' | 'list';
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   setVideos: (videos: Video[]) => void;
   addVideo: (video: Video) => void;
@@ -36,71 +37,63 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  setVideos: (videos) => set({ videos }),
+  setVideos: videos => set({ videos }),
 
-  addVideo: (video) => {
-    set((state) => ({
+  addVideo: video => {
+    set(state => ({
       videos: [video, ...state.videos],
     }));
   },
 
-  removeVideo: (id) => {
-    set((state) => ({
-      videos: state.videos.filter((v) => v.id !== id),
+  removeVideo: id => {
+    set(state => ({
+      videos: state.videos.filter(v => v.id !== id),
     }));
   },
 
   updateVideo: (id, updates) => {
-    set((state) => ({
-      videos: state.videos.map((v) =>
-        v.id === id ? { ...v, ...updates } : v
-      ),
+    set(state => ({
+      videos: state.videos.map(v => (v.id === id ? { ...v, ...updates } : v)),
     }));
   },
 
   updateWatchPosition: (id, position) => {
-    set((state) => ({
-      videos: state.videos.map((v) =>
-        v.id === id ? { ...v, watchPosition: position } : v
-      ),
+    set(state => ({
+      videos: state.videos.map(v => (v.id === id ? { ...v, watchPosition: position } : v)),
     }));
   },
 
-  incrementWatchCount: (id) => {
-    set((state) => ({
-      videos: state.videos.map((v) =>
-        v.id === id ? { ...v, watchCount: v.watchCount + 1 } : v
-      ),
+  incrementWatchCount: id => {
+    set(state => ({
+      videos: state.videos.map(v => (v.id === id ? { ...v, watchCount: v.watchCount + 1 } : v)),
     }));
   },
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
+  setSearchQuery: query => set({ searchQuery: query }),
 
-  setSortBy: (sortBy) => set({ sortBy }),
+  setSortBy: sortBy => set({ sortBy }),
 
   toggleSortOrder: () => {
-    set((state) => ({
+    set(state => ({
       sortOrder: state.sortOrder === 'asc' ? 'desc' : 'asc',
     }));
   },
 
-  setViewMode: (mode) => set({ viewMode: mode }),
+  setViewMode: mode => set({ viewMode: mode }),
 
   getFilteredVideos: () => {
     const { videos, searchQuery, sortBy, sortOrder } = get();
-    
+
     let filtered = videos;
-    
+
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = videos.filter(
-        (v) =>
-          v.title.toLowerCase().includes(query) ||
-          v.channel.toLowerCase().includes(query)
+        v => v.title.toLowerCase().includes(query) || v.channel.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply sorting
     filtered = [...filtered].sort((a, b) => {
       let comparison = 0;
@@ -121,7 +114,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-    
+
     return filtered;
   },
 
@@ -137,7 +130,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         offset: 0,
       });
       const backendVideos = await ListVideos(options);
-      
+
       // Map backend VideoResult to frontend Video type
       const videos: Video[] = (backendVideos || []).map((v: app.VideoResult) => ({
         id: v.id,
@@ -156,7 +149,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         watchPosition: v.watch_position,
         watchCount: v.watch_count,
       }));
-      
+
       set({ videos, isLoading: false });
     } catch (err) {
       set({

@@ -25,11 +25,16 @@ func (db *DB) CreateVideo(video *Video) error {
 	return nil
 }
 
-// GetVideo retrieves a video by ID
+// GetVideo retrieves a video by ID (without file_hash and is_managed for backward compat)
 func (db *DB) GetVideo(id string) (*Video, error) {
+	return db.GetVideoWithHash(id)
+}
+
+// GetVideoWithHash retrieves a video by ID with all fields
+func (db *DB) GetVideoWithHash(id string) (*Video, error) {
 	query := `
 		SELECT id, youtube_id, title, channel, channel_id, duration, description,
-			thumbnail_url, file_path, file_size, format, quality, downloaded_at,
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at,
 			watch_position, watch_count
 		FROM videos WHERE id = ?
 	`
@@ -39,7 +44,7 @@ func (db *DB) GetVideo(id string) (*Video, error) {
 	err := row.Scan(
 		&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
 		&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
-		&v.FileSize, &v.Format, &v.Quality, &v.DownloadedAt,
+		&v.FileSize, &v.FileHash, &v.IsManaged, &v.Format, &v.Quality, &v.DownloadedAt,
 		&v.WatchPosition, &v.WatchCount,
 	)
 	if err == sql.ErrNoRows {
@@ -55,9 +60,11 @@ func (db *DB) GetVideo(id string) (*Video, error) {
 func (db *DB) GetVideoByYoutubeID(youtubeID string) (*Video, error) {
 	query := `
 		SELECT id, youtube_id, title, channel, channel_id, duration, description,
-			thumbnail_url, file_path, file_size, format, quality, downloaded_at,
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at,
 			watch_position, watch_count
 		FROM videos WHERE youtube_id = ?
+		ORDER BY downloaded_at DESC
+		LIMIT 1
 	`
 	row := db.conn.QueryRow(query, youtubeID)
 
@@ -65,7 +72,7 @@ func (db *DB) GetVideoByYoutubeID(youtubeID string) (*Video, error) {
 	err := row.Scan(
 		&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
 		&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
-		&v.FileSize, &v.Format, &v.Quality, &v.DownloadedAt,
+		&v.FileSize, &v.FileHash, &v.IsManaged, &v.Format, &v.Quality, &v.DownloadedAt,
 		&v.WatchPosition, &v.WatchCount,
 	)
 	if err == sql.ErrNoRows {
@@ -75,6 +82,77 @@ func (db *DB) GetVideoByYoutubeID(youtubeID string) (*Video, error) {
 		return nil, fmt.Errorf("failed to get video: %w", err)
 	}
 	return &v, nil
+}
+
+// GetVideosByYoutubeID retrieves all videos by YouTube ID (for duplicate cleanup)
+func (db *DB) GetVideosByYoutubeID(youtubeID string) ([]Video, error) {
+	query := `
+		SELECT id, youtube_id, title, channel, channel_id, duration, description,
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at,
+			watch_position, watch_count
+		FROM videos WHERE youtube_id = ?
+		ORDER BY downloaded_at DESC
+	`
+	rows, err := db.conn.Query(query, youtubeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get videos by youtube id: %w", err)
+	}
+	defer rows.Close()
+
+	var videos []Video
+	for rows.Next() {
+		var v Video
+		err := rows.Scan(
+			&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
+			&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
+			&v.FileSize, &v.FileHash, &v.IsManaged, &v.Format, &v.Quality, &v.DownloadedAt,
+			&v.WatchPosition, &v.WatchCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan video: %w", err)
+		}
+		videos = append(videos, v)
+	}
+
+	return videos, nil
+}
+
+// GetVideoByFileHash retrieves a video by file hash
+func (db *DB) GetVideoByFileHash(fileHash string) (*Video, error) {
+	query := `
+		SELECT id, youtube_id, title, channel, channel_id, duration, description,
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at,
+			watch_position, watch_count
+		FROM videos WHERE file_hash = ?
+		ORDER BY downloaded_at DESC
+		LIMIT 1
+	`
+	row := db.conn.QueryRow(query, fileHash)
+
+	var v Video
+	err := row.Scan(
+		&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
+		&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
+		&v.FileSize, &v.FileHash, &v.IsManaged, &v.Format, &v.Quality, &v.DownloadedAt,
+		&v.WatchPosition, &v.WatchCount,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get video by file hash: %w", err)
+	}
+	return &v, nil
+}
+
+// DeleteVideoByID removes a video by ID (for duplicate cleanup)
+func (db *DB) DeleteVideoByID(id string) error {
+	query := `DELETE FROM videos WHERE id = ?`
+	_, err := db.conn.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete video by id: %w", err)
+	}
+	return nil
 }
 
 // ListVideosOptions contains options for listing videos
@@ -87,8 +165,13 @@ type ListVideosOptions struct {
 	Offset   int
 }
 
-// ListVideos retrieves a list of videos
+// ListVideos retrieves a list of videos (without hash fields for backward compat)
 func (db *DB) ListVideos(opts ListVideosOptions) ([]Video, error) {
+	return db.ListVideosWithHash(opts)
+}
+
+// ListVideosWithHash retrieves a list of videos with all fields
+func (db *DB) ListVideosWithHash(opts ListVideosOptions) ([]Video, error) {
 	// Build query
 	where := []string{"1=1"}
 	args := []interface{}{}
@@ -122,7 +205,7 @@ func (db *DB) ListVideos(opts ListVideosOptions) ([]Video, error) {
 
 	query := fmt.Sprintf(`
 		SELECT id, youtube_id, title, channel, channel_id, duration, description,
-			thumbnail_url, file_path, file_size, format, quality, downloaded_at,
+			thumbnail_url, file_path, file_size, file_hash, is_managed, format, quality, downloaded_at,
 			watch_position, watch_count
 		FROM videos
 		WHERE %s
@@ -144,7 +227,7 @@ func (db *DB) ListVideos(opts ListVideosOptions) ([]Video, error) {
 		err := rows.Scan(
 			&v.ID, &v.YoutubeID, &v.Title, &v.Channel, &v.ChannelID,
 			&v.Duration, &v.Description, &v.ThumbnailURL, &v.FilePath,
-			&v.FileSize, &v.Format, &v.Quality, &v.DownloadedAt,
+			&v.FileSize, &v.FileHash, &v.IsManaged, &v.Format, &v.Quality, &v.DownloadedAt,
 			&v.WatchPosition, &v.WatchCount,
 		)
 		if err != nil {
@@ -179,6 +262,39 @@ func (db *DB) UpdateVideo(video *Video) error {
 	return nil
 }
 
+// DeleteVideo removes a video from the library
+func (db *DB) DeleteVideo(id string) error {
+	query := `DELETE FROM videos WHERE id = ?`
+	_, err := db.conn.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete video: %w", err)
+	}
+	return nil
+}
+
+// DeleteVideoAndFile deletes a video and returns its file path and managed status
+func (db *DB) DeleteVideoAndFile(id string) (filePath string, isManaged bool, err error) {
+	// Get video info before deleting
+	query := `SELECT file_path, is_managed FROM videos WHERE id = ?`
+	row := db.conn.QueryRow(query, id)
+	err = row.Scan(&filePath, &isManaged)
+	if err == sql.ErrNoRows {
+		return "", false, fmt.Errorf("video not found")
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("failed to get video info: %w", err)
+	}
+
+	// Delete the video
+	deleteQuery := `DELETE FROM videos WHERE id = ?`
+	_, err = db.conn.Exec(deleteQuery, id)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to delete video: %w", err)
+	}
+
+	return filePath, isManaged, nil
+}
+
 // UpdateWatchPosition updates the watch position for a video
 func (db *DB) UpdateWatchPosition(id string, position int) error {
 	query := `UPDATE videos SET watch_position = ? WHERE id = ?`
@@ -195,16 +311,6 @@ func (db *DB) IncrementWatchCount(id string) error {
 	_, err := db.conn.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("failed to increment watch count: %w", err)
-	}
-	return nil
-}
-
-// DeleteVideo removes a video from the library
-func (db *DB) DeleteVideo(id string) error {
-	query := `DELETE FROM videos WHERE id = ?`
-	_, err := db.conn.Exec(query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete video: %w", err)
 	}
 	return nil
 }

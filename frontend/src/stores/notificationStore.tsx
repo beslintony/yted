@@ -1,7 +1,9 @@
 import { create } from 'zustand';
-import { notifications } from '@mantine/notifications';
-import { modals } from '@mantine/modals';
+
 import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
+import { notifications } from '@mantine/notifications';
+
 import type { ConfirmOptions } from '../types';
 
 interface NotificationState {
@@ -54,19 +56,15 @@ export const useNotificationStore = create<NotificationState>(() => ({
     });
   },
 
-  showConfirm: (options) => {
+  showConfirm: options => {
     modals.openConfirmModal({
       title: options.title,
-      children: (
-        <Text size="sm">
-          {options.message}
-        </Text>
-      ),
-      labels: { 
-        confirm: options.confirmLabel || 'Confirm', 
-        cancel: options.cancelLabel || 'Cancel' 
+      children: <Text size="sm">{options.message}</Text>,
+      labels: {
+        confirm: options.confirmLabel || 'Confirm',
+        cancel: options.cancelLabel || 'Cancel',
       },
-      confirmProps: { 
+      confirmProps: {
         color: options.confirmColor || 'red',
         variant: 'filled',
       },

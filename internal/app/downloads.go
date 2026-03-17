@@ -33,10 +33,10 @@ type VideoInfoResult struct {
 }
 
 // GetVideoInfo extracts video information from URL
-func (a *App) GetVideoInfo(url string) (*VideoInfoResult, error) {
+func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 	logger := applog.GetLogger()
 
-	logger.Info("Download", "Fetching video info", map[string]string{"url": url})
+	logger.Info("Download", "Fetching video info", map[string]string{"url": videoURL})
 
 	if a.ytdl == nil {
 		err := fmt.Errorf("ytdl client not initialized")
@@ -44,16 +44,18 @@ func (a *App) GetVideoInfo(url string) (*VideoInfoResult, error) {
 		return nil, err
 	}
 
-	if !ytdl.IsValidURL(url) {
+	if !ytdl.IsValidURL(videoURL) {
 		err := fmt.Errorf("invalid URL")
-		logger.Warn("Download", "Invalid URL provided", map[string]string{"url": url})
+		logger.Warn("Download", "Invalid URL provided", map[string]string{"url": videoURL})
 		return nil, err
 	}
 
-	ctx := context.Background()
-	info, err := a.ytdl.GetInfo(ctx, url)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	info, err := a.ytdl.GetInfo(ctx, videoURL)
 	if err != nil {
-		logger.Error("Download", "Failed to get video info", err, map[string]string{"url": url})
+		logger.Error("Download", "Failed to get video info", err, map[string]string{"url": videoURL})
 		return nil, err
 	}
 
@@ -75,11 +77,11 @@ func (a *App) GetVideoInfo(url string) (*VideoInfoResult, error) {
 }
 
 // AddDownload adds a new download to the queue
-func (a *App) AddDownload(url string, formatID string, quality string) (string, error) {
+func (a *App) AddDownload(videoURL string, formatID string, quality string) (string, error) {
 	logger := applog.GetLogger()
 
 	logger.Info("Download", "Adding download", map[string]string{
-		"url":      url,
+		"url":      videoURL,
 		"formatID": formatID,
 		"quality":  quality,
 	})
@@ -90,9 +92,15 @@ func (a *App) AddDownload(url string, formatID string, quality string) (string, 
 		return "", err
 	}
 
+	if a.ytdl == nil {
+		err := fmt.Errorf("ytdl client not initialized")
+		logger.Error("Download", "ytdl client not ready", err)
+		return "", err
+	}
+
 	download := &db.Download{
 		ID:       uuid.New().String(),
-		URL:      url,
+		URL:      videoURL,
 		Status:   "pending",
 		Progress: 0,
 		FormatID: &formatID,
@@ -142,7 +150,7 @@ func (a *App) GetDownloads() ([]db.Download, error) {
 // GetDownloadsByStatus returns downloads filtered by status
 func (a *App) GetDownloadsByStatus(status string) ([]db.Download, error) {
 	if a.db == nil {
-		return nil, nil
+		return nil, fmt.Errorf("database not initialized")
 	}
 	return a.db.ListDownloads(status)
 }
@@ -152,7 +160,7 @@ func (a *App) PauseDownload(id string) error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
 
 	if err := a.db.UpdateDownloadStatus(id, "paused"); err != nil {
@@ -170,7 +178,7 @@ func (a *App) ResumeDownload(id string) error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
 
 	if err := a.db.UpdateDownloadStatus(id, "pending"); err != nil {
@@ -192,7 +200,7 @@ func (a *App) RetryDownload(id string) error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
 
 	if err := a.db.UpdateDownloadStatus(id, "pending"); err != nil {
@@ -219,7 +227,7 @@ func (a *App) CancelDownload(id string) error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
 
 	if err := a.db.DeleteDownload(id); err != nil {
@@ -237,7 +245,7 @@ func (a *App) ClearCompletedDownloads() error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
 
 	if err := a.db.DeleteCompletedDownloads(); err != nil {
@@ -253,7 +261,7 @@ func (a *App) ClearCompletedDownloads() error {
 // processDownloads starts pending downloads up to the concurrent limit
 func (a *App) processDownloads() {
 	logger := applog.GetLogger()
-	
+
 	// Prevent concurrent execution to avoid race conditions
 	a.downloadMu.Lock()
 	defer a.downloadMu.Unlock()
@@ -311,7 +319,7 @@ func (a *App) processDownloads() {
 			})
 			continue
 		}
-		
+
 		// Now spawn the goroutine for the actual download
 		go a.startDownload(dl)
 	}
@@ -322,12 +330,21 @@ func (a *App) processDownloads() {
 // before calling this function (done synchronously in processDownloads)
 func (a *App) startDownload(dl db.Download) {
 	logger := applog.GetLogger()
-	ctx := context.Background()
+
+	// Create a context with timeout for the download
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
 
 	logger.Info("Download", "Download worker starting", map[string]string{
 		"id":  dl.ID,
 		"url": dl.URL,
 	})
+
+	// Check if app context is still valid
+	if a.ctx == nil {
+		logger.Error("Download", "App context is nil", fmt.Errorf("app not initialized"))
+		return
+	}
 
 	// Verify download is still in 'downloading' state (could have been cancelled/paused)
 	currentDownload, err := a.db.GetDownload(dl.ID)
@@ -335,7 +352,11 @@ func (a *App) startDownload(dl db.Download) {
 		logger.Error("Download", "Failed to verify download status", err, map[string]string{"id": dl.ID})
 		return
 	}
-	if currentDownload == nil || currentDownload.Status != "downloading" {
+	if currentDownload == nil {
+		logger.Info("Download", "Download no longer exists, aborting", map[string]string{"id": dl.ID})
+		return
+	}
+	if currentDownload.Status != "downloading" {
 		logger.Info("Download", "Download no longer active, aborting", map[string]string{
 			"id":     dl.ID,
 			"status": currentDownload.Status,
@@ -344,16 +365,7 @@ func (a *App) startDownload(dl db.Download) {
 	}
 
 	// Get video info if not already have title
-	var title, channel, thumbnail string
-	if dl.Title != nil {
-		title = *dl.Title
-	}
-	if dl.Channel != nil {
-		channel = *dl.Channel
-	}
-	if dl.ThumbnailURL != nil {
-		thumbnail = *dl.ThumbnailURL
-	}
+	title, channel, thumbnail := extractDownloadInfo(&dl)
 
 	if title == "" {
 		info, err := a.ytdl.GetInfo(ctx, dl.URL)
@@ -367,7 +379,9 @@ func (a *App) startDownload(dl db.Download) {
 			dl.Channel = &channel
 			dl.ThumbnailURL = &thumbnail
 			dl.Duration = &info.Duration
-			a.db.UpdateDownload(&dl)
+			if updateErr := a.db.UpdateDownload(&dl); updateErr != nil {
+				logger.Warn("Download", "Failed to update download info", map[string]string{"error": updateErr.Error()})
+			}
 
 			logger.Info("Download", "Video info retrieved", map[string]string{
 				"id":    dl.ID,
@@ -385,12 +399,12 @@ func (a *App) startDownload(dl db.Download) {
 	runtime.EventsEmit(a.ctx, "download:started", dl)
 
 	// Download options
-	var format string
+	format := ""
 	if dl.FormatID != nil {
 		format = *dl.FormatID
 	}
 
-	var quality string
+	quality := ""
 	if dl.Quality != nil {
 		quality = *dl.Quality
 	}
@@ -404,7 +418,9 @@ func (a *App) startDownload(dl db.Download) {
 
 	// Progress callback
 	progressCallback := func(progress ytdl.DownloadProgress) {
-		a.db.UpdateDownloadProgress(dl.ID, progress.Percent)
+		if updateErr := a.db.UpdateDownloadProgress(dl.ID, progress.Percent); updateErr != nil {
+			logger.Debug("Download", "Failed to update progress", map[string]string{"error": updateErr.Error()})
+		}
 		runtime.EventsEmit(a.ctx, "download:progress", map[string]interface{}{
 			"id":       dl.ID,
 			"progress": progress.Percent,
@@ -422,7 +438,9 @@ func (a *App) startDownload(dl db.Download) {
 	err = a.ytdl.Download(ctx, dl.URL, opts, progressCallback)
 	if err != nil {
 		logger.Error("Download", "Download failed", err, map[string]string{"id": dl.ID})
-		a.db.FailDownload(dl.ID, err.Error())
+		if failErr := a.db.FailDownload(dl.ID, err.Error()); failErr != nil {
+			logger.Error("Download", "Failed to mark download as failed", failErr, map[string]string{"id": dl.ID})
+		}
 		runtime.EventsEmit(a.ctx, "download:error", map[string]interface{}{
 			"id":    dl.ID,
 			"error": err.Error(),
@@ -444,12 +462,26 @@ func (a *App) startDownload(dl db.Download) {
 	runtime.EventsEmit(a.ctx, "download:completed", dl.ID)
 
 	// Process more downloads
-	a.processDownloads()
+	go a.processDownloads()
+}
+
+// extractDownloadInfo extracts info from a download record
+func extractDownloadInfo(dl *db.Download) (title, channel, thumbnail string) {
+	if dl.Title != nil {
+		title = *dl.Title
+	}
+	if dl.Channel != nil {
+		channel = *dl.Channel
+	}
+	if dl.ThumbnailURL != nil {
+		thumbnail = *dl.ThumbnailURL
+	}
+	return
 }
 
 // ValidateURL checks if a URL is valid
-func (a *App) ValidateURL(url string) bool {
-	return ytdl.IsValidURL(url)
+func (a *App) ValidateURL(videoURL string) bool {
+	return ytdl.IsValidURL(videoURL)
 }
 
 // addDownloadToLibrary adds a completed download to the video library
@@ -464,7 +496,9 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 	}
 
 	// Get video info if we have the URL and any metadata is missing
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	var videoInfo *ytdl.VideoInfo
 	var err error
 
@@ -474,31 +508,25 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 			logger.Warn("Download", "Could not get video info for library", map[string]string{"error": err.Error()})
 		} else {
 			// Update download with info since we fetched it
-			dl.Title = &videoInfo.Title
-			dl.Channel = &videoInfo.Channel
-			dl.ThumbnailURL = &videoInfo.Thumbnail
-			dl.Duration = &videoInfo.Duration
-			a.db.UpdateDownload(&dl)
+			title := videoInfo.Title
+			channel := videoInfo.Channel
+			thumbnail := videoInfo.Thumbnail
+			duration := videoInfo.Duration
+			dl.Title = &title
+			dl.Channel = &channel
+			dl.ThumbnailURL = &thumbnail
+			dl.Duration = &duration
+			if updateErr := a.db.UpdateDownload(&dl); updateErr != nil {
+				logger.Warn("Download", "Failed to update download info", map[string]string{"error": updateErr.Error()})
+			}
 		}
 	}
 
 	// Get title
-	var title string
-	if dl.Title != nil {
-		title = *dl.Title
-	} else if videoInfo != nil {
-		title = videoInfo.Title
-	} else {
-		title = youtubeID
-	}
+	title := getDownloadTitle(&dl, videoInfo, youtubeID)
 
 	// Determine file extension based on format
-	ext := "mp4"
-	if dl.Quality != nil && *dl.Quality == "audio" {
-		ext = "mp3"
-	} else if dl.FormatID != nil && strings.Contains(*dl.FormatID, "audio") {
-		ext = "mp3"
-	}
+	ext := getDownloadExtension(&dl)
 
 	// Get format ID for finding the specific version
 	formatID := ""
@@ -526,7 +554,7 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 
 	// Check if file is in our managed folder
 	isManaged := a.fm != nil && a.fm.IsManagedFile(filePath)
-	
+
 	libraryMutex.Lock()
 	defer libraryMutex.Unlock()
 
@@ -544,7 +572,7 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 			"file_hash": contentHash,
 		})
 	}
-	
+
 	if existingVideo != nil {
 		// Update existing record instead of creating duplicate
 		logger.Info("Download", "Updating existing video record by hash", map[string]string{
@@ -552,22 +580,22 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 			"youtube_id": youtubeID,
 			"file_hash":  contentHash,
 		})
-		
+
 		existingVideo.FilePath = filePath
 		existingVideo.FileSize = fileSize
 		existingVideo.DownloadedAt = time.Now()
-		
+
 		if err := a.db.UpdateVideo(existingVideo); err != nil {
 			logger.Error("Download", "Failed to update existing video", err, map[string]string{
 				"id": existingVideo.ID,
 			})
 			return
 		}
-		
+
 		runtime.EventsEmit(a.ctx, "library:updated", existingVideo)
 		return
 	}
-	
+
 	// Also check by YouTube ID to find and clean up legacy duplicates
 	existingByID, err := a.db.GetVideosByYoutubeID(youtubeID)
 	if err != nil {
@@ -575,28 +603,28 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 			"youtube_id": youtubeID,
 		})
 	}
-	
+
 	if len(existingByID) > 0 {
 		// Use the most recent entry and delete the rest (cleanup duplicates)
 		logger.Info("Download", "Found existing videos by YouTube ID, cleaning up duplicates", map[string]interface{}{
 			"youtube_id": youtubeID,
 			"count":      len(existingByID),
 		})
-		
+
 		// Update the first (most recent) entry
 		primary := existingByID[0]
 		primary.FilePath = filePath
 		primary.FileSize = fileSize
 		primary.FileHash = contentHash
 		primary.DownloadedAt = time.Now()
-		
+
 		if err := a.db.UpdateVideo(&primary); err != nil {
 			logger.Error("Download", "Failed to update primary video", err, map[string]string{
 				"id": primary.ID,
 			})
 			return
 		}
-		
+
 		// Delete duplicate entries
 		for i := 1; i < len(existingByID); i++ {
 			if err := a.db.DeleteVideoByID(existingByID[i].ID); err != nil {
@@ -609,23 +637,66 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 				})
 			}
 		}
-		
+
 		runtime.EventsEmit(a.ctx, "library:updated", primary)
 		return
 	}
 
 	// Create new video record
+	video := createVideoRecord(&dl, videoInfo, youtubeID, title, filePath, fileSize, contentHash, isManaged)
+
+	// Save to database
+	if err := a.db.CreateVideo(video); err != nil {
+		logger.Error("Download", "Failed to add video to library", err, map[string]string{
+			"youtube_id": youtubeID,
+			"title":      title,
+		})
+		return
+	}
+
+	logger.Info("Download", "Video added to library", map[string]string{
+		"id":         video.ID,
+		"youtube_id": youtubeID,
+		"title":      title,
+	})
+
+	// Emit event to refresh library
+	runtime.EventsEmit(a.ctx, "library:updated", video)
+}
+
+// getDownloadTitle gets the title from download info
+func getDownloadTitle(dl *db.Download, videoInfo *ytdl.VideoInfo, youtubeID string) string {
+	if dl.Title != nil && *dl.Title != "" {
+		return *dl.Title
+	}
+	if videoInfo != nil && videoInfo.Title != "" {
+		return videoInfo.Title
+	}
+	return youtubeID
+}
+
+// getDownloadExtension determines the file extension based on format
+func getDownloadExtension(dl *db.Download) string {
+	if dl.Quality != nil && *dl.Quality == "audio" {
+		return "mp3"
+	}
+	if dl.FormatID != nil && strings.Contains(*dl.FormatID, "audio") {
+		return "mp3"
+	}
+	return "mp4"
+}
+
+// createVideoRecord creates a new video record from download info
+func createVideoRecord(dl *db.Download, videoInfo *ytdl.VideoInfo, youtubeID, title, filePath string, fileSize int64, contentHash string, isManaged bool) *db.Video {
 	video := &db.Video{
-		ID:            uuid.New().String(),
-		YoutubeID:     youtubeID,
-		Title:         title,
-		FilePath:      filePath,
-		FileSize:      fileSize,
-		FileHash:      contentHash, // Unique ID for this specific version
-		IsManaged:     isManaged,
-		DownloadedAt:  time.Now(),
-		WatchPosition: 0,
-		WatchCount:    0,
+		ID:           uuid.New().String(),
+		YoutubeID:    youtubeID,
+		Title:        title,
+		FilePath:     filePath,
+		FileSize:     fileSize,
+		FileHash:     contentHash,
+		IsManaged:    isManaged,
+		DownloadedAt: time.Now(),
 	}
 
 	// Add optional fields
@@ -660,23 +731,7 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		video.Duration = *dl.Duration
 	}
 
-	// Save to database
-	if err := a.db.CreateVideo(video); err != nil {
-		logger.Error("Download", "Failed to add video to library", err, map[string]string{
-			"youtube_id": youtubeID,
-			"title":      title,
-		})
-		return
-	}
-
-	logger.Info("Download", "Video added to library", map[string]string{
-		"id":         video.ID,
-		"youtube_id": youtubeID,
-		"title":      title,
-	})
-
-	// Emit event to refresh library
-	runtime.EventsEmit(a.ctx, "library:updated", video)
+	return video
 }
 
 // extractYoutubeID extracts the YouTube video ID from a URL
@@ -689,7 +744,10 @@ func extractYoutubeID(videoURL string) string {
 	// Handle youtu.be short URLs
 	if strings.Contains(parsedURL.Host, "youtu.be") {
 		path := strings.TrimPrefix(parsedURL.Path, "/")
-		return strings.Split(path, "/")[0]
+		parts := strings.Split(path, "/")
+		if len(parts) > 0 && parts[0] != "" {
+			return parts[0]
+		}
 	}
 
 	// Handle youtube.com URLs
@@ -712,7 +770,7 @@ func extractYoutubeID(videoURL string) string {
 // GetIncompleteDownloads returns all downloads that are not completed (for restoring queue)
 func (a *App) GetIncompleteDownloads() ([]db.Download, error) {
 	if a.db == nil {
-		return nil, nil
+		return nil, fmt.Errorf("database not initialized")
 	}
 	return a.db.GetIncompleteDownloads()
 }
@@ -736,33 +794,29 @@ type DownloadResult struct {
 // This is called by the frontend after it's ready, instead of using events
 func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 	logger := applog.GetLogger()
-	
+
 	if a.db == nil {
 		logger.Warn("Download", "GetDownloadQueue called but db is nil")
-		return nil, nil
+		return nil, fmt.Errorf("database not initialized")
 	}
-	
+
 	downloads, err := a.db.GetIncompleteDownloads()
 	if err != nil {
 		logger.Error("Download", "Failed to get download queue", err)
 		return nil, err
 	}
-	
+
 	if len(downloads) == 0 {
 		logger.Debug("Download", "GetDownloadQueue: no incomplete downloads found")
 		return nil, nil
 	}
-	
+
 	logger.Info("Download", "Returning download queue to frontend", map[string]int{
 		"count": len(downloads),
 	})
-	
+
 	// Reset downloads that were 'downloading' to 'pending' so they can be retried
 	for _, dl := range downloads {
-		logger.Debug("Download", "Checking download status for reset", map[string]string{
-			"id":     dl.ID,
-			"status": dl.Status,
-		})
 		if dl.Status == "downloading" {
 			logger.Info("Download", "Resetting stuck download to pending", map[string]string{
 				"id": dl.ID,
@@ -773,47 +827,50 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 				})
 			} else {
 				dl.Status = "pending"
-				logger.Debug("Download", "Successfully reset download to pending", map[string]string{
-					"id": dl.ID,
-				})
 			}
 		}
 	}
-	
+
 	// Convert to DownloadResult
 	results := make([]DownloadResult, 0, len(downloads))
 	for _, dl := range downloads {
-		result := DownloadResult{
-			ID:        dl.ID,
-			URL:       dl.URL,
-			Status:    dl.Status,
-			Progress:  dl.Progress,
-			YoutubeID: extractYoutubeID(dl.URL),
-		}
-		
-		if dl.Title != nil {
-			result.Title = *dl.Title
-		}
-		if dl.Channel != nil {
-			result.Channel = *dl.Channel
-		}
-		if dl.ThumbnailURL != nil {
-			result.ThumbnailURL = *dl.ThumbnailURL
-		}
-		if dl.FormatID != nil {
-			result.FormatID = *dl.FormatID
-		}
-		if dl.Quality != nil {
-			result.Quality = *dl.Quality
-		}
-		if dl.ErrorMessage != nil {
-			result.ErrorMessage = *dl.ErrorMessage
-		}
-		
+		result := convertDownloadToResult(dl)
 		results = append(results, result)
 	}
-	
+
 	return results, nil
+}
+
+// convertDownloadToResult converts a db.Download to DownloadResult
+func convertDownloadToResult(dl db.Download) DownloadResult {
+	result := DownloadResult{
+		ID:        dl.ID,
+		URL:       dl.URL,
+		Status:    dl.Status,
+		Progress:  dl.Progress,
+		YoutubeID: extractYoutubeID(dl.URL),
+	}
+
+	if dl.Title != nil {
+		result.Title = *dl.Title
+	}
+	if dl.Channel != nil {
+		result.Channel = *dl.Channel
+	}
+	if dl.ThumbnailURL != nil {
+		result.ThumbnailURL = *dl.ThumbnailURL
+	}
+	if dl.FormatID != nil {
+		result.FormatID = *dl.FormatID
+	}
+	if dl.Quality != nil {
+		result.Quality = *dl.Quality
+	}
+	if dl.ErrorMessage != nil {
+		result.ErrorMessage = *dl.ErrorMessage
+	}
+
+	return result
 }
 
 // StartProcessingDownloads tells the backend to start processing the queue
@@ -821,22 +878,12 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 func (a *App) StartProcessingDownloads() {
 	logger := applog.GetLogger()
 	logger.Info("Download", "StartProcessingDownloads called by frontend")
-	
+
 	if a.db == nil {
 		logger.Error("Download", "Cannot start processing - db is nil", fmt.Errorf("database not initialized"))
 		return
 	}
-	
-	// Count pending downloads
-	pending, err := a.db.GetPendingDownloads(100)
-	if err != nil {
-		logger.Error("Download", "Failed to count pending downloads", err)
-	} else {
-		logger.Info("Download", "Found pending downloads", map[string]int{
-			"count": len(pending),
-		})
-	}
-	
+
 	go a.processDownloads()
 }
 
@@ -849,16 +896,16 @@ func (a *App) RestoreDownloadQueue() error {
 // ClearDownloadCache removes all download records from the database
 func (a *App) ClearDownloadCache() error {
 	logger := applog.GetLogger()
-	
+
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
-	
+
 	if err := a.db.ClearAllDownloads(); err != nil {
 		logger.Error("Download", "Failed to clear download cache", err)
 		return err
 	}
-	
+
 	logger.Info("Download", "Download cache cleared")
 	return nil
 }
@@ -866,16 +913,16 @@ func (a *App) ClearDownloadCache() error {
 // ClearCompletedDownloadsCache removes only completed download records
 func (a *App) ClearCompletedDownloadsCache() error {
 	logger := applog.GetLogger()
-	
+
 	if a.db == nil {
-		return nil
+		return fmt.Errorf("database not initialized")
 	}
-	
+
 	if err := a.db.ClearCompletedDownloads(); err != nil {
 		logger.Error("Download", "Failed to clear completed downloads cache", err)
 		return err
 	}
-	
+
 	logger.Info("Download", "Completed downloads cache cleared")
 	return nil
 }

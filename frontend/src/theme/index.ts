@@ -1,4 +1,4 @@
-import { createTheme, MantineColorsTuple } from '@mantine/core';
+import { MantineColorsTuple, createTheme } from '@mantine/core';
 
 // YTed red color palette
 const ytedRed: MantineColorsTuple = [
@@ -32,7 +32,8 @@ export const theme = createTheme({
       '#101113', // 9
     ],
   },
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   fontFamilyMonospace: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
   headings: {
     fontFamily: 'inherit',

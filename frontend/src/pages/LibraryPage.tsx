@@ -1,34 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
 import {
-  TextInput,
-  Group,
-  Stack,
-  Paper,
-  Text,
-  Badge,
   ActionIcon,
-  Tooltip,
-  SimpleGrid,
-  Select,
+  Badge,
   Button,
+  Group,
   Image,
+  Paper,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
+
 import {
-  IconSearch,
-  IconPlayerPlay,
-  IconTrash,
   IconFolder,
   IconGridDots,
   IconList,
+  IconPlayerPlay,
+  IconRefresh,
+  IconSearch,
   IconSortAscending,
   IconSortDescending,
-  IconRefresh,
+  IconTrash,
 } from '@tabler/icons-react';
-import { useLibraryStore, useNotifications } from '../stores';
-import { ListVideos, GetLibraryStats, OpenFolder, OpenFile, DeleteVideo } from '../../wailsjs/go/app/App';
+
+import {
+  DeleteVideo,
+  GetLibraryStats,
+  ListVideos,
+  OpenFile,
+  OpenFolder,
+} from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
+import { useLibraryStore, useNotifications } from '../stores';
 
 export function LibraryPage() {
   const [videos, setVideos] = useState<app.VideoResult[]>([]);
@@ -69,7 +78,7 @@ export function LibraryPage() {
         offset: 0,
       });
       setVideos(result || []);
-      setStoreVideos(result as any || []);
+      setStoreVideos((result as any) || []);
     } catch (err) {
       console.error('Failed to load videos:', err);
     }
@@ -88,10 +97,10 @@ export function LibraryPage() {
     const isManaged = video.file_path?.includes('YTed') || false;
     const fileSize = video.file_size || 0;
     const sizeText = fileSize > 0 ? ` (${formatFileSize(fileSize)})` : '';
-    
+
     confirm({
       title: 'Delete Video?',
-      message: isManaged 
+      message: isManaged
         ? `"${video.title}" will be removed from the library and the file${sizeText} will be deleted from your computer. This action cannot be undone.`
         : `"${video.title}" will be removed from the library. The file will remain on your computer.`,
       confirmLabel: 'Delete',
@@ -143,7 +152,7 @@ export function LibraryPage() {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    
+
     if (days > 0) {
       return `${days}d ${hours}h ${mins}m`;
     }
@@ -178,19 +187,18 @@ export function LibraryPage() {
     <Stack gap="lg">
       <Group justify="space-between">
         <Group gap="sm">
-          <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Library</Text>
+          <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>
+            Library
+          </Text>
           <Tooltip label="Refresh library (sync with disk)">
-            <ActionIcon 
-              variant="light" 
-              onClick={handleRefresh}
-              color="yted"
-            >
+            <ActionIcon variant="light" onClick={handleRefresh} color="yted">
               <IconRefresh size={18} />
             </ActionIcon>
           </Tooltip>
         </Group>
         <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
-          {stats.total_videos} videos • {formatFileSize(stats.total_size)} • {formatTotalDuration(videos.reduce((acc, v) => acc + (v.duration || 0), 0))} total
+          {stats.total_videos} videos • {formatFileSize(stats.total_size)} •{' '}
+          {formatTotalDuration(videos.reduce((acc, v) => acc + (v.duration || 0), 0))} total
         </Text>
       </Group>
 
@@ -206,7 +214,7 @@ export function LibraryPage() {
             placeholder="Search videos..."
             leftSection={<IconSearch size={16} />}
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
+            onChange={e => setSearch(e.currentTarget.value)}
             style={{ flex: 1 }}
             styles={{
               input: {
@@ -217,7 +225,7 @@ export function LibraryPage() {
           />
           <Select
             value={sortBy}
-            onChange={(v) => v && setSortBy(v)}
+            onChange={v => v && setSortBy(v)}
             data={[
               { value: 'date', label: 'Date' },
               { value: 'title', label: 'Title' },
@@ -232,7 +240,7 @@ export function LibraryPage() {
               },
             }}
           />
-          <Tooltip label={sortDesc ? "Descending order" : "Ascending order"}>
+          <Tooltip label={sortDesc ? 'Descending order' : 'Ascending order'}>
             <ActionIcon
               variant={sortDesc ? 'filled' : 'light'}
               onClick={() => setSortDesc(!sortDesc)}
@@ -269,11 +277,13 @@ export function LibraryPage() {
           bg={dark ? '#25262b' : '#fff'}
           style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
         >
-          <Text c={dark ? 'dimmed' : 'gray.6'} ta="center">No videos in library yet.</Text>
+          <Text c={dark ? 'dimmed' : 'gray.6'} ta="center">
+            No videos in library yet.
+          </Text>
         </Paper>
       ) : viewMode === 'grid' ? (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="md">
-          {videos.map((video) => (
+          {videos.map(video => (
             <VideoCard
               key={video.id}
               video={video}
@@ -284,7 +294,7 @@ export function LibraryPage() {
         </SimpleGrid>
       ) : (
         <Stack gap="sm">
-          {videos.map((video) => (
+          {videos.map(video => (
             <VideoListItem
               key={video.id}
               video={video}
@@ -297,7 +307,15 @@ export function LibraryPage() {
     </Stack>
   );
 
-  function VideoCard({ video, onDelete, dark }: { video: app.VideoResult; onDelete: () => void; dark: boolean }) {
+  function VideoCard({
+    video,
+    onDelete,
+    dark,
+  }: {
+    video: app.VideoResult;
+    onDelete: () => void;
+    dark: boolean;
+  }) {
     return (
       <Paper
         withBorder
@@ -321,18 +339,32 @@ export function LibraryPage() {
           </Badge>
         </div>
         <Stack p="sm" gap="xs">
-          <Text size="sm" fw={500} lineClamp={2} c={dark ? '#fff' : '#000'}>{video.title}</Text>
-          <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>{video.channel}</Text>
+          <Text size="sm" fw={500} lineClamp={2} c={dark ? '#fff' : '#000'}>
+            {video.title}
+          </Text>
+          <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+            {video.channel}
+          </Text>
           <Group justify="space-between">
-            <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>{formatFileSize(video.file_size)}</Text>
+            <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+              {formatFileSize(video.file_size)}
+            </Text>
             <Group gap={4}>
               <Tooltip label="Play video">
-                <ActionIcon size="sm" variant="subtle" onClick={() => handlePlayVideo(video.file_path)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => handlePlayVideo(video.file_path)}
+                >
                   <IconPlayerPlay size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Open containing folder">
-                <ActionIcon size="sm" variant="subtle" onClick={() => handleOpenFolder(video.file_path)}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => handleOpenFolder(video.file_path)}
+                >
                   <IconFolder size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -348,7 +380,15 @@ export function LibraryPage() {
     );
   }
 
-  function VideoListItem({ video, onDelete, dark }: { video: app.VideoResult; onDelete: () => void; dark: boolean }) {
+  function VideoListItem({
+    video,
+    onDelete,
+    dark,
+  }: {
+    video: app.VideoResult;
+    onDelete: () => void;
+    dark: boolean;
+  }) {
     return (
       <Paper
         p="sm"
@@ -367,12 +407,20 @@ export function LibraryPage() {
               fallbackSrc="/logo.svg"
             />
             <Stack gap={4}>
-              <Text fw={500} lineClamp={1} c={dark ? '#fff' : '#000'}>{video.title}</Text>
-              <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>{video.channel}</Text>
+              <Text fw={500} lineClamp={1} c={dark ? '#fff' : '#000'}>
+                {video.title}
+              </Text>
+              <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>
+                {video.channel}
+              </Text>
               <Group gap="xs">
                 <Badge size="sm">{formatDuration(video.duration)}</Badge>
-                <Badge size="sm" variant="outline">{formatFileSize(video.file_size)}</Badge>
-                <Badge size="sm" variant="outline">{video.quality}</Badge>
+                <Badge size="sm" variant="outline">
+                  {formatFileSize(video.file_size)}
+                </Badge>
+                <Badge size="sm" variant="outline">
+                  {video.quality}
+                </Badge>
               </Group>
             </Stack>
           </Group>

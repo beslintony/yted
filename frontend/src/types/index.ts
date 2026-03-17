@@ -62,7 +62,15 @@ export interface Video {
 }
 
 export type ThemeMode = 'dark' | 'light' | 'auto';
-export type QualityOption = 'best' | '2160p' | '1440p' | '1080p' | '720p' | '480p' | '360p' | 'audio';
+export type QualityOption =
+  | 'best'
+  | '2160p'
+  | '1440p'
+  | '1080p'
+  | '720p'
+  | '480p'
+  | '360p'
+  | 'audio';
 
 export interface DownloadPreset {
   id: string;
@@ -78,25 +86,25 @@ export interface UserSettings {
   maxConcurrentDownloads: number;
   defaultQuality: QualityOption;
   filenameTemplate: string;
-  
+
   // UI
   theme: ThemeMode;
   accentColor: string;
   sidebarCollapsed: boolean;
-  
+
   // Player
   defaultVolume: number;
   rememberPosition: boolean;
-  
+
   // Network
   speedLimitKbps: number | null;
   proxyUrl: string | null;
-  
+
   // Logging
-  logPath: string;          // Internal log storage path (.logs folder)
-  logExportPath: string;    // Export destination
-  maxLogSessions: number;   // Number of sessions to keep (default: 10)
-  
+  logPath: string; // Internal log storage path (.logs folder)
+  logExportPath: string; // Export destination
+  maxLogSessions: number; // Number of sessions to keep (default: 10)
+
   // Presets
   downloadPresets: DownloadPreset[];
 }
@@ -153,17 +161,59 @@ export const DEFAULT_SETTINGS: UserSettings = {
   rememberPosition: true,
   speedLimitKbps: null,
   proxyUrl: null,
-  logPath: '',          // Will be set to ~/.yted/.logs on init
-  logExportPath: '',    // Will be set to ~/Downloads on init
-  maxLogSessions: 10,   // Default: keep last 10 sessions
+  logPath: '', // Will be set to ~/.yted/.logs on init
+  logExportPath: '', // Will be set to ~/Downloads on init
+  maxLogSessions: 10, // Default: keep last 10 sessions
   downloadPresets: [
-    { id: '1', name: '4K (2160p)', format: 'bestvideo[height<=2160][vcodec^=avc1]+bestaudio/bestvideo[height<=2160]+bestaudio', quality: '2160p', extension: 'mp4' },
-    { id: '2', name: '1440p (2K)', format: 'bestvideo[height<=1440][vcodec^=avc1]+bestaudio/bestvideo[height<=1440]+bestaudio', quality: '1440p', extension: 'mp4' },
-    { id: '3', name: '1080p HD', format: 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio/bestvideo[height<=1080]+bestaudio', quality: '1080p', extension: 'mp4' },
-    { id: '4', name: '720p HD', format: 'bestvideo[height<=720][vcodec^=avc1]+bestaudio/bestvideo[height<=720]+bestaudio', quality: '720p', extension: 'mp4' },
-    { id: '5', name: '480p', format: 'bestvideo[height<=480]+bestaudio/best[height<=480]', quality: '480p', extension: 'mp4' },
-    { id: '6', name: 'Best Available', format: 'bestvideo+bestaudio/best', quality: 'best', extension: 'mp4' },
+    {
+      id: '1',
+      name: '4K (2160p)',
+      format: 'bestvideo[height<=2160][vcodec^=avc1]+bestaudio/bestvideo[height<=2160]+bestaudio',
+      quality: '2160p',
+      extension: 'mp4',
+    },
+    {
+      id: '2',
+      name: '1440p (2K)',
+      format: 'bestvideo[height<=1440][vcodec^=avc1]+bestaudio/bestvideo[height<=1440]+bestaudio',
+      quality: '1440p',
+      extension: 'mp4',
+    },
+    {
+      id: '3',
+      name: '1080p HD',
+      format: 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio/bestvideo[height<=1080]+bestaudio',
+      quality: '1080p',
+      extension: 'mp4',
+    },
+    {
+      id: '4',
+      name: '720p HD',
+      format: 'bestvideo[height<=720][vcodec^=avc1]+bestaudio/bestvideo[height<=720]+bestaudio',
+      quality: '720p',
+      extension: 'mp4',
+    },
+    {
+      id: '5',
+      name: '480p',
+      format: 'bestvideo[height<=480]+bestaudio/best[height<=480]',
+      quality: '480p',
+      extension: 'mp4',
+    },
+    {
+      id: '6',
+      name: 'Best Available',
+      format: 'bestvideo+bestaudio/best',
+      quality: 'best',
+      extension: 'mp4',
+    },
     { id: '7', name: 'Audio Only (MP3)', format: 'bestaudio', quality: 'audio', extension: 'mp3' },
-    { id: '8', name: 'Audio Only (M4A)', format: 'bestaudio[ext=m4a]', quality: 'audio', extension: 'm4a' },
+    {
+      id: '8',
+      name: 'Audio Only (M4A)',
+      format: 'bestaudio[ext=m4a]',
+      quality: 'audio',
+      extension: 'm4a',
+    },
   ],
 };

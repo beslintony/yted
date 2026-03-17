@@ -1,33 +1,43 @@
 import { useEffect, useState } from 'react';
+
 import {
-  Stack,
+  ActionIcon,
+  Badge,
+  Button,
+  ColorInput,
+  Group,
+  Modal,
+  NumberInput,
   Paper,
+  Select,
+  Stack,
+  Switch,
+  Table,
   Text,
   TextInput,
-  NumberInput,
-  Select,
-  Group,
-  Button,
-  Switch,
-  ActionIcon,
   Tooltip,
-  Table,
-  Modal,
-  Badge,
   useMantineColorScheme,
-  ColorInput,
 } from '@mantine/core';
+
 import {
-  IconFolder,
   IconDeviceFloppy,
-  IconRefresh,
-  IconPlus,
-  IconTrash,
   IconEdit,
+  IconFolder,
+  IconPlus,
+  IconRefresh,
+  IconTrash,
 } from '@tabler/icons-react';
-import { useSettingsStore, useNotifications } from '../stores';
-import { GetSettings, SaveSettings, ShowOpenDirectoryDialog, ClearDownloadCache, ClearCompletedDownloadsCache, ClearCompletedDownloads } from '../../wailsjs/go/app/App';
+
+import {
+  ClearCompletedDownloads,
+  ClearCompletedDownloadsCache,
+  ClearDownloadCache,
+  GetSettings,
+  SaveSettings,
+  ShowOpenDirectoryDialog,
+} from '../../wailsjs/go/app/App';
 import { config } from '../../wailsjs/go/models';
+import { useNotifications, useSettingsStore } from '../stores';
 
 export function SettingsPage() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -71,7 +81,7 @@ export function SettingsPage() {
       if (result) {
         setSettings(result);
         setOriginalSettings(JSON.parse(JSON.stringify(result)));
-        
+
         setDownloadPath(result.download_path);
         setMaxConcurrentDownloads(result.max_concurrent_downloads);
         setDefaultQuality(result.default_quality as any);
@@ -86,25 +96,25 @@ export function SettingsPage() {
 
   const handleSave = async () => {
     if (!settings) return;
-    
+
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
-    
+
     try {
       await SaveSettings(settings);
       setOriginalSettings(JSON.parse(JSON.stringify(settings)));
       setHasChanges(false);
       setSaveSuccess(true);
-      
+
       await saveSettingsToStore();
-      
+
       if (settings.theme === 'dark' && colorScheme !== 'dark') {
         setColorScheme('dark');
       } else if (settings.theme === 'light' && colorScheme !== 'light') {
         setColorScheme('light');
       }
-      
+
       success('Settings Saved', 'Your settings have been saved successfully');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
@@ -121,7 +131,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
-        setSettings((s) => s ? { ...s, download_path: path } as any : null);
+        setSettings(s => (s ? ({ ...s, download_path: path } as any) : null));
         setDownloadPath(path);
       }
     } catch (err) {
@@ -133,7 +143,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
-        setSettings((s) => s ? { ...s, log_export_path: path } as any : null);
+        setSettings(s => (s ? ({ ...s, log_export_path: path } as any) : null));
       }
     } catch (err) {
       console.error('Failed to browse:', err);
@@ -144,7 +154,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
-        setSettings((s) => s ? { ...s, log_path: path } as any : null);
+        setSettings(s => (s ? ({ ...s, log_path: path } as any) : null));
       }
     } catch (err) {
       console.error('Failed to browse:', err);
@@ -158,7 +168,7 @@ export function SettingsPage() {
   };
 
   const handleThemeChange = (value: string) => {
-    setSettings((s) => s ? { ...s, theme: value } as any : null);
+    setSettings(s => (s ? ({ ...s, theme: value } as any) : null));
     setTheme(value as any);
     if (value === 'dark') {
       setColorScheme('dark');
@@ -168,7 +178,7 @@ export function SettingsPage() {
   };
 
   const updateSetting = (key: string, value: any) => {
-    setSettings((s) => s ? { ...s, [key]: value } as any : null);
+    setSettings(s => (s ? ({ ...s, [key]: value } as any) : null));
   };
 
   if (loading) {
@@ -182,9 +192,13 @@ export function SettingsPage() {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Settings</Text>
+        <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>
+          Settings
+        </Text>
         {hasChanges && (
-          <Badge color="yellow" variant="filled">Unsaved Changes</Badge>
+          <Badge color="yellow" variant="filled">
+            Unsaved Changes
+          </Badge>
         )}
       </Group>
 
@@ -201,15 +215,17 @@ export function SettingsPage() {
       )}
 
       {/* Downloads */}
-      <Paper 
-        p="md" 
+      <Paper
+        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Downloads</Text>
-          
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+            Downloads
+          </Text>
+
           <Group align="flex-end" gap="sm">
             <TextInput
               label="Download Path"
@@ -238,7 +254,7 @@ export function SettingsPage() {
             label="Max Concurrent Downloads"
             description="Number of simultaneous downloads (1-10)"
             value={settings.max_concurrent_downloads}
-            onChange={(v) => updateSetting('max_concurrent_downloads', v || 1)}
+            onChange={v => updateSetting('max_concurrent_downloads', v || 1)}
             min={1}
             max={10}
             w={200}
@@ -254,7 +270,7 @@ export function SettingsPage() {
             label="Default Quality"
             description="Preferred quality for new downloads"
             value={settings.default_quality}
-            onChange={(v) => v && updateSetting('default_quality', v)}
+            onChange={v => v && updateSetting('default_quality', v)}
             data={[
               { value: 'best', label: 'Best Quality' },
               { value: '1080p', label: '1080p' },
@@ -276,7 +292,7 @@ export function SettingsPage() {
             label="Filename Template"
             description="Template for output filenames (yt-dlp format)"
             value={settings.filename_template}
-            onChange={(e) => updateSetting('filename_template', e.currentTarget.value)}
+            onChange={e => updateSetting('filename_template', e.currentTarget.value)}
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
@@ -288,15 +304,17 @@ export function SettingsPage() {
       </Paper>
 
       {/* Download Presets */}
-      <Paper 
-        p="md" 
+      <Paper
+        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
           <Group justify="space-between">
-            <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Download Presets</Text>
+            <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+              Download Presets
+            </Text>
             <Button
               size="sm"
               leftSection={<IconPlus size={16} />}
@@ -321,13 +339,15 @@ export function SettingsPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {settings.download_presets?.map((preset) => (
+              {settings.download_presets?.map(preset => (
                 <Table.Tr key={preset.id}>
                   <Table.Td c={dark ? '#fff' : '#000'}>{preset.name}</Table.Td>
                   <Table.Td>
                     <code style={{ color: dark ? '#c1c2c5' : '#495057' }}>{preset.format}</code>
                   </Table.Td>
-                  <Table.Td><Badge color="yted">{preset.quality}</Badge></Table.Td>
+                  <Table.Td>
+                    <Badge color="yted">{preset.quality}</Badge>
+                  </Table.Td>
                   <Table.Td c={dark ? '#c1c2c5' : '#495057'}>{preset.extension}</Table.Td>
                   <Table.Td>
                     <Group gap={4}>
@@ -347,7 +367,9 @@ export function SettingsPage() {
                           size="sm"
                           color="red"
                           onClick={() => {
-                            const newPresets = settings.download_presets.filter((p) => p.id !== preset.id);
+                            const newPresets = settings.download_presets.filter(
+                              p => p.id !== preset.id
+                            );
                             updateSetting('download_presets', newPresets);
                           }}
                         >
@@ -364,19 +386,21 @@ export function SettingsPage() {
       </Paper>
 
       {/* UI */}
-      <Paper 
-        p="md" 
+      <Paper
+        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>UI</Text>
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+            UI
+          </Text>
 
           <Select
             label="Theme"
             value={settings.theme}
-            onChange={(v) => v && handleThemeChange(v)}
+            onChange={v => v && handleThemeChange(v)}
             data={[
               { value: 'dark', label: 'Dark' },
               { value: 'light', label: 'Light' },
@@ -394,14 +418,14 @@ export function SettingsPage() {
           <ColorInput
             label="Accent Color"
             value={settings.accent_color}
-            onChange={(v) => updateSetting('accent_color', v)}
+            onChange={v => updateSetting('accent_color', v)}
             w={200}
           />
 
           <Switch
             label="Collapse Sidebar"
             checked={settings.sidebar_collapsed}
-            onChange={(e) => {
+            onChange={e => {
               updateSetting('sidebar_collapsed', e.currentTarget.checked);
               toggleSidebar();
             }}
@@ -415,19 +439,21 @@ export function SettingsPage() {
       </Paper>
 
       {/* Player */}
-      <Paper 
-        p="md" 
+      <Paper
+        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Player</Text>
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+            Player
+          </Text>
 
           <NumberInput
             label="Default Volume"
             value={settings.default_volume}
-            onChange={(v) => updateSetting('default_volume', v || 80)}
+            onChange={v => updateSetting('default_volume', v || 80)}
             min={0}
             max={100}
             w={200}
@@ -442,7 +468,7 @@ export function SettingsPage() {
           <Switch
             label="Remember Watch Position"
             checked={settings.remember_position}
-            onChange={(e) => updateSetting('remember_position', e.currentTarget.checked)}
+            onChange={e => updateSetting('remember_position', e.currentTarget.checked)}
             styles={{
               label: {
                 color: dark ? '#c1c2c5' : '#495057',
@@ -453,15 +479,17 @@ export function SettingsPage() {
       </Paper>
 
       {/* Logging */}
-      <Paper 
-        p="md" 
+      <Paper
+        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Logging</Text>
-          
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+            Logging
+          </Text>
+
           <Group align="flex-end" gap="sm">
             <TextInput
               label="Log Storage Path"
@@ -490,7 +518,7 @@ export function SettingsPage() {
             label="Max Log Sessions"
             description="Number of log sessions to keep (1-100). Each session is one app start."
             value={settings.max_log_sessions || 10}
-            onChange={(v) => updateSetting('max_log_sessions', v || 10)}
+            onChange={v => updateSetting('max_log_sessions', v || 10)}
             min={1}
             max={100}
             w={200}
@@ -501,7 +529,7 @@ export function SettingsPage() {
               },
             }}
           />
-          
+
           <Group align="flex-end" gap="sm">
             <TextInput
               label="Log Export Path"
@@ -529,28 +557,31 @@ export function SettingsPage() {
       </Paper>
 
       {/* Cache Management */}
-      <Paper 
-        p="md" 
+      <Paper
+        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>Cache Management</Text>
+          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+            Cache Management
+          </Text>
           <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
             Clear cached data to free up space or fix issues. This action cannot be undone.
           </Text>
-          
+
           <Group gap="sm">
             <Tooltip label="Clear all download queue history">
-              <Button 
-                variant="light" 
+              <Button
+                variant="light"
                 color="orange"
                 leftSection={<IconTrash size={16} />}
                 onClick={() => {
                   confirm({
                     title: 'Clear Download Cache?',
-                    message: 'This will remove ALL pending and completed downloads from the database. This action cannot be undone.',
+                    message:
+                      'This will remove ALL pending and completed downloads from the database. This action cannot be undone.',
                     confirmLabel: 'Clear All',
                     confirmColor: 'orange',
                     onConfirm: async () => {
@@ -567,16 +598,17 @@ export function SettingsPage() {
                 Clear Download Cache
               </Button>
             </Tooltip>
-            
+
             <Tooltip label="Clear only completed downloads from history">
-              <Button 
-                variant="light" 
+              <Button
+                variant="light"
                 color="gray"
                 leftSection={<IconTrash size={16} />}
                 onClick={() => {
                   confirm({
                     title: 'Clear Completed Downloads?',
-                    message: 'This will remove completed download records from the database. Active downloads will not be affected.',
+                    message:
+                      'This will remove completed download records from the database. Active downloads will not be affected.',
                     confirmLabel: 'Clear Completed',
                     confirmColor: 'orange',
                     onConfirm: async () => {
@@ -584,7 +616,10 @@ export function SettingsPage() {
                         await ClearCompletedDownloadsCache();
                         success('Cache Cleared', 'Completed downloads cache has been cleared');
                       } catch (err: any) {
-                        error('Clear Failed', 'Failed to clear completed downloads: ' + err?.message);
+                        error(
+                          'Clear Failed',
+                          'Failed to clear completed downloads: ' + err?.message
+                        );
                       }
                     },
                   });
@@ -595,14 +630,15 @@ export function SettingsPage() {
             </Tooltip>
 
             <Tooltip label="Clear completed downloads from queue">
-              <Button 
-                variant="light" 
+              <Button
+                variant="light"
                 color="gray"
                 leftSection={<IconTrash size={16} />}
                 onClick={() => {
                   confirm({
                     title: 'Clear Queue History?',
-                    message: 'This will remove completed downloads from the queue view. Downloads will remain in the library.',
+                    message:
+                      'This will remove completed downloads from the queue view. Downloads will remain in the library.',
                     confirmLabel: 'Clear Queue',
                     confirmColor: 'gray',
                     onConfirm: async () => {
@@ -626,17 +662,17 @@ export function SettingsPage() {
       {/* Actions */}
       <Group justify="flex-end">
         {hasChanges && (
-          <Button 
-            variant="light" 
-            leftSection={<IconRefresh size={16} />} 
+          <Button
+            variant="light"
+            leftSection={<IconRefresh size={16} />}
             onClick={handleReset}
             color="gray"
           >
             Reset
           </Button>
         )}
-        <Button 
-          leftSection={<IconDeviceFloppy size={16} />} 
+        <Button
+          leftSection={<IconDeviceFloppy size={16} />}
           onClick={handleSave}
           loading={saving}
           disabled={!hasChanges}
@@ -647,19 +683,17 @@ export function SettingsPage() {
       </Group>
 
       {/* Preset Modal */}
-      <Modal 
-        opened={presetModalOpen} 
-        onClose={() => setPresetModalOpen(false)} 
+      <Modal
+        opened={presetModalOpen}
+        onClose={() => setPresetModalOpen(false)}
         title={editingPreset ? 'Edit Preset' : 'Add Preset'}
       >
         <PresetForm
           preset={editingPreset}
-          onSave={(preset) => {
+          onSave={preset => {
             const currentPresets = settings.download_presets || [];
             if (editingPreset) {
-              const updatedPresets = currentPresets.map((p) =>
-                p.id === preset.id ? preset : p
-              );
+              const updatedPresets = currentPresets.map(p => (p.id === preset.id ? preset : p));
               updateSetting('download_presets', updatedPresets);
             } else {
               const newPreset = { ...preset, id: crypto.randomUUID() };
@@ -700,19 +734,19 @@ function PresetForm({
       <TextInput
         label="Name"
         value={name}
-        onChange={(e) => setName(e.currentTarget.value)}
+        onChange={e => setName(e.currentTarget.value)}
         placeholder="e.g., 1080p Video"
       />
       <TextInput
         label="Format"
         value={format}
-        onChange={(e) => setFormat(e.currentTarget.value)}
+        onChange={e => setFormat(e.currentTarget.value)}
         placeholder="e.g., bestvideo[height<=1080]+bestaudio"
       />
       <Select
         label="Quality"
         value={quality}
-        onChange={(v) => v && setQuality(v)}
+        onChange={v => v && setQuality(v)}
         data={[
           { value: 'best', label: 'Best' },
           { value: '1080p', label: '1080p' },
@@ -724,19 +758,23 @@ function PresetForm({
       <TextInput
         label="Extension"
         value={extension}
-        onChange={(e) => setExtension(e.currentTarget.value)}
+        onChange={e => setExtension(e.currentTarget.value)}
         placeholder="e.g., mp4"
       />
       <Group justify="flex-end" mt="md">
-        <Button variant="light" onClick={onCancel}>Cancel</Button>
+        <Button variant="light" onClick={onCancel}>
+          Cancel
+        </Button>
         <Button
-          onClick={() => onSave({
-            id: preset?.id || '',
-            name,
-            format,
-            quality,
-            extension,
-          } as any)}
+          onClick={() =>
+            onSave({
+              id: preset?.id || '',
+              name,
+              format,
+              quality,
+              extension,
+            } as any)
+          }
           disabled={!name || !format}
           color="yted"
         >
