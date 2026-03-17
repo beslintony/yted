@@ -76,6 +76,7 @@ func (db *DB) migrate() error {
 			thumbnail_url TEXT,
 			format_id TEXT,
 			quality TEXT,
+			duration INTEGER,
 			error_message TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			started_at DATETIME,
@@ -91,6 +92,7 @@ func (db *DB) migrate() error {
 		// Schema migrations for existing databases
 		`ALTER TABLE videos ADD COLUMN file_hash TEXT`,
 		`ALTER TABLE videos ADD COLUMN is_managed BOOLEAN DEFAULT 1`,
+		`ALTER TABLE downloads ADD COLUMN duration INTEGER`,
 	}
 
 	for _, migration := range migrations {
