@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+
 import { Download, DownloadStatus, VideoInfo, VideoFormat } from '../types';
 
 interface DownloadState {

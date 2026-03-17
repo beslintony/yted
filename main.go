@@ -21,17 +21,17 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:            "YTed",
-		Width:            1280,
-		Height:           800,
-		MinWidth:         800,
-		MinHeight:        600,
-		DisableResize:    false,
-		Fullscreen:       false,
-		Frameless:        false,
-		StartHidden:      false,
+		Title:             "YTed",
+		Width:             1280,
+		Height:            800,
+		MinWidth:          800,
+		MinHeight:         600,
+		DisableResize:     false,
+		Fullscreen:        false,
+		Frameless:         false,
+		StartHidden:       false,
 		HideWindowOnClose: false,
-		BackgroundColour: &options.RGBA{R: 18, G: 18, B: 18, A: 255},
+		BackgroundColour:  &options.RGBA{R: 18, G: 18, B: 18, A: 255},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -48,9 +48,9 @@ func main() {
 		},
 		// Windows platform specific options
 		Windows: &windows.Options{
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
-			DisableWindowIcon:    false,
+			WebviewIsTransparent:              false,
+			WindowIsTranslucent:               false,
+			DisableWindowIcon:                 false,
 			DisableFramelessWindowDecorations: false,
 		},
 		// Mac platform specific options

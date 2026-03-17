@@ -111,32 +111,32 @@ func (db *DB) backupDatabase() (string, error) {
 	if db.dbPath == "" {
 		return "", fmt.Errorf("cannot determine database path")
 	}
-	
+
 	backupPath := db.dbPath + ".bak"
-	
+
 	// Check if backup already exists (don't overwrite existing backup)
 	if _, err := os.Stat(backupPath); err == nil {
 		// Backup already exists, create a timestamped backup
 		backupPath = fmt.Sprintf("%s.%s.bak", db.dbPath, time.Now().Format("20060102_150405"))
 	}
-	
+
 	// Copy database file
 	source, err := os.Open(db.dbPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open database for backup: %w", err)
 	}
 	defer source.Close()
-	
+
 	destination, err := os.Create(backupPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create backup file: %w", err)
 	}
 	defer destination.Close()
-	
+
 	if _, err := io.Copy(destination, source); err != nil {
 		return "", fmt.Errorf("failed to copy database: %w", err)
 	}
-	
+
 	return backupPath, nil
 }
 
@@ -257,41 +257,41 @@ func (db *DB) migrateSchema() error {
 
 // Video represents a downloaded video
 type Video struct {
-	ID             string    `json:"id"`
-	YoutubeID      string    `json:"youtube_id"`
-	Title          string    `json:"title"`
-	Channel        string    `json:"channel"`
-	ChannelID      string    `json:"channel_id"`
-	Duration       int       `json:"duration"`
-	Description    string    `json:"description"`
-	ThumbnailURL   string    `json:"thumbnail_url"`
-	FilePath       string    `json:"file_path"`
-	FileSize       int64     `json:"file_size"`
-	FileHash       string    `json:"file_hash"`    // Unique content ID: YouTube ID + Format (allows multiple versions)
-	IsManaged      bool      `json:"is_managed"`   // Whether file is in YTed managed folder
-	Format         string    `json:"format"`
-	Quality        string    `json:"quality"`
-	DownloadedAt   time.Time `json:"downloaded_at"`
-	WatchPosition  int       `json:"watch_position"`
-	WatchCount     int       `json:"watch_count"`
+	ID            string    `json:"id"`
+	YoutubeID     string    `json:"youtube_id"`
+	Title         string    `json:"title"`
+	Channel       string    `json:"channel"`
+	ChannelID     string    `json:"channel_id"`
+	Duration      int       `json:"duration"`
+	Description   string    `json:"description"`
+	ThumbnailURL  string    `json:"thumbnail_url"`
+	FilePath      string    `json:"file_path"`
+	FileSize      int64     `json:"file_size"`
+	FileHash      string    `json:"file_hash"`  // Unique content ID: YouTube ID + Format (allows multiple versions)
+	IsManaged     bool      `json:"is_managed"` // Whether file is in YTed managed folder
+	Format        string    `json:"format"`
+	Quality       string    `json:"quality"`
+	DownloadedAt  time.Time `json:"downloaded_at"`
+	WatchPosition int       `json:"watch_position"`
+	WatchCount    int       `json:"watch_count"`
 }
 
 // Download represents a download job
 type Download struct {
-	ID            string     `json:"id"`
-	URL           string     `json:"url"`
-	Status        string     `json:"status"`
-	Progress      float64    `json:"progress"`
-	Title         *string    `json:"title"`
-	Channel       *string    `json:"channel"`
-	ThumbnailURL  *string    `json:"thumbnail_url"`
-	FormatID      *string    `json:"format_id"`
-	Quality       *string    `json:"quality"`
-	Duration      *int       `json:"duration"`
-	ErrorMessage  *string    `json:"error_message"`
-	CreatedAt     time.Time  `json:"created_at"`
-	StartedAt     *time.Time `json:"started_at"`
-	CompletedAt   *time.Time `json:"completed_at"`
+	ID           string     `json:"id"`
+	URL          string     `json:"url"`
+	Status       string     `json:"status"`
+	Progress     float64    `json:"progress"`
+	Title        *string    `json:"title"`
+	Channel      *string    `json:"channel"`
+	ThumbnailURL *string    `json:"thumbnail_url"`
+	FormatID     *string    `json:"format_id"`
+	Quality      *string    `json:"quality"`
+	Duration     *int       `json:"duration"`
+	ErrorMessage *string    `json:"error_message"`
+	CreatedAt    time.Time  `json:"created_at"`
+	StartedAt    *time.Time `json:"started_at"`
+	CompletedAt  *time.Time `json:"completed_at"`
 }
 
 // format helpers for nullable fields

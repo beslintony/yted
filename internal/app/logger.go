@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"time"
-	
+
 	"yted/internal/config"
 	"yted/internal/log"
 )
@@ -22,7 +22,7 @@ type LogEntry struct {
 func (a *App) GetLogs(count int) []LogEntry {
 	logger := log.GetLogger()
 	entries := logger.GetRecentEntries(count)
-	
+
 	result := make([]LogEntry, len(entries))
 	for i, entry := range entries {
 		result[i] = LogEntry{
@@ -33,7 +33,7 @@ func (a *App) GetLogs(count int) []LogEntry {
 			Error:     entry.Error,
 		}
 	}
-	
+
 	return result
 }
 
@@ -41,7 +41,7 @@ func (a *App) GetLogs(count int) []LogEntry {
 func (a *App) GetAllLogs() []LogEntry {
 	logger := log.GetLogger()
 	entries := logger.GetAllEntries()
-	
+
 	result := make([]LogEntry, len(entries))
 	for i, entry := range entries {
 		result[i] = LogEntry{
@@ -52,7 +52,7 @@ func (a *App) GetAllLogs() []LogEntry {
 			Error:     entry.Error,
 		}
 	}
-	
+
 	return result
 }
 
@@ -65,17 +65,17 @@ func (a *App) ClearLogs() {
 // ExportLogs exports logs to a file
 func (a *App) ExportLogs(customPath string) error {
 	logger := log.GetLogger()
-	
+
 	// Use custom path if provided, otherwise use configured log export path
 	exportPath := customPath
 	if exportPath == "" && a.config != nil {
 		exportPath = a.config.Get().LogExportPath
 	}
-	
+
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	filename := filepath.Join(exportPath, fmt.Sprintf("yted-logs-%s.json", timestamp))
-	
+
 	return logger.Export(filename)
 }
 
@@ -92,10 +92,10 @@ func (a *App) SetLogExportPath(path string) error {
 	if a.config == nil {
 		return nil
 	}
-	
+
 	a.config.Update(func(cfg *config.Config) {
 		cfg.LogExportPath = path
 	})
-	
+
 	return a.config.Save()
 }

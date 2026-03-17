@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 
 import {
   ActionIcon,
@@ -18,7 +17,6 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
-
 import {
   IconDeviceFloppy,
   IconEdit,
@@ -27,6 +25,7 @@ import {
   IconRefresh,
   IconTrash,
 } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
 
 import {
   ClearCompletedDownloads,
@@ -38,6 +37,7 @@ import {
 } from '../../wailsjs/go/app/App';
 import { config } from '../../wailsjs/go/models';
 import { useNotifications, useSettingsStore } from '../stores';
+import { QualityOption, ThemeMode } from '../types';
 
 export function SettingsPage() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -60,12 +60,13 @@ export function SettingsPage() {
     saveSettings: saveSettingsToStore,
   } = useSettingsStore();
 
-  const { success, error, warning, confirm } = useNotifications();
+  const { success, error, confirm } = useNotifications();
 
   const dark = colorScheme === 'dark';
 
   useEffect(() => {
     loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -84,8 +85,8 @@ export function SettingsPage() {
 
         setDownloadPath(result.download_path);
         setMaxConcurrentDownloads(result.max_concurrent_downloads);
-        setDefaultQuality(result.default_quality as any);
-        setTheme(result.theme as any);
+        setDefaultQuality(result.default_quality as QualityOption);
+        setTheme(result.theme as ThemeMode);
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -192,7 +193,7 @@ export function SettingsPage() {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>
+        <Text c={dark ? '#fff' : '#000'} fw={700} size="xl">
           Settings
         </Text>
         {hasChanges && (
@@ -203,35 +204,34 @@ export function SettingsPage() {
       </Group>
 
       {saveError && (
-        <Paper p="sm" withBorder bg="#2c1b1b" style={{ borderColor: '#c92a2a' }}>
+        <Paper withBorder bg="#2c1b1b" p="sm" style={{ borderColor: '#c92a2a' }}>
           <Text c="red">{saveError}</Text>
         </Paper>
       )}
 
       {saveSuccess && (
-        <Paper p="sm" withBorder bg="#1b2c1b" style={{ borderColor: '#2ac92a' }}>
+        <Paper withBorder bg="#1b2c1b" p="sm" style={{ borderColor: '#2ac92a' }}>
           <Text c="green">Settings saved successfully!</Text>
         </Paper>
       )}
 
       {/* Downloads */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
             Downloads
           </Text>
 
           <Group align="flex-end" gap="sm">
             <TextInput
-              label="Download Path"
-              description="Where downloaded videos are saved"
-              value={settings.download_path}
               readOnly
+              description="Where downloaded videos are saved"
+              label="Download Path"
               style={{ flex: 1 }}
               styles={{
                 input: {
@@ -239,38 +239,35 @@ export function SettingsPage() {
                   color: dark ? '#c1c2c5' : '#212529',
                 },
               }}
+              value={settings.download_path}
             />
             <Button
-              variant="light"
-              leftSection={<IconFolder size={16} />}
-              onClick={handleBrowseDownloadPath}
               color="yted"
+              leftSection={<IconFolder size={16} />}
+              variant="light"
+              onClick={handleBrowseDownloadPath}
             >
               Browse
             </Button>
           </Group>
 
           <NumberInput
-            label="Max Concurrent Downloads"
             description="Number of simultaneous downloads (1-10)"
-            value={settings.max_concurrent_downloads}
-            onChange={v => updateSetting('max_concurrent_downloads', v || 1)}
-            min={1}
+            label="Max Concurrent Downloads"
             max={10}
-            w={200}
+            min={1}
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
+            value={settings.max_concurrent_downloads}
+            w={200}
+            onChange={v => updateSetting('max_concurrent_downloads', v || 1)}
           />
 
           <Select
-            label="Default Quality"
-            description="Preferred quality for new downloads"
-            value={settings.default_quality}
-            onChange={v => v && updateSetting('default_quality', v)}
             data={[
               { value: 'best', label: 'Best Quality' },
               { value: '1080p', label: '1080p' },
@@ -279,50 +276,54 @@ export function SettingsPage() {
               { value: '360p', label: '360p' },
               { value: 'audio', label: 'Audio Only' },
             ]}
-            w={200}
+            description="Preferred quality for new downloads"
+            label="Default Quality"
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
+            value={settings.default_quality}
+            w={200}
+            onChange={v => v && updateSetting('default_quality', v)}
           />
 
           <TextInput
-            label="Filename Template"
             description="Template for output filenames (yt-dlp format)"
-            value={settings.filename_template}
-            onChange={e => updateSetting('filename_template', e.currentTarget.value)}
+            label="Filename Template"
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
+            value={settings.filename_template}
+            onChange={e => updateSetting('filename_template', e.currentTarget.value)}
           />
         </Stack>
       </Paper>
 
       {/* Download Presets */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
           <Group justify="space-between">
-            <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+            <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
               Download Presets
             </Text>
             <Button
-              size="sm"
+              color="yted"
               leftSection={<IconPlus size={16} />}
+              size="sm"
               onClick={() => {
                 setEditingPreset(null);
                 setPresetModalOpen(true);
               }}
-              color="yted"
             >
               Add Preset
             </Button>
@@ -364,8 +365,8 @@ export function SettingsPage() {
                       </Tooltip>
                       <Tooltip label="Delete">
                         <ActionIcon
-                          size="sm"
                           color="red"
+                          size="sm"
                           onClick={() => {
                             const newPresets = settings.download_presets.filter(
                               p => p.id !== preset.id
@@ -387,52 +388,52 @@ export function SettingsPage() {
 
       {/* UI */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
             UI
           </Text>
 
           <Select
-            label="Theme"
-            value={settings.theme}
-            onChange={v => v && handleThemeChange(v)}
             data={[
               { value: 'dark', label: 'Dark' },
               { value: 'light', label: 'Light' },
               { value: 'auto', label: 'Auto' },
             ]}
-            w={200}
+            label="Theme"
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
+            value={settings.theme}
+            w={200}
+            onChange={v => v && handleThemeChange(v)}
           />
 
           <ColorInput
             label="Accent Color"
             value={settings.accent_color}
-            onChange={v => updateSetting('accent_color', v)}
             w={200}
+            onChange={v => updateSetting('accent_color', v)}
           />
 
           <Switch
-            label="Collapse Sidebar"
             checked={settings.sidebar_collapsed}
-            onChange={e => {
-              updateSetting('sidebar_collapsed', e.currentTarget.checked);
-              toggleSidebar();
-            }}
+            label="Collapse Sidebar"
             styles={{
               label: {
                 color: dark ? '#c1c2c5' : '#495057',
               },
+            }}
+            onChange={e => {
+              updateSetting('sidebar_collapsed', e.currentTarget.checked);
+              toggleSidebar();
             }}
           />
         </Stack>
@@ -440,62 +441,61 @@ export function SettingsPage() {
 
       {/* Player */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
             Player
           </Text>
 
           <NumberInput
             label="Default Volume"
-            value={settings.default_volume}
-            onChange={v => updateSetting('default_volume', v || 80)}
-            min={0}
             max={100}
-            w={200}
+            min={0}
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
+            value={settings.default_volume}
+            w={200}
+            onChange={v => updateSetting('default_volume', v || 80)}
           />
 
           <Switch
-            label="Remember Watch Position"
             checked={settings.remember_position}
-            onChange={e => updateSetting('remember_position', e.currentTarget.checked)}
+            label="Remember Watch Position"
             styles={{
               label: {
                 color: dark ? '#c1c2c5' : '#495057',
               },
             }}
+            onChange={e => updateSetting('remember_position', e.currentTarget.checked)}
           />
         </Stack>
       </Paper>
 
       {/* Logging */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
             Logging
           </Text>
 
           <Group align="flex-end" gap="sm">
             <TextInput
-              label="Log Storage Path"
-              description="Where application logs are stored (default: ~/.yted/.logs)"
-              value={settings.log_path || ''}
               readOnly
+              description="Where application logs are stored (default: ~/.yted/.logs)"
+              label="Log Storage Path"
               style={{ flex: 1 }}
               styles={{
                 input: {
@@ -503,39 +503,39 @@ export function SettingsPage() {
                   color: dark ? '#c1c2c5' : '#212529',
                 },
               }}
+              value={settings.log_path || ''}
             />
             <Button
-              variant="light"
-              leftSection={<IconFolder size={16} />}
-              onClick={handleBrowseLogPath}
               color="yted"
+              leftSection={<IconFolder size={16} />}
+              variant="light"
+              onClick={handleBrowseLogPath}
             >
               Browse
             </Button>
           </Group>
 
           <NumberInput
-            label="Max Log Sessions"
             description="Number of log sessions to keep (1-100). Each session is one app start."
-            value={settings.max_log_sessions || 10}
-            onChange={v => updateSetting('max_log_sessions', v || 10)}
-            min={1}
+            label="Max Log Sessions"
             max={100}
-            w={200}
+            min={1}
             styles={{
               input: {
                 background: dark ? '#1a1b1e' : '#f8f9fa',
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
+            value={settings.max_log_sessions || 10}
+            w={200}
+            onChange={v => updateSetting('max_log_sessions', v || 10)}
           />
 
           <Group align="flex-end" gap="sm">
             <TextInput
-              label="Log Export Path"
-              description="Where exported logs are saved"
-              value={settings.log_export_path || ''}
               readOnly
+              description="Where exported logs are saved"
+              label="Log Export Path"
               style={{ flex: 1 }}
               styles={{
                 input: {
@@ -543,12 +543,13 @@ export function SettingsPage() {
                   color: dark ? '#c1c2c5' : '#212529',
                 },
               }}
+              value={settings.log_export_path || ''}
             />
             <Button
-              variant="light"
-              leftSection={<IconFolder size={16} />}
-              onClick={handleBrowseLogExportPath}
               color="yted"
+              leftSection={<IconFolder size={16} />}
+              variant="light"
+              onClick={handleBrowseLogExportPath}
             >
               Browse
             </Button>
@@ -558,25 +559,25 @@ export function SettingsPage() {
 
       {/* Cache Management */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
             Cache Management
           </Text>
-          <Text size="sm" c={dark ? 'dimmed' : 'gray.6'}>
+          <Text c={dark ? 'dimmed' : 'gray.6'} size="sm">
             Clear cached data to free up space or fix issues. This action cannot be undone.
           </Text>
 
           <Group gap="sm">
             <Tooltip label="Clear all download queue history">
               <Button
-                variant="light"
                 color="orange"
                 leftSection={<IconTrash size={16} />}
+                variant="light"
                 onClick={() => {
                   confirm({
                     title: 'Clear Download Cache?',
@@ -601,9 +602,9 @@ export function SettingsPage() {
 
             <Tooltip label="Clear only completed downloads from history">
               <Button
-                variant="light"
                 color="gray"
                 leftSection={<IconTrash size={16} />}
+                variant="light"
                 onClick={() => {
                   confirm({
                     title: 'Clear Completed Downloads?',
@@ -631,9 +632,9 @@ export function SettingsPage() {
 
             <Tooltip label="Clear completed downloads from queue">
               <Button
-                variant="light"
                 color="gray"
                 leftSection={<IconTrash size={16} />}
+                variant="light"
                 onClick={() => {
                   confirm({
                     title: 'Clear Queue History?',
@@ -663,20 +664,20 @@ export function SettingsPage() {
       <Group justify="flex-end">
         {hasChanges && (
           <Button
-            variant="light"
-            leftSection={<IconRefresh size={16} />}
-            onClick={handleReset}
             color="gray"
+            leftSection={<IconRefresh size={16} />}
+            variant="light"
+            onClick={handleReset}
           >
             Reset
           </Button>
         )}
         <Button
-          leftSection={<IconDeviceFloppy size={16} />}
-          onClick={handleSave}
-          loading={saving}
-          disabled={!hasChanges}
           color="yted"
+          disabled={!hasChanges}
+          leftSection={<IconDeviceFloppy size={16} />}
+          loading={saving}
+          onClick={handleSave}
         >
           Save Settings
         </Button>
@@ -685,11 +686,12 @@ export function SettingsPage() {
       {/* Preset Modal */}
       <Modal
         opened={presetModalOpen}
-        onClose={() => setPresetModalOpen(false)}
         title={editingPreset ? 'Edit Preset' : 'Add Preset'}
+        onClose={() => setPresetModalOpen(false)}
       >
         <PresetForm
           preset={editingPreset}
+          onCancel={() => setPresetModalOpen(false)}
           onSave={preset => {
             const currentPresets = settings.download_presets || [];
             if (editingPreset) {
@@ -701,7 +703,6 @@ export function SettingsPage() {
             }
             setPresetModalOpen(false);
           }}
-          onCancel={() => setPresetModalOpen(false)}
         />
       </Modal>
     </Stack>
@@ -733,20 +734,17 @@ function PresetForm({
     <Stack gap="md">
       <TextInput
         label="Name"
+        placeholder="e.g., 1080p Video"
         value={name}
         onChange={e => setName(e.currentTarget.value)}
-        placeholder="e.g., 1080p Video"
       />
       <TextInput
         label="Format"
+        placeholder="e.g., bestvideo[height<=1080]+bestaudio"
         value={format}
         onChange={e => setFormat(e.currentTarget.value)}
-        placeholder="e.g., bestvideo[height<=1080]+bestaudio"
       />
       <Select
-        label="Quality"
-        value={quality}
-        onChange={v => v && setQuality(v)}
         data={[
           { value: 'best', label: 'Best' },
           { value: '1080p', label: '1080p' },
@@ -754,18 +752,23 @@ function PresetForm({
           { value: '480p', label: '480p' },
           { value: 'audio', label: 'Audio' },
         ]}
+        label="Quality"
+        value={quality}
+        onChange={v => v && setQuality(v)}
       />
       <TextInput
         label="Extension"
+        placeholder="e.g., mp4"
         value={extension}
         onChange={e => setExtension(e.currentTarget.value)}
-        placeholder="e.g., mp4"
       />
       <Group justify="flex-end" mt="md">
         <Button variant="light" onClick={onCancel}>
           Cancel
         </Button>
         <Button
+          color="yted"
+          disabled={!name || !format}
           onClick={() =>
             onSave({
               id: preset?.id || '',
@@ -775,8 +778,6 @@ function PresetForm({
               extension,
             } as any)
           }
-          disabled={!name || !format}
-          color="yted"
         >
           Save
         </Button>

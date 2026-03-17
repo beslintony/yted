@@ -12,13 +12,13 @@ import (
 
 // CacheInfo provides information about cache status
 type CacheInfo struct {
-	DownloadCount       int   `json:"download_count"`
-	CompletedCount      int   `json:"completed_count"`
-	PendingCount        int   `json:"pending_count"`
-	VideoCount          int   `json:"video_count"`
-	TotalLibrarySize    int64 `json:"total_library_size"`
-	OrphanedFilesCount  int   `json:"orphaned_files_count"`
-	OrphanedFilesSize   int64 `json:"orphaned_files_size"`
+	DownloadCount      int   `json:"download_count"`
+	CompletedCount     int   `json:"completed_count"`
+	PendingCount       int   `json:"pending_count"`
+	VideoCount         int   `json:"video_count"`
+	TotalLibrarySize   int64 `json:"total_library_size"`
+	OrphanedFilesCount int   `json:"orphaned_files_count"`
+	OrphanedFilesSize  int64 `json:"orphaned_files_size"`
 }
 
 // GetCacheInfo returns comprehensive cache information
@@ -164,11 +164,11 @@ func (a *App) CleanupOrphanedFiles(deleteFiles bool) (map[string]interface{}, er
 	}
 
 	result := map[string]interface{}{
-		"found":       orphanedCount,
-		"size":        orphanedSize,
-		"deleted":     0,
-		"failed":      0,
-		"deleteMode":  deleteFiles,
+		"found":      orphanedCount,
+		"size":       orphanedSize,
+		"deleted":    0,
+		"failed":     0,
+		"deleteMode": deleteFiles,
 	}
 
 	if orphanedCount == 0 {

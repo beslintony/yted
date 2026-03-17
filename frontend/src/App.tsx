@@ -1,4 +1,3 @@
-import { useState } from 'react';
 
 import {
   ActionIcon,
@@ -10,7 +9,6 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
-
 import {
   IconDownload,
   IconFileText,
@@ -19,6 +17,7 @@ import {
   IconSun,
   IconVideo,
 } from '@tabler/icons-react';
+import { useState } from 'react';
 
 import { LoggerViewer } from './components/LoggerViewer';
 import { DownloadPage } from './pages/DownloadPage';
@@ -48,42 +47,42 @@ function App() {
 
   return (
     <AppShell
+      footer={{ height: 40 }}
       header={{ height: 60 }}
       navbar={{
         width: sidebarCollapsed ? 80 : 200,
         breakpoint: 'sm',
         collapsed: { mobile: !mobileOpened },
       }}
-      footer={{ height: 40 }}
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+        <Group h="100%" justify="space-between" px="md">
           <Group>
             {/* Desktop hamburger - toggles sidebar */}
             <Burger
-              opened={!sidebarCollapsed}
-              onClick={toggleSidebar}
-              size="sm"
-              color={dark ? '#c1c2c5' : '#495057'}
               aria-label="Toggle sidebar"
+              color={dark ? '#c1c2c5' : '#495057'}
+              opened={!sidebarCollapsed}
+              size="sm"
+              onClick={toggleSidebar}
             />
 
             {/* Mobile hamburger - toggles mobile menu */}
             <Burger
-              opened={mobileOpened}
-              onClick={() => setMobileOpened(o => !o)}
-              hiddenFrom="sm"
-              size="sm"
-              color={dark ? '#c1c2c5' : '#495057'}
               aria-label="Toggle mobile menu"
+              color={dark ? '#c1c2c5' : '#495057'}
+              hiddenFrom="sm"
+              opened={mobileOpened}
+              size="sm"
+              onClick={() => setMobileOpened(o => !o)}
             />
 
             {/* Logo */}
             <Tooltip label="YTed v1.0.0">
               <img
-                src="/logo.svg"
                 alt="YTed"
+                src="/logo.svg"
                 style={{ height: 36, width: 36, cursor: 'pointer' }}
               />
             </Tooltip>
@@ -92,16 +91,16 @@ function App() {
           <Group gap="xs">
             <Tooltip label="View logs">
               <ActionIcon
-                variant="subtle"
-                onClick={() => setLoggerOpened(true)}
                 color="gray"
                 size="lg"
+                variant="subtle"
+                onClick={() => setLoggerOpened(true)}
               >
                 <IconFileText size={22} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
-              <ActionIcon variant="subtle" onClick={handleThemeToggle} color="gray" size="lg">
+              <ActionIcon color="gray" size="lg" variant="subtle" onClick={handleThemeToggle}>
                 {dark ? <IconSun size={22} /> : <IconMoon size={22} />}
               </ActionIcon>
             </Tooltip>
@@ -117,32 +116,32 @@ function App() {
             return (
               <Tooltip
                 key={item.id}
+                disabled={!sidebarCollapsed}
                 label={item.label}
                 position="right"
-                disabled={!sidebarCollapsed}
               >
                 <ActionIcon
-                  variant={isActive ? 'filled' : 'subtle'}
                   color={isActive ? 'yted' : 'gray'}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setMobileOpened(false);
-                  }}
-                  w={sidebarCollapsed ? 60 : '100%'}
                   h={44}
                   style={{
                     justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
                     padding: sidebarCollapsed ? 0 : '0 12px',
                     borderRadius: 8,
                   }}
+                  variant={isActive ? 'filled' : 'subtle'}
+                  w={sidebarCollapsed ? 60 : '100%'}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setMobileOpened(false);
+                  }}
                 >
                   <Group
                     gap={12}
-                    wrap="nowrap"
                     style={{
                       justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
                       width: '100%',
                     }}
+                    wrap="nowrap"
                   >
                     <Icon size={20} />
                     {!sidebarCollapsed && (
@@ -165,7 +164,7 @@ function App() {
       </AppShell.Main>
 
       <AppShell.Footer>
-        <Group h="100%" px="md" justify="space-between">
+        <Group h="100%" justify="space-between" px="md">
           <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>YTed v1.0.0</span>
           <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>Ready</span>
         </Group>
@@ -174,11 +173,11 @@ function App() {
       {/* Logger Drawer */}
       <Drawer
         opened={loggerOpened}
-        onClose={() => setLoggerOpened(false)}
-        title="Application Logs"
+        padding="md"
         position="right"
         size="lg"
-        padding="md"
+        title="Application Logs"
+        onClose={() => setLoggerOpened(false)}
       >
         <LoggerViewer />
       </Drawer>

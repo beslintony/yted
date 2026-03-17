@@ -14,10 +14,10 @@ const YTED_FOLDER_NAME = "YTed"
 
 // FileWarning represents a warning about file operations
 type FileWarning struct {
-	Type        string `json:"type"`
-	Title       string `json:"title"`
-	Message     string `json:"message"`
-	IsCritical  bool   `json:"is_critical"`
+	Type       string `json:"type"`
+	Title      string `json:"title"`
+	Message    string `json:"message"`
+	IsCritical bool   `json:"is_critical"`
 }
 
 // FileManager handles download folder management and safety checks
@@ -117,8 +117,8 @@ func (fm *FileManager) SetDownloadPath(userPath string) (string, []FileWarning, 
 	}
 
 	logger.Info("FileManager", "Download path set", map[string]string{
-		"user_path":    userPath,
-		"yted_path":    ytedPath,
+		"user_path":     userPath,
+		"yted_path":     ytedPath,
 		"warning_count": fmt.Sprintf("%d", len(warnings)),
 	})
 

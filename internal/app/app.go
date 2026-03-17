@@ -24,7 +24,7 @@ type App struct {
 	ytdl   *ytdl.Client
 	logger *applog.Logger
 	fm     *FileManager
-	
+
 	// Mutex to prevent concurrent download processing
 	downloadMu sync.Mutex
 }

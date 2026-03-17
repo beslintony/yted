@@ -10,10 +10,10 @@ import (
 // findDownloadedFile searches for the downloaded file in the output directory
 // Uses strict matching to avoid linking wrong files when multiple versions exist
 // Priority order:
-//   1. Files with [youtubeID][formatID] pattern (exact format match)
-//   2. Files with [youtubeID][any_number] pattern (format was resolved)
-//   3. Files with [youtubeID] pattern (backward compat, strict bracket matching)
-//   4. Most recently modified media file (within 30s window, last resort)
+//  1. Files with [youtubeID][formatID] pattern (exact format match)
+//  2. Files with [youtubeID][any_number] pattern (format was resolved)
+//  3. Files with [youtubeID] pattern (backward compat, strict bracket matching)
+//  4. Most recently modified media file (within 30s window, last resort)
 func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {

@@ -281,7 +281,6 @@ func (db *DB) CountActiveDownloads() (int, error) {
 	return count, nil
 }
 
-
 // GetIncompleteDownloads returns all downloads that are not completed
 func (db *DB) GetIncompleteDownloads() ([]Download, error) {
 	query := `

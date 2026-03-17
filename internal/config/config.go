@@ -139,8 +139,8 @@ func (m *Manager) Load() error {
 	// Ensure filename template includes YouTube ID and format for unique identification
 	// Format ID is included to allow multiple versions (e.g., 720p vs 1080p) of same video
 	// Title is truncated to 100 chars to prevent "file name too long" errors
-	if cfg.FilenameTemplate == "" || 
-		cfg.FilenameTemplate == "%(title)s.%(ext)s" || 
+	if cfg.FilenameTemplate == "" ||
+		cfg.FilenameTemplate == "%(title)s.%(ext)s" ||
 		cfg.FilenameTemplate == "%(title)s [%(id)s].%(ext)s" ||
 		cfg.FilenameTemplate == "%(title)s [%(id)s][%(format_id)s].%(ext)s" {
 		cfg.FilenameTemplate = "%(title).60s [%(id)s][%(format_id)s].%(ext)s"

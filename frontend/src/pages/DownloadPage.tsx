@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   TextInput,
   Button,
@@ -29,10 +28,13 @@ import {
   IconSearch,
   IconVideo,
 } from '@tabler/icons-react';
-import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
+import { useEffect, useRef, useState } from 'react';
+
 import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
+import { VideoFormat } from '../types';
+import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
 
 export function DownloadPage() {
   const [url, setUrl] = useState('');
@@ -67,7 +69,6 @@ export function DownloadPage() {
   
   // Use refs to track processed events to prevent duplicates
   const processedEvents = useRef<Set<string>>(new Set());
-  const eventCounter = useRef<number>(0);
 
   // Load presets from settings
   useEffect(() => {
@@ -101,12 +102,9 @@ export function DownloadPage() {
     
     const restoreQueue = async () => {
       try {
-        console.log('Calling GetDownloadQueue...');
         const queue = await GetDownloadQueue();
-        console.log('GetDownloadQueue returned:', queue);
         
         if (queue && queue.length > 0) {
-          console.log('Restoring download queue:', queue);
           for (const data of queue) {
             if (data?.id && data?.url && !hasDownload(data.id)) {
               // Add restored download to the store with correct metadata
@@ -144,9 +142,7 @@ export function DownloadPage() {
             }
           }
           // Tell backend to start processing pending downloads
-          console.log('Calling StartProcessingDownloads...');
           await StartProcessingDownloads();
-          console.log('StartProcessingDownloads completed');
         }
         setQueueRestored(true);
       } catch (err) {
@@ -159,9 +155,7 @@ export function DownloadPage() {
 
   // Listen for download progress events from backend
   useEffect(() => {
-    const getEventId = () => `event_${Date.now()}_${eventCounter.current++}`;
-
-    const cancelProgress = EventsOn('download:progress', (data: any) => {
+    const cancelProgress = EventsOn('download:progress', (data: { id?: string; progress?: number; speed?: string; eta?: string; size?: string }) => {
       if (data?.id && typeof data.progress === 'number') {
         updateProgress(data.id, data.progress);
         if (data.speed || data.eta || data.size) {
@@ -174,19 +168,19 @@ export function DownloadPage() {
       }
     });
 
-    const cancelCompleted = EventsOn('download:completed', (data: any) => {
-      const id = typeof data === 'string' ? data : data?.id;
-      if (id && !processedEvents.current.has(`completed_${id}`)) {
-        processedEvents.current.add(`completed_${id}`);
-        completeDownload(id);
-        const completedDownload = downloads.find(d => d.id === id);
+    const cancelCompleted = EventsOn('download:completed', (data: unknown) => {
+      const completedId = typeof data === 'string' ? data : (data as { id?: string })?.id;
+      if (completedId && !processedEvents.current.has(`completed_${completedId}`)) {
+        processedEvents.current.add(`completed_${completedId}`);
+        completeDownload(completedId);
+        const completedDownload = downloads.find(d => d.id === completedId);
         if (completedDownload) {
           success('Download Complete', `"${completedDownload.title}" has finished downloading`);
         }
       }
     });
 
-    const cancelError = EventsOn('download:error', (data: any) => {
+    const cancelError = EventsOn('download:error', (data: { id?: string; error?: string }) => {
       if (data?.id && data?.error && !processedEvents.current.has(`error_${data.id}`)) {
         processedEvents.current.add(`error_${data.id}`);
         failDownload(data.id, data.error);
@@ -197,15 +191,15 @@ export function DownloadPage() {
       }
     });
 
-    const cancelStarted = EventsOn('download:started', (data: any) => {
+    const cancelStarted = EventsOn('download:started', (data: { id?: string }) => {
       if (data?.id) {
         startDownload(data.id);
       }
     });
 
-    const cancelRetried = EventsOn('download:retried', (id: string) => {
-      if (id) {
-        retryDownload(id);
+    const cancelRetried = EventsOn('download:retried', (retryId: string) => {
+      if (retryId) {
+        retryDownload(retryId);
       }
     });
 
@@ -252,9 +246,10 @@ export function DownloadPage() {
         return;
       }
       setVideoInfo(info);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to fetch video info');
-      showError('Fetch Failed', err?.message || 'Failed to fetch video info');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch video info';
+      setError(errorMessage);
+      showError('Fetch Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -275,10 +270,7 @@ export function DownloadPage() {
       const formatId = preset?.format || 'best';
       const quality = preset?.quality || 'best';
 
-      console.log('Adding download:', { url, formatId, quality, title: videoInfo.title, preset: preset?.name });
-
       const id = await AddDownload(url, formatId, quality);
-      console.log('Download added with ID:', id);
 
       if (id) {
         addDownload(url, {
@@ -289,7 +281,7 @@ export function DownloadPage() {
           duration: videoInfo.duration,
           description: videoInfo.description,
           thumbnail: videoInfo.thumbnail,
-          formats: videoInfo.formats as any,
+          formats: videoInfo.formats as unknown as VideoFormat[],
         }, {
           formatId: preset?.format || 'best',
           ext: preset?.extension || 'mp4',
@@ -305,10 +297,10 @@ export function DownloadPage() {
         setUrl('');
         setVideoInfo(null);
       }
-    } catch (err: any) {
-      console.error('Failed to add download:', err);
-      setError(err?.message || 'Failed to add download');
-      showError('Download Failed', err?.message || 'Failed to add download');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add download';
+      setError(errorMessage);
+      showError('Download Failed', errorMessage);
     } finally {
       setAdding(false);
     }
@@ -341,23 +333,29 @@ export function DownloadPage() {
 
   return (
     <Stack gap="lg">
-      <Text size="xl" fw={700} c={dark ? '#fff' : '#000'}>Downloads</Text>
+      <Text c={dark ? '#fff' : '#000'} fw={700} size="xl">Downloads</Text>
 
       {/* URL Input */}
       <Paper
-        p="md"
         withBorder
         bg={dark ? '#25262b' : '#fff'}
+        p="md"
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
           <TextInput
-            placeholder="Paste YouTube URL here..."
-            leftSection={<IconLink size={16} />}
-            value={url}
-            onChange={(e) => setUrl(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleFetchInfo()}
             disabled={loading}
+            leftSection={<IconLink size={16} />}
+            placeholder="Paste YouTube URL here..."
+            rightSection={
+              url ? (
+                <Tooltip label="Clear">
+                  <ActionIcon color="gray" variant="subtle" onClick={handleClear}>
+                    <IconX size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : undefined
+            }
             size="md"
             styles={{
               input: {
@@ -365,25 +363,19 @@ export function DownloadPage() {
                 color: dark ? '#c1c2c5' : '#212529',
               },
             }}
-            rightSection={
-              url ? (
-                <Tooltip label="Clear">
-                  <ActionIcon onClick={handleClear} color="gray" variant="subtle">
-                    <IconX size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              ) : undefined
-            }
+            value={url}
+            onChange={(e) => setUrl(e.currentTarget.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleFetchInfo()}
           />
 
           <Group justify="flex-end">
             <Tooltip label="Get video information">
               <Button
-                onClick={handleFetchInfo}
-                loading={loading}
-                leftSection={<IconSearch size={16} />}
-                disabled={!url.trim() || loading}
                 color="yted"
+                disabled={!url.trim() || loading}
+                leftSection={<IconSearch size={16} />}
+                loading={loading}
+                onClick={handleFetchInfo}
               >
                 Get Info
               </Button>
@@ -398,16 +390,16 @@ export function DownloadPage() {
 
           {videoInfo && (
             <Paper
-              p="md"
               withBorder
               bg={dark ? '#1a1b1e' : '#f8f9fa'}
+              p="md"
               style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
             >
               <Group align="flex-start" wrap="nowrap">
                 {videoInfo.thumbnail ? (
                   <img
-                    src={videoInfo.thumbnail}
                     alt={videoInfo.title}
+                    src={videoInfo.thumbnail}
                     style={{
                       width: 160,
                       height: 90,
@@ -417,41 +409,38 @@ export function DownloadPage() {
                   />
                 ) : (
                   <Paper
-                    w={160}
-                    h={90}
                     bg={dark ? '#2c2e33' : '#e9ecef'}
+                    h={90}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderRadius: 8,
                     }}
+                    w={160}
                   >
-                    <IconVideo size={32} color={dark ? '#5c5f66' : '#adb5bd'} />
+                    <IconVideo color={dark ? '#5c5f66' : '#adb5bd'} size={32} />
                   </Paper>
                 )}
                 <Stack gap="xs" style={{ flex: 1 }}>
-                  <Text fw={600} lineClamp={2} c={dark ? '#fff' : '#000'}>
+                  <Text c={dark ? '#fff' : '#000'} fw={600} lineClamp={2}>
                     {videoInfo.title || 'Unknown Title'}
                   </Text>
-                  <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>
+                  <Text c={dark ? 'dimmed' : 'gray.7'} size="sm">
                     {videoInfo.channel || 'Unknown Channel'}
                   </Text>
-                  <Text size="sm" c={dark ? 'dimmed' : 'gray.7'}>
+                  <Text c={dark ? 'dimmed' : 'gray.7'} size="sm">
                     Duration: {formatDuration(videoInfo.duration)}
                   </Text>
 
                   {settingsLoaded && presets.length > 0 && (
                     <Select
-                      label="Download Preset"
-                      description="Choose quality and format"
-                      value={selectedPreset}
-                      onChange={(value) => value && setSelectedPreset(value)}
                       data={presets.map(p => ({
                         value: p.id,
                         label: `${p.name} (${p.quality}, .${p.extension})`,
                       }))}
-                      w={250}
+                      description="Choose quality and format"
+                      label="Download Preset"
                       size="sm"
                       styles={{
                         input: {
@@ -459,18 +448,21 @@ export function DownloadPage() {
                           color: dark ? '#c1c2c5' : '#212529',
                         },
                       }}
+                      value={selectedPreset}
+                      w={250}
+                      onChange={(value) => value && setSelectedPreset(value)}
                     />
                   )}
 
                   <Group justify="flex-end" mt="xs">
                     <Tooltip label="Add to download queue">
                       <Button
+                        color="yted"
+                        disabled={!selectedPreset && presets.length > 0}
+                        leftSection={<IconDownload size={16} />}
+                        loading={adding}
                         size="sm"
                         onClick={handleDownload}
-                        color="yted"
-                        loading={adding}
-                        leftSection={<IconDownload size={16} />}
-                        disabled={!selectedPreset && presets.length > 0}
                       >
                         Download
                       </Button>
@@ -485,15 +477,15 @@ export function DownloadPage() {
 
       {/* Download Queue */}
       <Group justify="space-between">
-        <Text size="lg" fw={600} c={dark ? '#fff' : '#000'}>
+        <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
           Queue ({downloads.length})
         </Text>
         {downloads.length > 0 && (
           <Tooltip label="Clear all downloads">
             <Button
+              color="gray"
               size="xs"
               variant="subtle"
-              color="gray"
               onClick={() => downloads.forEach(d => removeDownload(d.id))}
             >
               Clear All
@@ -506,9 +498,9 @@ export function DownloadPage() {
         <Stack gap="sm">
           {downloads.length === 0 ? (
             <Paper
-              p="xl"
               withBorder
               bg={dark ? '#25262b' : '#fff'}
+              p="xl"
               style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
             >
               <Text c={dark ? 'dimmed' : 'gray.6'} ta="center">
@@ -519,17 +511,17 @@ export function DownloadPage() {
             downloads.map((download) => (
               <Paper
                 key={download.id}
-                p="sm"
                 withBorder
                 bg={dark ? '#25262b' : '#fff'}
+                p="sm"
                 style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
               >
-                <Group justify="space-between" align="flex-start">
-                  <Group gap="sm" align="flex-start" wrap="nowrap">
+                <Group align="flex-start" justify="space-between">
+                  <Group align="flex-start" gap="sm" wrap="nowrap">
                     {download.thumbnail ? (
                       <img
-                        src={download.thumbnail}
                         alt={download.title || 'Video'}
+                        src={download.thumbnail}
                         style={{
                           width: 80,
                           height: 45,
@@ -539,29 +531,28 @@ export function DownloadPage() {
                       />
                     ) : (
                       <Paper
-                        w={80}
-                        h={45}
                         bg={dark ? '#2c2e33' : '#e9ecef'}
+                        h={45}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           borderRadius: 4,
                         }}
+                        w={80}
                       >
-                        <IconVideo size={20} color={dark ? '#5c5f66' : '#adb5bd'} />
+                        <IconVideo color={dark ? '#5c5f66' : '#adb5bd'} size={20} />
                       </Paper>
                     )}
                     <Stack gap={4}>
-                      <Text size="sm" fw={500} lineClamp={1} style={{ maxWidth: 300 }} c={dark ? '#fff' : '#000'}>
+                      <Text c={dark ? '#fff' : '#000'} fw={500} lineClamp={1} size="sm" style={{ maxWidth: 300 }}>
                         {download.title || 'Loading...'}
                       </Text>
-                      <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                      <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
                         {download.channel || download.url}
                       </Text>
                       <Group gap="xs">
                         <Badge
-                          size="sm"
                           color={getStatusColor(download.status)}
                           leftSection={
                             download.status === 'completed' ? <IconCheck size={12} /> :
@@ -570,11 +561,12 @@ export function DownloadPage() {
                             download.status === 'paused' ? <IconPlayerPause size={12} /> :
                             <IconDownload size={12} />
                           }
+                          size="sm"
                         >
                           {download.status}
                         </Badge>
                         {download.quality && (
-                          <Badge size="sm" variant="outline" color={dark ? 'gray' : 'dark'}>
+                          <Badge color={dark ? 'gray' : 'dark'} size="sm" variant="outline">
                             {download.quality}
                           </Badge>
                         )}
@@ -582,15 +574,15 @@ export function DownloadPage() {
                     </Stack>
                   </Group>
 
-                  <Stack gap="xs" align="flex-end">
+                  <Stack align="flex-end" gap="xs">
                     <Group gap={4}>
                       {download.status === 'downloading' && (
                         <Tooltip label="Pause download">
                           <ActionIcon
-                            size="sm"
-                            onClick={() => pauseDownload(download.id)}
-                            variant="light"
                             color="yellow"
+                            size="sm"
+                            variant="light"
+                            onClick={() => pauseDownload(download.id)}
                           >
                             <IconPlayerPause size={14} />
                           </ActionIcon>
@@ -599,10 +591,10 @@ export function DownloadPage() {
                       {download.status === 'paused' && (
                         <Tooltip label="Resume download">
                           <ActionIcon
-                            size="sm"
-                            onClick={() => resumeDownload(download.id)}
-                            variant="light"
                             color="green"
+                            size="sm"
+                            variant="light"
+                            onClick={() => resumeDownload(download.id)}
                           >
                             <IconPlayerPlay size={14} />
                           </ActionIcon>
@@ -611,7 +603,9 @@ export function DownloadPage() {
                       {download.status === 'error' && (
                         <Tooltip label="Retry download">
                           <ActionIcon
+                            color="blue"
                             size="sm"
+                            variant="light"
                             onClick={async () => {
                               try {
                                 await RetryDownload(download.id);
@@ -621,8 +615,6 @@ export function DownloadPage() {
                                 showError('Retry Failed', 'Failed to restart download');
                               }
                             }}
-                            variant="light"
-                            color="blue"
                           >
                             <IconRefresh size={14} />
                           </ActionIcon>
@@ -630,10 +622,10 @@ export function DownloadPage() {
                       )}
                       <Tooltip label="Remove from queue">
                         <ActionIcon
-                          size="sm"
                           color="red"
-                          onClick={() => removeDownload(download.id)}
+                          size="sm"
                           variant="light"
+                          onClick={() => removeDownload(download.id)}
                         >
                           <IconTrash size={14} />
                         </ActionIcon>
@@ -643,25 +635,25 @@ export function DownloadPage() {
                     {download.status === 'downloading' && (
                       <Tooltip label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ${formatETA(download.eta)} left` : ''}`}>
                         <Progress
-                          value={download.progress}
-                          size="sm"
-                          w={100}
                           color="yted"
                           radius="xs"
+                          size="sm"
+                          value={download.progress}
+                          w={100}
                         />
                       </Tooltip>
                     )}
                     <Group gap={8}>
-                      <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                      <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
                         {Math.round(download.progress)}%
                       </Text>
                       {download.status === 'downloading' && download.speed && (
-                        <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                        <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
                           {download.speed}
                         </Text>
                       )}
                       {download.status === 'downloading' && download.eta && formatETA(download.eta) && (
-                        <Text size="xs" c={dark ? 'dimmed' : 'gray.6'}>
+                        <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
                           {formatETA(download.eta)} left
                         </Text>
                       )}
@@ -670,7 +662,7 @@ export function DownloadPage() {
                 </Group>
 
                 {download.errorMessage && (
-                  <Alert color="red" mt="sm" p="xs" bg={dark ? '#2c1b1b' : '#fff5f5'}>
+                  <Alert bg={dark ? '#2c1b1b' : '#fff5f5'} color="red" mt="sm" p="xs">
                     <Text size="xs">{download.errorMessage}</Text>
                   </Alert>
                 )}

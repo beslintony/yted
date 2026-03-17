@@ -33,21 +33,21 @@ func (a *App) VerifyAndRepairDownloads() error {
 		if dl.Title != nil && a.config != nil {
 			downloadPath := a.config.Get().DownloadPath
 			youtubeID := extractYoutubeID(dl.URL)
-			
+
 			ext := "mp4"
 			if dl.Quality != nil && *dl.Quality == "audio" {
 				ext = "mp3"
 			}
-			
+
 			// Get format ID for finding the specific version
 			formatID := ""
 			if dl.FormatID != nil {
 				formatID = *dl.FormatID
 			}
-			
+
 			// Look for the file
 			foundPath := findDownloadedFile(downloadPath, youtubeID, formatID, ext)
-			
+
 			if foundPath != "" {
 				// File exists! Mark as completed
 				logger.Info("Download", "Found existing file for incomplete download, marking as completed", map[string]string{
@@ -55,7 +55,7 @@ func (a *App) VerifyAndRepairDownloads() error {
 					"file":     foundPath,
 					"previous": dl.Status,
 				})
-				
+
 				if err := a.db.CompleteDownload(dl.ID); err != nil {
 					logger.Error("Download", "Failed to repair download status", err, map[string]string{"id": dl.ID})
 				} else {
@@ -101,18 +101,18 @@ func (a *App) CheckDownloadStatus(downloadID string) (map[string]interface{}, er
 	if a.config != nil {
 		downloadPath := a.config.Get().DownloadPath
 		youtubeID := extractYoutubeID(dl.URL)
-		
+
 		ext := "mp4"
 		if dl.Quality != nil && *dl.Quality == "audio" {
 			ext = "mp3"
 		}
-		
+
 		// Get format ID for finding the specific version
 		formatID := ""
 		if dl.FormatID != nil {
 			formatID = *dl.FormatID
 		}
-		
+
 		filePath = findDownloadedFile(downloadPath, youtubeID, formatID, ext)
 	}
 
@@ -149,12 +149,12 @@ func (a *App) SyncDownloadWithFile(downloadID string) error {
 		logger.Info("Download", "Syncing download status with file existence", map[string]string{
 			"id": downloadID,
 		})
-		
+
 		if err := a.db.CompleteDownload(downloadID); err != nil {
 			logger.Error("Download", "Failed to sync download status", err, map[string]string{"id": downloadID})
 			return err
 		}
-		
+
 		// Emit completion event
 		runtime.EventsEmit(a.ctx, "download:completed", downloadID)
 	}
@@ -191,7 +191,7 @@ func (a *App) CleanUpDuplicateVideos() error {
 			// Fallback to youtubeID for older records that have no file_hash
 			hash = v.YoutubeID
 		}
-		
+
 		if seenHashes[hash] {
 			// This is a duplicate (and older, since we sorted descending)
 			if err := a.db.DeleteVideo(v.ID); err == nil {

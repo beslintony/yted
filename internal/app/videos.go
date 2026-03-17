@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	applog "yted/internal/log"
 	"yted/internal/db"
+	applog "yted/internal/log"
 )
 
 // VideoResult is exposed to frontend
@@ -135,7 +135,7 @@ func (a *App) DeleteVideo(id string, deleteFile bool) error {
 	}
 
 	logger.Info("Library", "Video deleted from database", map[string]string{
-		"id": id,
+		"id":   id,
 		"file": filePath,
 	})
 
@@ -181,12 +181,12 @@ func (a *App) DeleteVideoWithConfirmation(id string) (map[string]interface{}, er
 	}
 
 	result := map[string]interface{}{
-		"found":       true,
-		"title":       video.Title,
-		"isManaged":   video.IsManaged,
-		"filePath":    video.FilePath,
-		"fileExists":  fileExists,
-		"fileSize":    video.FileSize,
+		"found":                true,
+		"title":                video.Title,
+		"isManaged":            video.IsManaged,
+		"filePath":             video.FilePath,
+		"fileExists":           fileExists,
+		"fileSize":             video.FileSize,
 		"requiresConfirmation": video.IsManaged && fileExists,
 	}
 
