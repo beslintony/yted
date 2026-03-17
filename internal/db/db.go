@@ -21,7 +21,7 @@ type DB struct {
 // New creates a new database connection
 func New(appDataDir string) (*DB, error) {
 	dbPath := filepath.Join(appDataDir, "yted.db")
-	conn, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)")
+	conn, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
