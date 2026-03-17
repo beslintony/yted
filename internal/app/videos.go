@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"yted/internal/db"
 	applog "yted/internal/log"
+	"yted/internal/db"
 )
 
 // VideoResult is exposed to frontend

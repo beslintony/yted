@@ -226,8 +226,6 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	outputTemplate := filepath.Join(opts.OutputDir, c.config.FilenameTemplate)
 	log.Printf("[YTDLP] Output template: %s", outputTemplate)
-	log.Printf("[YTDLP] Config template: %s", c.config.FilenameTemplate)
-	log.Printf("[YTDLP] Output dir: %s", opts.OutputDir)
 
 	// Create a FRESH command for each download (don't reuse c.dl)
 	dl := ytdlp.New().
@@ -238,19 +236,22 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		Continue().
 		TrimFilenames(100)
 
-	// Apply format selection - ALWAYS set a format
+	// Apply format selection with proper merging
 	if opts.Quality == "audio" {
 		log.Println("[YTDLP] Using audio-only format (mp3)")
 		dl = dl.ExtractAudio().AudioFormat("mp3")
 	} else if opts.Format != "" && opts.Format != "best" {
-		// Use specific format if provided
+		// Use specific format if provided - these already include video+audio merging
 		log.Printf("[YTDLP] Using specific format: %s", opts.Format)
 		dl = dl.Format(opts.Format)
 	} else {
-		// Default to best quality video+audio
-		log.Println("[YTDLP] Using default format: best")
-		dl = dl.Format("best")
+		// Default to best quality video+audio with merge
+		log.Println("[YTDLP] Using default format: best with merge")
+		dl = dl.Format("bestvideo*+bestaudio/best")
 	}
+
+	// IMPORTANT: Set merge output format to mp4 to ensure audio+video are merged
+	dl = dl.MergeOutputFormat("mp4")
 
 	// Apply proxy if configured
 	if opts.ProxyURL != nil && *opts.ProxyURL != "" {

@@ -202,35 +202,82 @@ func (a *App) ShowSaveDialog(defaultFilename string) (string, error) {
 
 // OpenFile opens a file with the default application using xdg-open
 func (a *App) OpenFile(path string) error {
+	logger := applog.GetLogger()
+
 	// Verify file exists
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return fmt.Errorf("file not found: %s", path)
+	if path == "" {
+		return fmt.Errorf("file path is empty")
 	}
+
+	// Clean the path
+	path = filepath.Clean(path)
+
+	// Check if file exists
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logger.Error("App", "File not found", err, map[string]string{"path": path})
+			return fmt.Errorf("file not found: %s", path)
+		}
+		logger.Error("App", "Cannot access file", err, map[string]string{"path": path})
+		return fmt.Errorf("cannot access file: %w", err)
+	}
+
+	if fileInfo.IsDir() {
+		return fmt.Errorf("path is a directory, not a file: %s", path)
+	}
+
+	logger.Info("App", "Opening file", map[string]string{"path": path})
 
 	// Use xdg-open to open file with default application (Linux)
 	// Use "--" to prevent path from being interpreted as flags (command injection protection)
 	cmd := exec.Command("xdg-open", "--", path)
 	if err := cmd.Start(); err != nil {
+		logger.Error("App", "Failed to open file", err, map[string]string{"path": path})
 		return fmt.Errorf("failed to open file: %w", err)
 	}
+
 	return nil
 }
 
 // OpenFolder opens the folder containing the file
 func (a *App) OpenFolder(filePath string) error {
+	logger := applog.GetLogger()
+
+	if filePath == "" {
+		return fmt.Errorf("file path is empty")
+	}
+
+	// Clean the path
+	filePath = filepath.Clean(filePath)
+
 	// Get the directory containing the file
 	dir := filepath.Dir(filePath)
 
 	// Verify directory exists
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return fmt.Errorf("folder not found: %s", dir)
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logger.Error("App", "Folder not found", err, map[string]string{"path": dir})
+			return fmt.Errorf("folder not found: %s", dir)
+		}
+		logger.Error("App", "Cannot access folder", err, map[string]string{"path": dir})
+		return fmt.Errorf("cannot access folder: %w", err)
 	}
+
+	if !dirInfo.IsDir() {
+		return fmt.Errorf("path is not a directory: %s", dir)
+	}
+
+	logger.Info("App", "Opening folder", map[string]string{"path": dir})
 
 	// Use xdg-open to open folder (Linux)
 	// Use "--" to prevent path from being interpreted as flags (command injection protection)
 	cmd := exec.Command("xdg-open", "--", dir)
 	if err := cmd.Start(); err != nil {
+		logger.Error("App", "Failed to open folder", err, map[string]string{"path": dir})
 		return fmt.Errorf("failed to open folder: %w", err)
 	}
+
 	return nil
 }
