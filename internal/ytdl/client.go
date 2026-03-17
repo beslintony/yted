@@ -229,7 +229,7 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		Output(outputTemplate).
 		NoWarnings().
 		NoOverwrites().
-		YesPlaylist().
+		NoPlaylist().
 		Continue().
 		TrimFilenames(100)
 
