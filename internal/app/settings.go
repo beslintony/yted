@@ -98,6 +98,18 @@ func (a *App) UpdateSetting(key string, value interface{}) error {
 					a.logger.SetMaxSessions(int(v))
 				}
 			}
+		case "ffmpeg_path":
+			if v, ok := value.(string); ok {
+				cfg.FFmpegPath = v
+				// Update ffmpeg manager in real-time
+				if a.ffmpeg != nil {
+					a.ffmpeg.SetCustomPath(v)
+					// Update ytdl client with new path
+					if path := a.ffmpeg.Find(); path != "" {
+						a.ytdl.SetFFmpegPath(path)
+					}
+				}
+			}
 		}
 	})
 

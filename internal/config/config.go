@@ -37,6 +37,9 @@ type Config struct {
 
 	// Presets
 	DownloadPresets []DownloadPreset `json:"download_presets"`
+
+	// FFmpeg
+	FFmpegPath string `json:"ffmpeg_path,omitempty"` // Custom ffmpeg path (empty = auto-detect)
 }
 
 // DownloadPreset represents a saved download configuration

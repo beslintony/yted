@@ -12,8 +12,9 @@ import (
 
 // FFmpegManager handles ffmpeg binary detection and management
 type FFmpegManager struct {
-	binPath string
-	logger  *log.Logger
+	binPath    string
+	customPath string
+	logger     *log.Logger
 }
 
 // NewFFmpegManager creates a new ffmpeg manager
@@ -23,14 +24,36 @@ func NewFFmpegManager() *FFmpegManager {
 	}
 }
 
-// Find searches for ffmpeg in PATH and common locations
+// SetCustomPath sets a custom ffmpeg path from user configuration
+func (f *FFmpegManager) SetCustomPath(path string) {
+	f.customPath = path
+	f.binPath = "" // Reset cached path so Find() will check new path
+	if path != "" {
+		f.logger.Info("FFmpeg", "Custom ffmpeg path set", map[string]string{"path": path})
+	}
+}
+
+// Find searches for ffmpeg in custom path, PATH and common locations
 func (f *FFmpegManager) Find() string {
 	// Check if we already found it
 	if f.binPath != "" {
 		return f.binPath
 	}
 	
-	// First try PATH
+	// First try custom path if set
+	if f.customPath != "" {
+		if _, err := os.Stat(f.customPath); err == nil {
+			// Verify it's executable
+			if info, err := os.Stat(f.customPath); err == nil && !info.IsDir() {
+				f.binPath = f.customPath
+				f.logger.Info("FFmpeg", "Found ffmpeg at custom path", map[string]string{"path": f.customPath})
+				return f.customPath
+			}
+		}
+		f.logger.Warn("FFmpeg", "Custom ffmpeg path not valid, falling back to auto-detect", map[string]string{"path": f.customPath})
+	}
+	
+	// Try PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
 		f.binPath = path
 		f.logger.Info("FFmpeg", "Found ffmpeg in PATH", map[string]string{"path": path})

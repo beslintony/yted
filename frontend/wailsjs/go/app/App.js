@@ -174,6 +174,10 @@ export function ShowError(arg1) {
   return window['go']['app']['App']['ShowError'](arg1);
 }
 
+export function ShowFFmpegDialog() {
+  return window['go']['app']['App']['ShowFFmpegDialog']();
+}
+
 export function ShowOpenDirectoryDialog() {
   return window['go']['app']['App']['ShowOpenDirectoryDialog']();
 }

@@ -33,6 +33,7 @@ import {
   ClearDownloadCache,
   GetSettings,
   SaveSettings,
+  ShowFFmpegDialog,
   ShowOpenDirectoryDialog,
 } from '../../wailsjs/go/app/App';
 import { config } from '../../wailsjs/go/models';
@@ -159,6 +160,17 @@ export function SettingsPage() {
       }
     } catch (err) {
       console.error('Failed to browse:', err);
+    }
+  };
+
+  const handleBrowseFFmpeg = async () => {
+    try {
+      const path = await ShowFFmpegDialog();
+      if (path) {
+        setSettings(s => (s ? ({ ...s, ffmpeg_path: path } as any) : null));
+      }
+    } catch (err) {
+      console.error('Failed to browse for ffmpeg:', err);
     }
   };
 
@@ -550,6 +562,49 @@ export function SettingsPage() {
               leftSection={<IconFolder size={16} />}
               variant="light"
               onClick={handleBrowseLogExportPath}
+            >
+              Browse
+            </Button>
+          </Group>
+        </Stack>
+      </Paper>
+
+      {/* FFmpeg */}
+      <Paper
+        withBorder
+        bg={dark ? '#25262b' : '#fff'}
+        p="md"
+        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+      >
+        <Stack gap="md">
+          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
+            FFmpeg Configuration
+          </Text>
+          <Text c={dark ? 'dimmed' : 'gray.6'} size="sm">
+            FFmpeg is required for merging separate video and audio streams into a single file.
+            Leave empty to auto-detect from system PATH.
+          </Text>
+
+          <Group align="flex-end" gap="sm">
+            <TextInput
+              description="Path to ffmpeg executable (optional)"
+              label="FFmpeg Path"
+              placeholder="Auto-detect from PATH"
+              style={{ flex: 1 }}
+              styles={{
+                input: {
+                  background: dark ? '#1a1b1e' : '#f8f9fa',
+                  color: dark ? '#c1c2c5' : '#212529',
+                },
+              }}
+              value={settings.ffmpeg_path || ''}
+              onChange={e => updateSetting('ffmpeg_path', e.currentTarget.value)}
+            />
+            <Button
+              color="yted"
+              leftSection={<IconFolder size={16} />}
+              variant="light"
+              onClick={handleBrowseFFmpeg}
             >
               Browse
             </Button>

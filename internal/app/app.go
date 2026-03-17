@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goRuntime "runtime"
 	"sync"
 
 	"yted/internal/config"
@@ -126,6 +127,12 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Find and configure ffmpeg for video/audio merging
 	a.ffmpeg = NewFFmpegManager()
+	
+	// Set custom path from config if available
+	if cfgManager.Get().FFmpegPath != "" {
+		a.ffmpeg.SetCustomPath(cfgManager.Get().FFmpegPath)
+	}
+	
 	if ffmpegPath := a.ffmpeg.Find(); ffmpegPath != "" {
 		a.ytdl.SetFFmpegPath(ffmpegPath)
 		a.logger.Info("FFmpeg", "FFmpeg configured for video/audio merging", map[string]string{
@@ -204,6 +211,28 @@ func (a *App) ShowError(message string) {
 func (a *App) ShowOpenDirectoryDialog() (string, error) {
 	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Download Directory",
+	})
+}
+
+// ShowFFmpegDialog shows a file picker for ffmpeg binary
+func (a *App) ShowFFmpegDialog() (string, error) {
+	filters := []runtime.FileFilter{}
+	
+	// Add platform-specific filters
+	if goRuntime.GOOS == "windows" {
+		filters = append(filters, runtime.FileFilter{
+			DisplayName: "Executable files (*.exe)",
+			Pattern:     "*.exe",
+		})
+	}
+	filters = append(filters, runtime.FileFilter{
+		DisplayName: "All files",
+		Pattern:     "*",
+	})
+	
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "Select FFmpeg Binary",
+		Filters: filters,
 	})
 }
 

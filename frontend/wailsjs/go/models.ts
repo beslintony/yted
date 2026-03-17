@@ -224,6 +224,7 @@ export namespace config {
 	    log_export_path: string;
 	    max_log_sessions: number;
 	    download_presets: DownloadPreset[];
+	    ffmpeg_path?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -247,6 +248,7 @@ export namespace config {
 	        this.log_export_path = source["log_export_path"];
 	        this.max_log_sessions = source["max_log_sessions"];
 	        this.download_presets = this.convertValues(source["download_presets"], DownloadPreset);
+	        this.ffmpeg_path = source["ffmpeg_path"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

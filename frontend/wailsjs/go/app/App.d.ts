@@ -90,6 +90,8 @@ export function SetLogExportPath(arg1:string):Promise<void>;
 
 export function ShowError(arg1:string):Promise<void>;
 
+export function ShowFFmpegDialog():Promise<string>;
+
 export function ShowOpenDirectoryDialog():Promise<string>;
 
 export function ShowSaveDialog(arg1:string):Promise<string>;
