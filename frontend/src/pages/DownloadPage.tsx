@@ -33,8 +33,8 @@ import { useEffect, useRef, useState } from 'react';
 import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
-import { VideoFormat } from '../types';
 import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
+import { VideoFormat } from '../types';
 
 export function DownloadPage() {
   const [url, setUrl] = useState('');

@@ -34,16 +34,37 @@ import {
 } from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
-import { Video } from '../types';
 import { useLibraryStore, useNotifications } from '../stores';
+import { Video } from '../types';
+
+// Helper function to map backend VideoResult to frontend Video type
+function mapVideoResultToVideo(v: app.VideoResult): Video {
+  return {
+    id: v.id,
+    youtubeId: v.youtube_id,
+    title: v.title,
+    channel: v.channel,
+    channelId: v.channel_id,
+    duration: v.duration,
+    description: v.description,
+    thumbnailUrl: v.thumbnail_url,
+    filePath: v.file_path,
+    fileSize: v.file_size,
+    format: v.format,
+    quality: v.quality,
+    downloadedAt: v.downloaded_at,
+    watchPosition: v.watch_position,
+    watchCount: v.watch_count,
+  };
+}
 
 export function LibraryPage() {
-  const [videos, setVideos] = useState<app.VideoResult[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [sortDesc, setSortDesc] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [stats, setStats] = useState({ total_videos: 0, total_size: 0 });
+  const [stats, setStats] = useState({ totalVideos: 0, totalSize: 0 });
 
   const { setVideos: setStoreVideos, removeVideo: removeStoreVideo } = useLibraryStore();
   const { colorScheme } = useMantineColorScheme();
@@ -60,8 +81,11 @@ export function LibraryPage() {
         limit: 100,
         offset: 0,
       });
-      setVideos(result || []);
-      setStoreVideos((result as unknown[] || []) as Video[]);
+      
+      // Map backend VideoResult to frontend Video type
+      const mappedVideos = (result || []).map(mapVideoResultToVideo);
+      setVideos(mappedVideos);
+      setStoreVideos(mappedVideos);
     } catch (err) {
       error('Failed to load videos', err instanceof Error ? err.message : 'Unknown error');
     }
@@ -70,7 +94,7 @@ export function LibraryPage() {
   const loadStats = useCallback(async () => {
     try {
       const result = await GetLibraryStats() as { total_videos: number; total_size: number };
-      setStats(result);
+      setStats({ totalVideos: result.total_videos, totalSize: result.total_size });
     } catch (err) {
       console.error('Failed to load stats:', err);
     }
@@ -91,7 +115,7 @@ export function LibraryPage() {
     };
   }, [loadVideos, loadStats]);
 
-  const handleDelete = async (video: app.VideoResult) => {
+  const handleDelete = async (video: Video) => {
     confirm({
       title: 'Delete Video',
       message: `Are you sure you want to delete "${video.title}"?`,
@@ -136,7 +160,7 @@ export function LibraryPage() {
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={700} size="xl">
-          Library ({stats.total_videos} videos, {formatFileSize(stats.total_size)})
+          Library ({stats.totalVideos} videos, {formatFileSize(stats.totalSize)})
         </Text>
         <Group gap="sm">
           <TextInput
@@ -178,21 +202,21 @@ export function LibraryPage() {
           {filteredVideos.map((video) => (
             <Paper key={video.id} withBorder p="md">
               <Stack gap="sm">
-                {video.thumbnail_url ? (
+                {video.thumbnailUrl ? (
                   <Image
                     alt={video.title}
                     height={120}
                     radius="sm"
-                    src={video.thumbnail_url}
+                    src={video.thumbnailUrl}
                     style={{ cursor: 'pointer', objectFit: 'cover' }}
-                    onClick={() => OpenFile(video.file_path)}
+                    onClick={() => OpenFile(video.filePath)}
                   />
                 ) : (
                   <Paper
                     bg={dark ? '#2c2e33' : '#e9ecef'}
                     h={120}
                     style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => OpenFile(video.file_path)}
+                    onClick={() => OpenFile(video.filePath)}
                   >
                     <IconPlayerPlay color={dark ? '#5c5f66' : '#adb5bd'} size={32} />
                   </Paper>
@@ -212,18 +236,18 @@ export function LibraryPage() {
                       {video.quality}
                     </Badge>
                     <Badge size="sm" variant="light">
-                      {formatFileSize(video.file_size)}
+                      {formatFileSize(video.fileSize)}
                     </Badge>
                   </Group>
                 </div>
                 <Group gap="xs" justify="flex-end">
                   <Tooltip label="Open file">
-                    <ActionIcon color="blue" variant="light" onClick={() => OpenFile(video.file_path)}>
+                    <ActionIcon color="blue" variant="light" onClick={() => OpenFile(video.filePath)}>
                       <IconPlayerPlay size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Open folder">
-                    <ActionIcon color="gray" variant="light" onClick={() => OpenFolder(video.file_path)}>
+                    <ActionIcon color="gray" variant="light" onClick={() => OpenFolder(video.filePath)}>
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
@@ -243,21 +267,21 @@ export function LibraryPage() {
             <Paper key={video.id} withBorder p="sm">
               <Group justify="space-between">
                 <Group gap="sm">
-                  {video.thumbnail_url ? (
+                  {video.thumbnailUrl ? (
                     <Image
                       alt={video.title}
                       height={60}
                       radius="sm"
-                      src={video.thumbnail_url}
+                      src={video.thumbnailUrl}
                       style={{ cursor: 'pointer', objectFit: 'cover', width: 80 }}
-                      onClick={() => OpenFile(video.file_path)}
+                      onClick={() => OpenFile(video.filePath)}
                     />
                   ) : (
                     <Paper
                       bg={dark ? '#2c2e33' : '#e9ecef'}
                       h={60}
                       style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80 }}
-                      onClick={() => OpenFile(video.file_path)}
+                      onClick={() => OpenFile(video.filePath)}
                     >
                       <IconPlayerPlay color={dark ? '#5c5f66' : '#adb5bd'} size={24} />
                     </Paper>
@@ -277,19 +301,19 @@ export function LibraryPage() {
                         {video.quality}
                       </Badge>
                       <Badge size="sm" variant="light">
-                        {formatFileSize(video.file_size)}
+                        {formatFileSize(video.fileSize)}
                       </Badge>
                     </Group>
                   </div>
                 </Group>
                 <Group gap="xs">
                   <Tooltip label="Open file">
-                    <ActionIcon color="blue" variant="light" onClick={() => OpenFile(video.file_path)}>
+                    <ActionIcon color="blue" variant="light" onClick={() => OpenFile(video.filePath)}>
                       <IconPlayerPlay size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Open folder">
-                    <ActionIcon color="gray" variant="light" onClick={() => OpenFolder(video.file_path)}>
+                    <ActionIcon color="gray" variant="light" onClick={() => OpenFolder(video.filePath)}>
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
