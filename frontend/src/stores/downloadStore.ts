@@ -43,9 +43,15 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       quality: format?.quality,
       createdAt: Date.now(),
     };
-    set((state) => ({
-      downloads: [newDownload, ...state.downloads],
-    }));
+    set((state) => {
+      // Check if download already exists to prevent duplicates (e.g. from React StrictMode restoreQueue double firing)
+      if (state.downloads.some((d) => d.id === id)) {
+        return state;
+      }
+      return {
+        downloads: [newDownload, ...state.downloads],
+      };
+    });
     return id;
   },
 
