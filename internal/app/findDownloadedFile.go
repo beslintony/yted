@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,10 +16,15 @@ import (
 //  3. Files with [youtubeID] pattern (backward compat, strict bracket matching)
 //  4. Most recently modified media file (within 30s window, last resort)
 func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
+	log.Printf("[findDownloadedFile] Searching in %s for youtubeID=%s, formatID=%s, ext=%s", outputDir, youtubeID, formatID, ext)
+	
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
+		log.Printf("[findDownloadedFile] Error reading directory: %v", err)
 		return ""
 	}
+	
+	log.Printf("[findDownloadedFile] Found %d entries in directory", len(entries))
 
 	// Determine expected media type based on quality/format
 	isAudioFormat := ext == "mp3" || ext == "m4a" || ext == "ogg" ||
@@ -63,10 +69,13 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 			// Look for exact pattern: [youtubeID][formatID]
 			if strings.Contains(name, "["+youtubeID+"]["+formatID+"]") &&
 				isExpectedType(name) {
-				return filepath.Join(outputDir, name)
+				result := filepath.Join(outputDir, name)
+				log.Printf("[findDownloadedFile] PASS 1 match: %s", result)
+				return result
 			}
 		}
 	}
+	log.Printf("[findDownloadedFile] PASS 1: No exact format match found")
 
 	// PASS 2: Format resolved to different code [youtubeID][digits]
 	if formatID != "" {
@@ -79,10 +88,13 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 			if strings.Contains(name, "["+youtubeID+"][") &&
 				!strings.Contains(name, "["+youtubeID+"]["+formatID+"]") &&
 				isExpectedType(name) {
-				return filepath.Join(outputDir, name)
+				result := filepath.Join(outputDir, name)
+				log.Printf("[findDownloadedFile] PASS 2 match: %s", result)
+				return result
 			}
 		}
 	}
+	log.Printf("[findDownloadedFile] PASS 2: No resolved format match found")
 
 	// PASS 3: Backward compatibility [youtubeID] only (no format)
 	// STRICT: Must be surrounded by brackets to avoid matching IDs in titles
@@ -96,9 +108,12 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 		if strings.Contains(name, "["+youtubeID+"]") &&
 			!strings.Contains(name, "["+youtubeID+"][") && // Exclude format-specific files
 			isExpectedType(name) {
-			return filepath.Join(outputDir, name)
+			result := filepath.Join(outputDir, name)
+			log.Printf("[findDownloadedFile] PASS 3 match: %s", result)
+			return result
 		}
 	}
+	log.Printf("[findDownloadedFile] PASS 3: No backward compat match found")
 
 	// PASS 4: Last resort - most recently modified media file within 30s window
 	// This handles edge cases but with strict time limit to avoid wrong matches
@@ -136,8 +151,11 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 	}
 
 	if mostRecent != nil {
-		return filepath.Join(outputDir, mostRecent.Name())
+		result := filepath.Join(outputDir, mostRecent.Name())
+		log.Printf("[findDownloadedFile] PASS 4 (last resort) match: %s", result)
+		return result
 	}
 
+	log.Printf("[findDownloadedFile] No match found for youtubeID=%s", youtubeID)
 	return ""
 }
