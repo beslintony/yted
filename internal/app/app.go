@@ -272,9 +272,17 @@ func (a *App) OpenFile(path string) error {
 
 	logger.Info("App", "Opening file", map[string]string{"path": path})
 
-	// Use xdg-open to open file with default application (Linux)
-	// Use "--" to prevent path from being interpreted as flags (command injection protection)
-	cmd := exec.Command("xdg-open", "--", path)
+	// Open file with default application based on OS
+	var cmd *exec.Cmd
+	switch goRuntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", path)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", "--", path)
+	}
+	
 	if err := cmd.Start(); err != nil {
 		logger.Error("App", "Failed to open file", err, map[string]string{"path": path})
 		return fmt.Errorf("failed to open file: %w", err)
@@ -314,9 +322,17 @@ func (a *App) OpenFolder(filePath string) error {
 
 	logger.Info("App", "Opening folder", map[string]string{"path": dir})
 
-	// Use xdg-open to open folder (Linux)
-	// Use "--" to prevent path from being interpreted as flags (command injection protection)
-	cmd := exec.Command("xdg-open", "--", dir)
+	// Open folder with default application based on OS
+	var cmd *exec.Cmd
+	switch goRuntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", dir)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", "--", dir)
+	}
+	
 	if err := cmd.Start(); err != nil {
 		logger.Error("App", "Failed to open folder", err, map[string]string{"path": dir})
 		return fmt.Errorf("failed to open folder: %w", err)
