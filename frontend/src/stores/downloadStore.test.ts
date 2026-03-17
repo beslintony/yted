@@ -11,6 +11,7 @@ describe('downloadStore', () => {
     const { addDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
+    expect(id).not.toBeNull();
     const downloads = useDownloadStore.getState().downloads;
     expect(downloads).toHaveLength(1);
     expect(downloads[0].url).toBe('https://youtube.com/watch?v=test');
@@ -22,7 +23,8 @@ describe('downloadStore', () => {
     const { addDownload, removeDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    removeDownload(id);
+    expect(id).not.toBeNull();
+    removeDownload(id!);
     expect(useDownloadStore.getState().downloads).toHaveLength(0);
   });
 
@@ -30,7 +32,8 @@ describe('downloadStore', () => {
     const { addDownload, startDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    startDownload(id);
+    expect(id).not.toBeNull();
+    startDownload(id!);
     const download = useDownloadStore.getState().downloads[0];
     expect(download.status).toBe('downloading');
     expect(download.startedAt).toBeDefined();
@@ -41,11 +44,12 @@ describe('downloadStore', () => {
       useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    startDownload(id);
-    pauseDownload(id);
+    expect(id).not.toBeNull();
+    startDownload(id!);
+    pauseDownload(id!);
     expect(useDownloadStore.getState().downloads[0].status).toBe('paused');
 
-    resumeDownload(id);
+    resumeDownload(id!);
     expect(useDownloadStore.getState().downloads[0].status).toBe('downloading');
   });
 
@@ -53,7 +57,8 @@ describe('downloadStore', () => {
     const { addDownload, updateProgress } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    updateProgress(id, 50);
+    expect(id).not.toBeNull();
+    updateProgress(id!, 50);
     expect(useDownloadStore.getState().downloads[0].progress).toBe(50);
   });
 
@@ -61,10 +66,11 @@ describe('downloadStore', () => {
     const { addDownload, updateProgress } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    updateProgress(id, 150);
+    expect(id).not.toBeNull();
+    updateProgress(id!, 150);
     expect(useDownloadStore.getState().downloads[0].progress).toBe(100);
 
-    updateProgress(id, -20);
+    updateProgress(id!, -20);
     expect(useDownloadStore.getState().downloads[0].progress).toBe(0);
   });
 
@@ -72,8 +78,9 @@ describe('downloadStore', () => {
     const { addDownload, startDownload, completeDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    startDownload(id);
-    completeDownload(id);
+    expect(id).not.toBeNull();
+    startDownload(id!);
+    completeDownload(id!);
 
     const download = useDownloadStore.getState().downloads[0];
     expect(download.status).toBe('completed');
@@ -85,8 +92,9 @@ describe('downloadStore', () => {
     const { addDownload, startDownload, failDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    startDownload(id);
-    failDownload(id, 'Network error');
+    expect(id).not.toBeNull();
+    startDownload(id!);
+    failDownload(id!, 'Network error');
 
     const download = useDownloadStore.getState().downloads[0];
     expect(download.status).toBe('error');
@@ -97,9 +105,10 @@ describe('downloadStore', () => {
     const { addDownload, startDownload, failDownload, retryDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
-    startDownload(id);
-    failDownload(id, 'Network error');
-    retryDownload(id);
+    expect(id).not.toBeNull();
+    startDownload(id!);
+    failDownload(id!, 'Network error');
+    retryDownload(id!);
 
     const download = useDownloadStore.getState().downloads[0];
     expect(download.status).toBe('pending');
@@ -113,7 +122,10 @@ describe('downloadStore', () => {
     const id1 = addDownload('https://youtube.com/watch?v=test1');
     const id2 = addDownload('https://youtube.com/watch?v=test2');
 
-    completeDownload(id1);
+    expect(id1).not.toBeNull();
+    expect(id2).not.toBeNull();
+
+    completeDownload(id1!);
 
     clearCompleted();
 
@@ -137,5 +149,20 @@ describe('downloadStore', () => {
     expect(updatedDownloads.filter(d => d.status === 'downloading')).toHaveLength(1);
     expect(updatedDownloads.filter(d => d.status === 'pending')).toHaveLength(1);
     expect(updatedDownloads.filter(d => d.status === 'completed')).toHaveLength(1);
+  });
+
+  it('should prevent duplicate downloads', () => {
+    const { addDownload, hasDownload } = useDownloadStore.getState();
+    const id = addDownload('https://youtube.com/watch?v=test');
+
+    expect(id).not.toBeNull();
+    expect(hasDownload(id!)).toBe(true);
+
+    // Try to add the same download again
+    const duplicateId = addDownload('https://youtube.com/watch?v=test', undefined, undefined, id!);
+    expect(duplicateId).toBeNull();
+
+    // Should still only have 1 download
+    expect(useDownloadStore.getState().downloads).toHaveLength(1);
   });
 });
