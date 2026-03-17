@@ -253,17 +253,19 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		dl = dl.Format(opts.Format)
 	} else {
 		// Default to best quality video+audio with merge
-		log.Println("[YTDLP] Using default format: best with merge")
+		log.Println("[YTDLP] Using default format: bestvideo*+bestaudio/best")
 		dl = dl.Format("bestvideo*+bestaudio/best")
 	}
 
 	// IMPORTANT: Set merge output format to mp4 to ensure audio+video are merged
 	dl = dl.MergeOutputFormat("mp4")
 	
-	// Set ffmpeg location if available (required for merging video+audio)
+	// Note: yt-dlp will find ffmpeg automatically if it's in PATH
+	// We log whether ffmpeg is available for debugging purposes
 	if c.ffmpegPath != "" {
-		log.Printf("[YTDLP] Using ffmpeg for merging: %s", c.ffmpegPath)
-		dl = dl.FFmpegLocation(filepath.Dir(c.ffmpegPath))
+		log.Printf("[YTDLP] FFmpeg available at: %s", c.ffmpegPath)
+	} else {
+		log.Println("[YTDLP] FFmpeg not found in PATH - video/audio merging may fail")
 	}
 
 	// Apply proxy if configured
