@@ -37,6 +37,31 @@ import { EventsOn } from '../../wailsjs/runtime';
 import { useLibraryStore, useNotifications } from '../stores';
 import { Video } from '../types';
 
+// Wrapper functions with error handling
+const handleOpenFile = async (filePath: string, error: (title: string, message: string) => void) => {
+  if (!filePath) {
+    error('Cannot Open File', 'File path is empty');
+    return;
+  }
+  try {
+    await OpenFile(filePath);
+  } catch (err: any) {
+    error('Cannot Open File', err?.message || 'Failed to open file');
+  }
+};
+
+const handleOpenFolder = async (filePath: string, error: (title: string, message: string) => void) => {
+  if (!filePath) {
+    error('Cannot Open Folder', 'File path is empty');
+    return;
+  }
+  try {
+    await OpenFolder(filePath);
+  } catch (err: any) {
+    error('Cannot Open Folder', err?.message || 'Failed to open folder');
+  }
+};
+
 // Helper function to map backend VideoResult to frontend Video type
 function mapVideoResultToVideo(v: app.VideoResult): Video {
   return {
@@ -81,7 +106,7 @@ export function LibraryPage() {
         limit: 100,
         offset: 0,
       });
-      
+
       // Map backend VideoResult to frontend Video type
       const mappedVideos = (result || []).map(mapVideoResultToVideo);
       setVideos(mappedVideos);
@@ -209,14 +234,14 @@ export function LibraryPage() {
                     radius="sm"
                     src={video.thumbnailUrl}
                     style={{ cursor: 'pointer', objectFit: 'cover' }}
-                    onClick={() => OpenFile(video.filePath)}
+                    onClick={() => handleOpenFile(video.filePath, error)}
                   />
                 ) : (
                   <Paper
                     bg={dark ? '#2c2e33' : '#e9ecef'}
                     h={120}
                     style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => OpenFile(video.filePath)}
+                    onClick={() => handleOpenFile(video.filePath, error)}
                   >
                     <IconPlayerPlay color={dark ? '#5c5f66' : '#adb5bd'} size={32} />
                   </Paper>
@@ -242,12 +267,12 @@ export function LibraryPage() {
                 </div>
                 <Group gap="xs" justify="flex-end">
                   <Tooltip label="Open file">
-                    <ActionIcon color="blue" variant="light" onClick={() => OpenFile(video.filePath)}>
+                    <ActionIcon color="blue" variant="light" onClick={() => handleOpenFile(video.filePath, error)}>
                       <IconPlayerPlay size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Open folder">
-                    <ActionIcon color="gray" variant="light" onClick={() => OpenFolder(video.filePath)}>
+                    <ActionIcon color="gray" variant="light" onClick={() => handleOpenFolder(video.filePath, error)}>
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
@@ -274,14 +299,14 @@ export function LibraryPage() {
                       radius="sm"
                       src={video.thumbnailUrl}
                       style={{ cursor: 'pointer', objectFit: 'cover', width: 80 }}
-                      onClick={() => OpenFile(video.filePath)}
+                      onClick={() => handleOpenFile(video.filePath, error)}
                     />
                   ) : (
                     <Paper
                       bg={dark ? '#2c2e33' : '#e9ecef'}
                       h={60}
                       style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80 }}
-                      onClick={() => OpenFile(video.filePath)}
+                      onClick={() => handleOpenFile(video.filePath, error)}
                     >
                       <IconPlayerPlay color={dark ? '#5c5f66' : '#adb5bd'} size={24} />
                     </Paper>
@@ -308,12 +333,12 @@ export function LibraryPage() {
                 </Group>
                 <Group gap="xs">
                   <Tooltip label="Open file">
-                    <ActionIcon color="blue" variant="light" onClick={() => OpenFile(video.filePath)}>
+                    <ActionIcon color="blue" variant="light" onClick={() => handleOpenFile(video.filePath, error)}>
                       <IconPlayerPlay size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Open folder">
-                    <ActionIcon color="gray" variant="light" onClick={() => OpenFolder(video.filePath)}>
+                    <ActionIcon color="gray" variant="light" onClick={() => handleOpenFolder(video.filePath, error)}>
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
