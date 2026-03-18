@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
 
 env:
   GO_VERSION: "1.25"
@@ -26,33 +26,24 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-          # Create symlink for webkit2gtk-4.0 compatibility
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Download Go dependencies
-        run: |
-          go mod download
-          go mod tidy
+        run: go mod download
 
       - name: Install frontend dependencies
         run: |
           cd frontend
           npm ci
 
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
-
       - name: Run Go tests
-        run: go test -v ./internal/...
+        run: go test -tags webkit2_41 -v ./internal/...
 
       - name: Run Go vet
-        run: go vet ./...
+        run: go vet -tags webkit2_41 ./...
 
       - name: Check Go build
-        run: go build -v ./...
+        run: go build -tags webkit2_41 -v ./...
 
   # Frontend tests
   test-frontend:
@@ -65,18 +56,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: |
           cd frontend
           npm ci
 
-      - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
-
       - name: Run tests
         run: |
           cd frontend
-          npm test 2>&1 || true
+          npm run test -- --run

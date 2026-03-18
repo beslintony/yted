@@ -1,11 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Video } from '../types';
+
 import { useLibraryStore } from './libraryStore';
 
 // Mock the Wails API
 vi.mock('../../wailsjs/go/app/App', () => ({
   ListVideos: vi.fn(),
 }));
+
+// Helper to create a complete mock video
+const createMockVideo = (overrides: Partial<Video> = {}): Video => ({
+  id: 'default-id',
+  youtubeId: 'yt-default',
+  title: 'Default Title',
+  channel: 'Default Channel',
+  channelId: 'ch-default',
+  duration: 300,
+  description: 'Default description',
+  thumbnailUrl: 'http://example.com/thumb.jpg',
+  filePath: '/path/default.mp4',
+  fileSize: 1000000,
+  format: 'mp4',
+  quality: '1080p',
+  downloadedAt: Date.now(),
+  watchPosition: 0,
+  watchCount: 0,
+  ...overrides,
+});
 
 describe('libraryStore', () => {
   beforeEach(() => {
@@ -37,7 +59,7 @@ describe('libraryStore', () => {
     const { setVideos } = useLibraryStore.getState();
 
     const mockVideos = [
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Test Video 1',
@@ -45,8 +67,8 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
         youtubeId: 'yt2',
         title: 'Test Video 2',
@@ -54,7 +76,7 @@ describe('libraryStore', () => {
         duration: 600,
         filePath: '/path/2.mp4',
         downloadedAt: Date.now() - 1000,
-      },
+      }),
     ];
 
     setVideos(mockVideos);
@@ -65,7 +87,7 @@ describe('libraryStore', () => {
   it('should add video', () => {
     const { addVideo } = useLibraryStore.getState();
 
-    const newVideo = {
+    const newVideo = createMockVideo({
       id: '3',
       youtubeId: 'yt3',
       title: 'New Video',
@@ -73,7 +95,7 @@ describe('libraryStore', () => {
       duration: 180,
       filePath: '/path/3.mp4',
       downloadedAt: Date.now(),
-    };
+    });
 
     addVideo(newVideo);
 
@@ -86,7 +108,7 @@ describe('libraryStore', () => {
     const { setVideos, addVideo } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'First Video',
@@ -94,18 +116,20 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
-    addVideo({
-      id: '2',
-      youtubeId: 'yt2',
-      title: 'Second Video',
-      channel: 'Channel',
-      duration: 300,
-      filePath: '/path/2.mp4',
-      downloadedAt: Date.now(),
-    });
+    addVideo(
+      createMockVideo({
+        id: '2',
+        youtubeId: 'yt2',
+        title: 'Second Video',
+        channel: 'Channel',
+        duration: 300,
+        filePath: '/path/2.mp4',
+        downloadedAt: Date.now(),
+      })
+    );
 
     const videos = useLibraryStore.getState().videos;
     expect(videos[0].id).toBe('2');
@@ -116,7 +140,7 @@ describe('libraryStore', () => {
     const { setVideos, updateVideo } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Test Video',
@@ -124,7 +148,7 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     updateVideo('1', { title: 'Updated Title' });
@@ -138,7 +162,7 @@ describe('libraryStore', () => {
     const { setVideos, updateVideo } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Test Video',
@@ -146,7 +170,7 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     updateVideo('non-existent', { title: 'Updated Title' });
@@ -158,7 +182,7 @@ describe('libraryStore', () => {
     const { setVideos, removeVideo } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Video 1',
@@ -166,8 +190,8 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
         youtubeId: 'yt2',
         title: 'Video 2',
@@ -175,7 +199,7 @@ describe('libraryStore', () => {
         duration: 600,
         filePath: '/path/2.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     removeVideo('1');
@@ -240,7 +264,7 @@ describe('libraryStore', () => {
     const { setVideos, updateWatchPosition } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Test Video',
@@ -249,7 +273,7 @@ describe('libraryStore', () => {
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
         watchPosition: 0,
-      },
+      }),
     ]);
 
     updateWatchPosition('1', 150);
@@ -261,7 +285,7 @@ describe('libraryStore', () => {
     const { setVideos, incrementWatchCount } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Test Video',
@@ -270,7 +294,7 @@ describe('libraryStore', () => {
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
         watchCount: 5,
-      },
+      }),
     ]);
 
     incrementWatchCount('1');
@@ -282,7 +306,7 @@ describe('libraryStore', () => {
     const { setVideos, setSearchQuery } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Alpha Video',
@@ -290,8 +314,8 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
         youtubeId: 'yt2',
         title: 'Beta Video',
@@ -299,7 +323,7 @@ describe('libraryStore', () => {
         duration: 600,
         filePath: '/path/2.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     setSearchQuery('alpha');
@@ -313,7 +337,7 @@ describe('libraryStore', () => {
     const { setVideos, setSearchQuery } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Video One',
@@ -321,8 +345,8 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
         youtubeId: 'yt2',
         title: 'Video Two',
@@ -330,7 +354,7 @@ describe('libraryStore', () => {
         duration: 600,
         filePath: '/path/2.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     setSearchQuery('channel a');
@@ -344,7 +368,7 @@ describe('libraryStore', () => {
     const { setVideos, setSortBy, toggleSortOrder } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Zebra Video',
@@ -352,8 +376,8 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
         youtubeId: 'yt2',
         title: 'Apple Video',
@@ -361,7 +385,7 @@ describe('libraryStore', () => {
         duration: 600,
         filePath: '/path/2.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     setSortBy('title');
@@ -376,7 +400,7 @@ describe('libraryStore', () => {
     const { setVideos, setSortBy, toggleSortOrder } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'Long Video',
@@ -384,8 +408,8 @@ describe('libraryStore', () => {
         duration: 600,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
         youtubeId: 'yt2',
         title: 'Short Video',
@@ -393,7 +417,7 @@ describe('libraryStore', () => {
         duration: 100,
         filePath: '/path/2.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     setSortBy('duration');
@@ -408,22 +432,24 @@ describe('libraryStore', () => {
     const { setVideos, getFilteredVideos } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
+        youtubeId: 'yt1',
         title: 'Video 1',
         channel: 'A',
         duration: 300,
         filePath: '/1.mp4',
         downloadedAt: Date.now(),
-      },
-      {
+      }),
+      createMockVideo({
         id: '2',
+        youtubeId: 'yt2',
         title: 'Video 2',
         channel: 'B',
         duration: 600,
         filePath: '/2.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     const filtered = getFilteredVideos();
@@ -434,7 +460,7 @@ describe('libraryStore', () => {
     const { setVideos, setSearchQuery } = useLibraryStore.getState();
 
     setVideos([
-      {
+      createMockVideo({
         id: '1',
         youtubeId: 'yt1',
         title: 'UPPERCASE VIDEO',
@@ -442,7 +468,7 @@ describe('libraryStore', () => {
         duration: 300,
         filePath: '/path/1.mp4',
         downloadedAt: Date.now(),
-      },
+      }),
     ]);
 
     setSearchQuery('uppercase');

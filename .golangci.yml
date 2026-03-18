@@ -2,10 +2,6 @@
 run:
   timeout: 5m
   go: '1.25'
-  skip-dirs:
-    - frontend
-  skip-files:
-    - ".*_test.go"
 
 linters:
   enable:
@@ -61,6 +57,10 @@ linters-settings:
 
 issues:
   exclude-use-default: false
+  exclude-dirs:
+    - frontend
+  exclude-files:
+    - ".*_test.go"
   exclude:
     # Exclude shadow checking for err variable (common pattern)
     - 'shadow: declaration of "err" shadows'
