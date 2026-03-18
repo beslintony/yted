@@ -32,11 +32,10 @@ type VideoInfoResult struct {
 	Formats     []ytdl.FormatInfo `json:"formats"`
 }
 
-// GetVideoInfo extracts video information from URL
+// GetVideoInfo extracts video information from URL with caching
+// Cache TTL: 5 minutes to prevent duplicate fetches
 func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 	logger := applog.GetLogger()
-
-	logger.Info("Download", "Fetching video info", map[string]string{"url": videoURL})
 
 	if a.ytdl == nil {
 		err := fmt.Errorf("ytdl client not initialized")
@@ -50,6 +49,24 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		return nil, err
 	}
 
+	// Normalize URL for cache key
+	cacheKey := normalizeURLForCache(videoURL)
+
+	// Check cache first
+	a.videoInfoCacheMu.RLock()
+	cached, found := a.videoInfoCache[cacheKey]
+	a.videoInfoCacheMu.RUnlock()
+
+	if found && time.Now().Before(cached.expiresAt) {
+		logger.Info("Download", "Video info cache hit", map[string]string{
+			"url":   videoURL,
+			"title": cached.info.Title,
+		})
+		return cached.info, nil
+	}
+
+	logger.Info("Download", "Fetching video info", map[string]string{"url": videoURL})
+
 	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 	defer cancel()
 
@@ -59,12 +76,7 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		return nil, err
 	}
 
-	logger.Info("Download", "Video info fetched successfully", map[string]string{
-		"id":    info.ID,
-		"title": info.Title,
-	})
-
-	return &VideoInfoResult{
+	result := &VideoInfoResult{
 		ID:          info.ID,
 		Title:       info.Title,
 		Channel:     info.Channel,
@@ -73,7 +85,63 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		Description: info.Description,
 		Thumbnail:   info.Thumbnail,
 		Formats:     info.Formats,
-	}, nil
+	}
+
+	// Store in cache with 5-minute TTL
+	a.videoInfoCacheMu.Lock()
+	a.videoInfoCache[cacheKey] = videoInfoCacheEntry{
+		info:      result,
+		expiresAt: time.Now().Add(5 * time.Minute),
+	}
+	a.videoInfoCacheMu.Unlock()
+
+	logger.Info("Download", "Video info fetched and cached", map[string]string{
+		"id":    info.ID,
+		"title": info.Title,
+	})
+
+	return result, nil
+}
+
+// normalizeURLForCache normalizes URL for cache key comparison
+func normalizeURLForCache(url string) string {
+	// Remove common tracking parameters and normalize
+	// YouTube URLs can have various formats, we want to treat them as the same video
+
+	// Trim whitespace
+	url = strings.TrimSpace(url)
+
+	// Remove mobile prefix
+	if strings.Contains(url, "youtu.be/") {
+		// Short URL format: https://youtu.be/VIDEO_ID
+		return url
+	}
+
+	// For youtube.com URLs, extract just the video ID
+	// This handles various parameter orders
+	if idx := strings.Index(url, "v="); idx != -1 {
+		start := idx + 2
+		end := strings.IndexAny(url[start:], "&?# ")
+		if end == -1 {
+			return url[:start] + url[start:]
+		}
+		return url[:start] + url[start:start+end]
+	}
+
+	return url
+}
+
+// cleanupVideoInfoCache removes expired entries from the cache
+func (a *App) cleanupVideoInfoCache() {
+	a.videoInfoCacheMu.Lock()
+	defer a.videoInfoCacheMu.Unlock()
+
+	now := time.Now()
+	for key, entry := range a.videoInfoCache {
+		if now.After(entry.expiresAt) {
+			delete(a.videoInfoCache, key)
+		}
+	}
 }
 
 // AddDownload adds a new download to the queue

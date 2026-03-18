@@ -19,6 +19,12 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// videoInfoCacheEntry stores cached video info with TTL
+type videoInfoCacheEntry struct {
+	info      *VideoInfoResult
+	expiresAt time.Time
+}
+
 // App struct
 type App struct {
 	ctx    context.Context
@@ -39,13 +45,18 @@ type App struct {
 	// Graceful shutdown support
 	activeDownloadsWg sync.WaitGroup
 	shutdownCh        chan struct{}
+
+	// Video info cache to prevent duplicate fetches
+	videoInfoCache   map[string]videoInfoCacheEntry
+	videoInfoCacheMu sync.RWMutex
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		activeDownloads: make(map[string]context.CancelFunc),
-		shutdownCh:      make(chan struct{}),
+		activeDownloads:  make(map[string]context.CancelFunc),
+		shutdownCh:       make(chan struct{}),
+		videoInfoCache:   make(map[string]videoInfoCacheEntry),
 	}
 }
 
