@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 
 import {
   ActionIcon,
@@ -13,8 +12,8 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
-
 import { IconDownload, IconRefresh, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ClearLogs, ExportLogs, GetLogs } from '../../wailsjs/go/app/App';
 import { EventsOn } from '../../wailsjs/runtime';

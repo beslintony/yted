@@ -1,8 +1,8 @@
-import { create } from 'zustand';
 
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
+import { create } from 'zustand';
 
 import type { ConfirmOptions } from '../types';
 
