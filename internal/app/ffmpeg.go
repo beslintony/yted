@@ -34,43 +34,72 @@ func (f *FFmpegManager) SetCustomPath(path string) {
 }
 
 // Find searches for ffmpeg in custom path, PATH and common locations
+// Validates the binary by running 'ffmpeg -version' to ensure it works
 func (f *FFmpegManager) Find() string {
-	// Check if we already found it
+	// Check if we already found and validated it
 	if f.binPath != "" {
 		return f.binPath
 	}
 	
+	// Helper to validate a path works by running ffmpeg -version
+	validatePath := func(path string) bool {
+		if path == "" {
+			return false
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.IsDir() {
+			return false
+		}
+		// Actually run ffmpeg -version to verify it works
+		cmd := exec.Command(path, "-version")
+		output, err := cmd.Output()
+		if err != nil {
+			f.logger.Warn("FFmpeg", "Binary found but failed validation", map[string]string{
+				"path":  path,
+				"error": err.Error(),
+			})
+			return false
+		}
+		// Verify output contains "ffmpeg version"
+		if !strings.Contains(string(output), "ffmpeg version") {
+			f.logger.Warn("FFmpeg", "Binary output doesn't look like ffmpeg", map[string]string{
+				"path": path,
+			})
+			return false
+		}
+		return true
+	}
+	
 	// First try custom path if set
 	if f.customPath != "" {
-		if _, err := os.Stat(f.customPath); err == nil {
-			// Verify it's executable
-			if info, err := os.Stat(f.customPath); err == nil && !info.IsDir() {
-				f.binPath = f.customPath
-				f.logger.Info("FFmpeg", "Found ffmpeg at custom path", map[string]string{"path": f.customPath})
-				return f.customPath
-			}
+		if validatePath(f.customPath) {
+			f.binPath = f.customPath
+			f.logger.Info("FFmpeg", "Found and validated ffmpeg at custom path", map[string]string{"path": f.customPath})
+			return f.customPath
 		}
 		f.logger.Warn("FFmpeg", "Custom ffmpeg path not valid, falling back to auto-detect", map[string]string{"path": f.customPath})
 	}
 	
 	// Try PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
-		f.binPath = path
-		f.logger.Info("FFmpeg", "Found ffmpeg in PATH", map[string]string{"path": path})
-		return path
+		if validatePath(path) {
+			f.binPath = path
+			f.logger.Info("FFmpeg", "Found and validated ffmpeg in PATH", map[string]string{"path": path})
+			return path
+		}
 	}
 	
 	// Check common locations
 	commonPaths := f.getCommonPaths()
 	for _, path := range commonPaths {
-		if _, err := os.Stat(path); err == nil {
+		if validatePath(path) {
 			f.binPath = path
-			f.logger.Info("FFmpeg", "Found ffmpeg in common location", map[string]string{"path": path})
+			f.logger.Info("FFmpeg", "Found and validated ffmpeg in common location", map[string]string{"path": path})
 			return path
 		}
 	}
 	
-	f.logger.Warn("FFmpeg", "FFmpeg not found - video/audio may not merge properly", nil)
+	f.logger.Warn("FFmpeg", "FFmpeg not found or not working - video/audio may not merge properly", nil)
 	return ""
 }
 
