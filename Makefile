@@ -1,6 +1,6 @@
 # YTed Makefile
 
-.PHONY: all build build-versioned dev test lint fmt clean help
+.PHONY: all build build-versioned dev test lint fmt clean install install-system uninstall uninstall-system help
 
 # Version (override with VERSION=x.y.z)
 VERSION ?= dev
@@ -84,6 +84,34 @@ generate:
 ## Run the application
 run:
 	./build/bin/yted
+
+## Install for current user (~/.local/)
+install:
+	@echo "Installing YTed for current user..."
+	@build/linux/install.sh
+
+## Install system-wide (/usr/local/)
+install-system:
+	@echo "Installing YTed system-wide..."
+	@sudo build/linux/install.sh --system
+
+## Uninstall for current user
+uninstall:
+	@echo "Uninstalling YTed..."
+	@rm -f ~/.local/bin/yted
+	@rm -f ~/.local/share/icons/yted.png
+	@rm -f ~/.local/share/applications/yted.desktop
+	@update-desktop-database ~/.local/share/applications 2>/dev/null || true
+	@echo "YTed uninstalled from user directories"
+
+## Uninstall system-wide
+uninstall-system:
+	@echo "Uninstalling YTed system-wide..."
+	@sudo rm -f /usr/local/bin/yted
+	@sudo rm -f /usr/share/pixmaps/yted.png
+	@sudo rm -f /usr/share/applications/yted.desktop
+	@sudo update-desktop-database /usr/share/applications 2>/dev/null || true
+	@echo "YTed uninstalled from system directories"
 
 ## Show help
 help:

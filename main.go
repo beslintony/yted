@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"embed"
 
 	"github.com/wailsapp/wails/v2"
@@ -15,6 +16,9 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+//go:embed build/appicon.png
+var iconBytes []byte
 
 func main() {
 	// Create an instance of the app structure
@@ -75,7 +79,7 @@ func main() {
 		},
 		// Linux platform specific options
 		Linux: &linux.Options{
-			Icon:                nil,
+			Icon:                iconBytes,
 			WindowIsTranslucent: false,
 		},
 	})

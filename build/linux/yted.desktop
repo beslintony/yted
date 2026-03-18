@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=YTed
+Comment=YouTube Downloader and Library Manager
+Exec=yted
+Icon=yted
+Type=Application
+Categories=AudioVideo;Network;
+Terminal=false
+StartupNotify=true
+StartupWMClass=YTed
+Keywords=youtube;download;video;audio;
