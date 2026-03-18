@@ -1,27 +1,39 @@
-# <img src="./frontend/public/logo.svg" alt="YTed Logo" width="25"> YTed
+# <img src="./build/appicon.png" alt="YTed Logo" width="32"> YTed
 
-A modern, user-friendly YouTube downloader and editor built with Go, Wails, and React.
+A modern, user-friendly YouTube downloader and library manager built with Go, Wails, and React.
+
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/beslintony/yted/releases)
+[![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Features
 
-- **Modern UI**: Built with Mantine UI components, featuring a clean dark theme
+- **Modern UI**: Built with Mantine UI v8, featuring a clean dark theme
 - **Download Queue**: Manage multiple downloads with pause/resume/retry support
-- **Video Library**: Organized view of downloaded videos with search and filter
-- **Configurable**: Extensive user settings including download presets
-- **Cross-Platform**: Works on Windows, macOS, and Linux
+- **Video Library**: Organized view of downloaded videos with search, filter, and sorting
+- **Watch Progress**: Automatically track and resume playback position
+- **Configurable**: Extensive user settings including download presets and speed limits
+- **Cross-Platform**: Native builds for Windows, macOS, and Linux
+- **Custom App Icon**: Branded YTed icon across all platforms
+
+## Screenshots
+
+*Screenshots coming soon*
 
 ## Tech Stack
 
 ### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Mantine v7** - Component library
-- **Zustand** - State management
+- **React 18.3** - UI library
+- **TypeScript 5.9** - Type safety
+- **Vite 8** - Build tool
+- **Mantine v8** - Component library
+- **Zustand 5** - State management
 - **Tabler Icons** - Icon library
+- **ESLint 9** - Linting (flat config)
+- **Vitest** - Testing framework
 
 ### Backend
-- **Go 1.21+** - Backend language
+- **Go 1.25+** - Backend language
 - **Wails v2** - Desktop framework
 - **go-ytdlp** - yt-dlp bindings
 - **modernc.org/sqlite** - Pure Go SQLite
@@ -29,8 +41,8 @@ A modern, user-friendly YouTube downloader and editor built with Go, Wails, and 
 ## Installation
 
 ### Prerequisites
-- Go 1.21 or later
-- Node.js 18 or later
+- Go 1.25 or later
+- Node.js 20 or later
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 
 ### Build from Source
@@ -40,21 +52,36 @@ A modern, user-friendly YouTube downloader and editor built with Go, Wails, and 
 git clone https://github.com/beslintony/yted.git
 cd yted
 
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
+# Install dependencies and build
+make deps
+make build
 
-# Run in development mode
-wails dev
+# Or build with version info
+make build-versioned VERSION=1.2.0
+```
 
-# Build for production
-wails build
+### Install (Linux)
+
+```bash
+# Install for current user (~/.local/)
+make install
+
+# Or install system-wide (/usr/local/)
+make install-system
+
+# Uninstall
+make uninstall
+make uninstall-system
 ```
 
 ### Pre-built Binaries
 
 Download pre-built binaries from the [Releases](https://github.com/beslintony/yted/releases) page.
+
+Available for:
+- Linux (Ubuntu 22.04+, other distros)
+- Windows 10/11
+- macOS (Intel & Apple Silicon)
 
 ## Development
 
@@ -67,16 +94,32 @@ yted/
 │   │   ├── pages/         # Page components
 │   │   ├── stores/        # Zustand stores
 │   │   ├── types/         # TypeScript types
-│   │   └── tests/         # Unit tests
+│   │   └── tests/         # Unit tests (75 tests)
 │   ├── public/            # Static assets
 │   └── package.json
 ├── internal/              # Go backend
 │   ├── app/              # Wails app handlers
 │   ├── config/           # Configuration management
 │   ├── db/               # SQLite database
+│   ├── log/              # Logging system
+│   ├── version/          # Version management
 │   └── ytdl/             # yt-dlp client
-├── build/                # Build assets
+├── build/                # Build assets & icons
 └── main.go              # Entry point
+```
+
+### Makefile Commands
+
+```bash
+make dev              # Run in development mode
+make build            # Build for production
+make build-versioned  # Build with version injection
+make test             # Run all tests
+make lint             # Run linters
+make fmt              # Format code
+make install          # Install to ~/.local/
+make clean            # Clean build artifacts
+make help             # Show all commands
 ```
 
 ### Frontend Development
@@ -84,8 +127,10 @@ yted/
 ```bash
 cd frontend
 npm run dev       # Start Vite dev server
-npm run test      # Run tests
+npm run test      # Run tests (Vitest)
 npm run build     # Build for production
+npm run lint      # Run ESLint
+npm run format    # Format with Prettier
 ```
 
 ### Backend Development
@@ -94,19 +139,11 @@ npm run build     # Build for production
 # Generate Wails bindings
 wails generate module
 
+# Run Go tests
+go test -v ./...
+
 # Build Go binary
 wails build
-```
-
-### Running Tests
-
-```bash
-# Frontend tests
-cd frontend
-npm test
-
-# Backend tests (if any)
-go test ./...
 ```
 
 ## Configuration
@@ -114,27 +151,35 @@ go test ./...
 YTed stores configuration in `~/.yted/config/settings.json`. The following settings are available:
 
 ### Downloads
-- `download_path` - Where downloaded videos are saved
+- `download_path` - Where downloaded videos are saved (default: ~/Downloads/YTed)
 - `max_concurrent_downloads` - Number of simultaneous downloads (1-10)
-- `default_quality` - Default quality preference (best, 1080p, 720p, 480p, audio)
+- `default_quality` - Default quality preference (best, 2160p, 1440p, 1080p, 720p, 480p, 360p, audio)
 - `filename_template` - Template for output filenames
+- `speed_limit_kbps` - Download speed limit in KB/s
 
 ### UI
 - `theme` - Color theme (dark, light, auto)
-- `accent_color` - Primary accent color
+- `accent_color` - Primary accent color (default: YouTube red #ff0000)
 - `sidebar_collapsed` - Whether sidebar is collapsed
 
 ### Network
-- `speed_limit_kbps` - Download speed limit in KB/s
 - `proxy_url` - HTTP/SOCKS proxy URL
+
+### Player
+- `default_volume` - Default player volume (0-100)
+- `remember_position` - Remember playback position
 
 ## Download Presets
 
 YTed comes with default download presets:
-- **Best Quality** - Best available quality
-- **1080p** - 1080p video + audio
-- **720p** - 720p video + audio  
-- **Audio Only** - Audio only (MP3)
+- **4K (2160p)** - Ultra HD quality
+- **1440p (2K)** - Quad HD quality
+- **1080p HD** - Full HD
+- **720p HD** - Standard HD
+- **480p** - DVD quality
+- **Best Available** - Highest quality available
+- **Audio Only (MP3)** - MP3 audio extraction
+- **Audio Only (M4A)** - M4A audio extraction
 
 Users can create custom presets with specific formats and qualities.
 
@@ -143,14 +188,31 @@ Users can create custom presets with specific formats and qualities.
 YTed uses SQLite to store:
 
 ### Videos Table
-- Video metadata (title, channel, duration, etc.)
-- File information (path, size, format)
+- Video metadata (title, channel, duration, description, thumbnail)
+- File information (path, size, format, quality)
 - Watch progress and count
+- Download timestamp
 
 ### Downloads Table
-- Download queue with status tracking
-- Progress information
-- Error messages
+- Download queue with status tracking (pending, downloading, paused, completed, error)
+- Progress information (percentage, speed, ETA)
+- Error messages and retry count
+
+## Architecture Highlights
+
+### Performance Optimizations
+- **Video Info Caching**: 5-minute TTL cache for YouTube API calls
+- **Progress Debouncing**: Throttled progress events (max 2/sec) to prevent UI flooding
+- **SQLite**: Fast local database for metadata and download queue
+
+### Cross-Platform Support
+- **Linux**: Native GTK3/WebKit2GTK with `.desktop` integration
+- **Windows**: Native build with custom icon
+- **macOS**: Universal binary with app bundle and About dialog
+
+### Sandbox Compatibility
+- File/folder opening with fallback to browser for snap/AppImage
+- Native commands preferred, BrowserOpenURL as fallback
 
 ## Contributing
 
@@ -169,6 +231,15 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `test:` - Test updates
 - `chore:` - Build/config changes
 
+### Code Quality
+
+```bash
+# Before committing, run:
+make fmt    # Format code
+make lint   # Check linting
+make test   # Run tests
+```
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
@@ -179,6 +250,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [go-ytdlp](https://github.com/lrstanley/go-ytdlp) - Go bindings for yt-dlp
 - [Wails](https://wails.io/) - Build desktop apps with Go and web technologies
 - [Mantine](https://mantine.dev/) - React components library
+- [Vite](https://vitejs.dev/) - Next generation frontend tooling
 
 ## Support
 
