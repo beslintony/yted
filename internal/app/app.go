@@ -14,6 +14,7 @@ import (
 	"yted/internal/config"
 	"yted/internal/db"
 	applog "yted/internal/log"
+	"yted/internal/version"
 	"yted/internal/ytdl"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -103,7 +104,7 @@ func (a *App) Startup(ctx context.Context) {
 	}
 
 	a.logger.Info("App", "Starting YTed", map[string]string{
-		"version":     "1.0.0",
+		"version":     version.GetVersion(),
 		"appDir":      appDataDir,
 		"logDir":      logDir,
 		"maxSessions": fmt.Sprintf("%d", maxSessions),
@@ -285,7 +286,7 @@ func (a *App) DOMReady(ctx context.Context) {
 
 // GetVersion returns the app version
 func (a *App) GetVersion() string {
-	return "1.0.0"
+	return version.GetVersion()
 }
 
 // GetYtdlpVersion returns the current yt-dlp version

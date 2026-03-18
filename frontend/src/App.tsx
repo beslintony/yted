@@ -17,13 +17,13 @@ import {
   IconSun,
   IconVideo,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { LoggerViewer } from './components/LoggerViewer';
 import { DownloadPage } from './pages/DownloadPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { useSettingsStore } from './stores';
+import { useSettingsStore, useVersionStore } from './stores';
 
 function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -31,6 +31,12 @@ function App() {
   const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
   const [loggerOpened, setLoggerOpened] = useState(false);
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
+  const { version, fetchVersion } = useVersionStore();
+
+  // Fetch version on mount
+  useEffect(() => {
+    fetchVersion();
+  }, [fetchVersion]);
 
   const dark = colorScheme === 'dark';
 
@@ -79,7 +85,7 @@ function App() {
             />
 
             {/* Logo */}
-            <Tooltip label="YTed v1.0.0">
+            <Tooltip label={`YTed v${version}`}>
               <img
                 alt="YTed"
                 src="/logo.svg"
@@ -165,7 +171,7 @@ function App() {
 
       <AppShell.Footer>
         <Group h="100%" justify="space-between" px="md">
-          <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>YTed v1.0.0</span>
+          <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>YTed v{version}</span>
           <span style={{ fontSize: 12, color: dark ? '#909296' : '#868e96' }}>Ready</span>
         </Group>
       </AppShell.Footer>
