@@ -7,8 +7,8 @@ VERSION ?= dev
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# LDFLAGS for version injection
-LDFLAGS := -ldflags "-X yted/internal/version.Version=$(VERSION) -X yted/internal/version.Commit=$(COMMIT) -X yted/internal/version.BuildDate=$(BUILD_DATE)"
+# LDFLAGS for version injection (just the flags, not the -ldflags prefix)
+LDFLAGS := -X yted/internal/version.Version=$(VERSION) -X yted/internal/version.Commit=$(COMMIT) -X yted/internal/version.BuildDate=$(BUILD_DATE)
 
 # Default target
 all: fmt lint build
