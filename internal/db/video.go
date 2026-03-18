@@ -97,7 +97,7 @@ func (db *DB) GetVideosByYoutubeID(youtubeID string) ([]Video, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get videos by youtube id: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var videos []Video
 	for rows.Next() {
@@ -219,7 +219,7 @@ func (db *DB) ListVideosWithHash(opts ListVideosOptions) ([]Video, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list videos: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var videos []Video
 	for rows.Next() {
@@ -322,7 +322,7 @@ func (db *DB) GetChannels() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channels: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var channels []string
 	for rows.Next() {

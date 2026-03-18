@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+
 import { GetVersion } from '../../wailsjs/go/app/App';
 
 interface VersionState {
@@ -7,7 +8,7 @@ interface VersionState {
   fetchVersion: () => Promise<void>;
 }
 
-export const useVersionStore = create<VersionState>((set) => ({
+export const useVersionStore = create<VersionState>(set => ({
   version: 'dev',
   isLoading: false,
   fetchVersion: async () => {

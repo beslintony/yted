@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"yted/internal/config"
 	"yted/internal/db"
 	applog "yted/internal/log"
 	"yted/internal/version"
 	"yted/internal/ytdl"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // videoInfoCacheEntry stores cached video info with TTL
@@ -55,9 +55,9 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		activeDownloads:  make(map[string]context.CancelFunc),
-		shutdownCh:       make(chan struct{}),
-		videoInfoCache:   make(map[string]videoInfoCacheEntry),
+		activeDownloads: make(map[string]context.CancelFunc),
+		shutdownCh:      make(chan struct{}),
+		videoInfoCache:  make(map[string]videoInfoCacheEntry),
 	}
 }
 
@@ -156,12 +156,12 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Find and configure ffmpeg for video/audio merging
 	a.ffmpeg = NewFFmpegManager()
-	
+
 	// Set custom path from config if available
 	if cfgManager.Get().FFmpegPath != "" {
 		a.ffmpeg.SetCustomPath(cfgManager.Get().FFmpegPath)
 	}
-	
+
 	if ffmpegPath := a.ffmpeg.Find(); ffmpegPath != "" {
 		a.ytdl.SetFFmpegPath(ffmpegPath)
 		a.logger.Info("FFmpeg", "FFmpeg configured for video/audio merging", map[string]string{
@@ -195,7 +195,7 @@ func (a *App) Startup(ctx context.Context) {
 }
 
 // Shutdown is called when the app shuts down
-func (a *App) Shutdown(ctx context.Context) {
+func (a *App) Shutdown(_ context.Context) {
 	a.logger.Info("App", "Shutting down YTed")
 
 	// Signal shutdown to all goroutines
@@ -213,7 +213,7 @@ func (a *App) Shutdown(ctx context.Context) {
 	// Wait for active downloads to finish (with timeout)
 	if activeCount > 0 {
 		a.logger.Info("App", "Waiting for downloads to finish", map[string]int{"count": activeCount})
-		
+
 		done := make(chan struct{})
 		go func() {
 			a.activeDownloadsWg.Wait()
@@ -278,7 +278,7 @@ func (a *App) checkForYtdlpUpdate() {
 }
 
 // DOMReady is called when the frontend is ready
-func (a *App) DOMReady(ctx context.Context) {
+func (a *App) DOMReady(_ context.Context) {
 	a.logger.Info("App", "Frontend DOM ready")
 	// Frontend is ready, can emit events now
 	runtime.EventsEmit(a.ctx, "app:ready", nil)
@@ -322,7 +322,7 @@ func (a *App) GetAppName() string {
 
 // ShowError shows an error dialog
 func (a *App) ShowError(message string) {
-	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+	_, _ = runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
 		Type:    runtime.ErrorDialog,
 		Title:   "Error",
 		Message: message,
@@ -339,7 +339,7 @@ func (a *App) ShowOpenDirectoryDialog() (string, error) {
 // ShowFFmpegDialog shows a file picker for ffmpeg binary
 func (a *App) ShowFFmpegDialog() (string, error) {
 	filters := []runtime.FileFilter{}
-	
+
 	// Add platform-specific filters
 	if goRuntime.GOOS == "windows" {
 		filters = append(filters, runtime.FileFilter{
@@ -351,7 +351,7 @@ func (a *App) ShowFFmpegDialog() (string, error) {
 		DisplayName: "All files",
 		Pattern:     "*",
 	})
-	
+
 	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:   "Select FFmpeg Binary",
 		Filters: filters,

@@ -131,14 +131,14 @@ func (db *DB) ListDownloads(status ...string) ([]Download, error) {
 			FROM downloads
 			WHERE status IN (%s)
 			ORDER BY created_at DESC
-		`, fmt.Sprintf("%s", strings.Join(placeholders, ",")))
+		`, strings.Join(placeholders, ","))
 	}
 
 	rows, err := db.conn.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list downloads: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var downloads []Download
 	for rows.Next() {
@@ -288,7 +288,7 @@ func (db *DB) GetPendingDownloads(limit int) ([]Download, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pending downloads: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var downloads []Download
 	for rows.Next() {
@@ -346,7 +346,7 @@ func (db *DB) GetIncompleteDownloads() ([]Download, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get incomplete downloads: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var downloads []Download
 	for rows.Next() {

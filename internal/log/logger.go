@@ -9,15 +9,21 @@ import (
 	"time"
 )
 
+// LogLevel represents the severity of a log entry
 type LogLevel string
 
 const (
+	// DEBUG level for detailed debugging information
 	DEBUG LogLevel = "DEBUG"
-	INFO  LogLevel = "INFO"
-	WARN  LogLevel = "WARN"
+	// INFO level for general information
+	INFO LogLevel = "INFO"
+	// WARN level for warning messages
+	WARN LogLevel = "WARN"
+	// ERROR level for error messages
 	ERROR LogLevel = "ERROR"
 )
 
+// LogEntry represents a single log entry with timestamp and metadata
 type LogEntry struct {
 	Timestamp  time.Time       `json:"timestamp"`
 	Level      LogLevel        `json:"level"`
@@ -28,6 +34,7 @@ type LogEntry struct {
 	StackTrace string          `json:"stack_trace,omitempty"`
 }
 
+// Logger provides structured logging with file output and in-memory buffering
 type Logger struct {
 	mu             sync.RWMutex
 	entries        []LogEntry
@@ -131,8 +138,11 @@ func (l *Logger) cleanupOldSessions() {
 		toDelete := len(sessions) - l.maxSessions
 		for i := 0; i < toDelete; i++ {
 			sessionDir := filepath.Join(l.logDir, sessions[i].Name())
-			os.RemoveAll(sessionDir)
-			fmt.Printf("[Logger] Cleaned up old session: %s\n", sessions[i].Name())
+			if err := os.RemoveAll(sessionDir); err != nil {
+				fmt.Printf("[Logger] Failed to clean up session %s: %v\n", sessions[i].Name(), err)
+			} else {
+				fmt.Printf("[Logger] Cleaned up old session: %s\n", sessions[i].Name())
+			}
 		}
 	}
 }
@@ -239,11 +249,11 @@ func (l *Logger) writeToFile(entry LogEntry) {
 	if err != nil {
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	jsonEntry, _ := json.Marshal(entry)
-	file.Write(jsonEntry)
-	file.Write([]byte("\n"))
+	_, _ = file.Write(jsonEntry)
+	_, _ = file.Write([]byte("\n"))
 }
 
 // GetSessionDirs returns all session directories
@@ -368,12 +378,12 @@ func (l *Logger) Export(filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	for _, entry := range l.entries {
 		jsonEntry, _ := json.Marshal(entry)
-		file.Write(jsonEntry)
-		file.Write([]byte("\n"))
+		_, _ = file.Write(jsonEntry)
+		_, _ = file.Write([]byte("\n"))
 	}
 
 	return nil

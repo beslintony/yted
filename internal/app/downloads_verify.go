@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"yted/internal/db"
 	applog "yted/internal/log"
 )

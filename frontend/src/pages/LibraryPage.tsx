@@ -1,3 +1,4 @@
+
 import {
   ActionIcon,
   Badge,
@@ -38,25 +39,33 @@ import { useLibraryStore, useNotifications } from '../stores';
 import { Video } from '../types';
 
 // Wrapper functions with error handling
-const handleOpenFile = async (filePath: string, error: (title: string, message: string) => void) => {
+const handleOpenFile = async (
+  filePath: string,
+  error: (title: string, message: string) => void
+) => {
   if (!filePath) {
     error('Cannot Open File', 'File path is empty');
     return;
   }
   try {
     await OpenFile(filePath);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error('Cannot Open File', err?.message || 'Failed to open file');
   }
 };
 
-const handleOpenFolder = async (filePath: string, error: (title: string, message: string) => void) => {
+const handleOpenFolder = async (
+  filePath: string,
+  error: (title: string, message: string) => void
+) => {
   if (!filePath) {
     error('Cannot Open Folder', 'File path is empty');
     return;
   }
   try {
     await OpenFolder(filePath);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error('Cannot Open Folder', err?.message || 'Failed to open folder');
   }
@@ -118,7 +127,7 @@ export function LibraryPage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const result = await GetLibraryStats() as { total_videos: number; total_size: number };
+      const result = (await GetLibraryStats()) as { total_videos: number; total_size: number };
       setStats({ totalVideos: result.total_videos, totalSize: result.total_size });
     } catch (err) {
       console.error('Failed to load stats:', err);
@@ -151,7 +160,7 @@ export function LibraryPage() {
         try {
           await DeleteVideo(video.id, true);
           removeStoreVideo(video.id);
-          setVideos((prev) => prev.filter((v) => v.id !== video.id));
+          setVideos(prev => prev.filter(v => v.id !== video.id));
           success('Video deleted', `"${video.title}" has been deleted`);
         } catch (err) {
           error('Failed to delete video', err instanceof Error ? err.message : 'Unknown error');
@@ -176,7 +185,7 @@ export function LibraryPage() {
   };
 
   const filteredVideos = videos.filter(
-    (video) =>
+    video =>
       video.title.toLowerCase().includes(search.toLowerCase()) ||
       video.channel.toLowerCase().includes(search.toLowerCase())
   );
@@ -192,7 +201,7 @@ export function LibraryPage() {
             leftSection={<IconSearch size={16} />}
             placeholder="Search videos..."
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
+            onChange={e => setSearch(e.currentTarget.value)}
           />
           <Select
             data={[
@@ -202,12 +211,15 @@ export function LibraryPage() {
               { value: 'duration', label: 'Duration' },
             ]}
             value={sortBy}
-            onChange={(value) => value && setSortBy(value)}
+            onChange={value => value && setSortBy(value)}
           />
           <ActionIcon variant="light" onClick={() => setSortDesc(!sortDesc)}>
             {sortDesc ? <IconSortDescending size={18} /> : <IconSortAscending size={18} />}
           </ActionIcon>
-          <ActionIcon variant="light" onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}>
+          <ActionIcon
+            variant="light"
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+          >
             {viewMode === 'grid' ? <IconList size={18} /> : <IconGridDots size={18} />}
           </ActionIcon>
           <ActionIcon variant="light" onClick={loadVideos}>
@@ -224,7 +236,7 @@ export function LibraryPage() {
         </Paper>
       ) : viewMode === 'grid' ? (
         <SimpleGrid cols={3} spacing="md">
-          {filteredVideos.map((video) => (
+          {filteredVideos.map(video => (
             <Paper key={video.id} withBorder p="md">
               <Stack gap="sm">
                 {video.thumbnailUrl ? (
@@ -240,7 +252,12 @@ export function LibraryPage() {
                   <Paper
                     bg={dark ? '#2c2e33' : '#e9ecef'}
                     h={120}
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
                     onClick={() => handleOpenFile(video.filePath, error)}
                   >
                     <IconPlayerPlay color={dark ? '#5c5f66' : '#adb5bd'} size={32} />
@@ -267,12 +284,20 @@ export function LibraryPage() {
                 </div>
                 <Group gap="xs" justify="flex-end">
                   <Tooltip label="Open file">
-                    <ActionIcon color="blue" variant="light" onClick={() => handleOpenFile(video.filePath, error)}>
+                    <ActionIcon
+                      color="blue"
+                      variant="light"
+                      onClick={() => handleOpenFile(video.filePath, error)}
+                    >
                       <IconPlayerPlay size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Open folder">
-                    <ActionIcon color="gray" variant="light" onClick={() => handleOpenFolder(video.filePath, error)}>
+                    <ActionIcon
+                      color="gray"
+                      variant="light"
+                      onClick={() => handleOpenFolder(video.filePath, error)}
+                    >
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
@@ -288,7 +313,7 @@ export function LibraryPage() {
         </SimpleGrid>
       ) : (
         <Stack gap="sm">
-          {filteredVideos.map((video) => (
+          {filteredVideos.map(video => (
             <Paper key={video.id} withBorder p="sm">
               <Group justify="space-between">
                 <Group gap="sm">
@@ -305,7 +330,13 @@ export function LibraryPage() {
                     <Paper
                       bg={dark ? '#2c2e33' : '#e9ecef'}
                       h={60}
-                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 80 }}
+                      style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 80,
+                      }}
                       onClick={() => handleOpenFile(video.filePath, error)}
                     >
                       <IconPlayerPlay color={dark ? '#5c5f66' : '#adb5bd'} size={24} />
@@ -333,12 +364,20 @@ export function LibraryPage() {
                 </Group>
                 <Group gap="xs">
                   <Tooltip label="Open file">
-                    <ActionIcon color="blue" variant="light" onClick={() => handleOpenFile(video.filePath, error)}>
+                    <ActionIcon
+                      color="blue"
+                      variant="light"
+                      onClick={() => handleOpenFile(video.filePath, error)}
+                    >
                       <IconPlayerPlay size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Open folder">
-                    <ActionIcon color="gray" variant="light" onClick={() => handleOpenFolder(video.filePath, error)}>
+                    <ActionIcon
+                      color="gray"
+                      variant="light"
+                      onClick={() => handleOpenFolder(video.filePath, error)}
+                    >
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>

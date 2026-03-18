@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"yted/internal/db"
 	applog "yted/internal/log"
 	"yted/internal/ytdl"
-
-	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 var libraryMutex sync.Mutex
@@ -131,19 +131,6 @@ func normalizeURLForCache(url string) string {
 	return url
 }
 
-// cleanupVideoInfoCache removes expired entries from the cache
-func (a *App) cleanupVideoInfoCache() {
-	a.videoInfoCacheMu.Lock()
-	defer a.videoInfoCacheMu.Unlock()
-
-	now := time.Now()
-	for key, entry := range a.videoInfoCache {
-		if now.After(entry.expiresAt) {
-			delete(a.videoInfoCache, key)
-		}
-	}
-}
-
 // AddDownload adds a new download to the queue
 func (a *App) AddDownload(videoURL string, formatID string, quality string) (string, error) {
 	logger := applog.GetLogger()
@@ -168,7 +155,7 @@ func (a *App) AddDownload(videoURL string, formatID string, quality string) (str
 	// Use a timeout to prevent hanging on database lock
 	ctx, cancel := context.WithTimeout(a.ctx, 5*time.Second)
 	defer cancel()
-	
+
 	existingDownload, err := a.db.GetActiveDownloadByURL(videoURL)
 	if err != nil {
 		logger.Error("Download", "Failed to check for existing download", err)
@@ -181,7 +168,7 @@ func (a *App) AddDownload(videoURL string, formatID string, quality string) (str
 		})
 		return existingDownload.ID, nil
 	}
-	
+
 	// Verify context wasn't cancelled
 	if ctx.Err() != nil {
 		return "", fmt.Errorf("operation cancelled or timed out")

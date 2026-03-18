@@ -102,7 +102,8 @@ describe('downloadStore', () => {
   });
 
   it('should retry a failed download preserving progress for resume', () => {
-    const { addDownload, startDownload, updateProgress, failDownload, retryDownload } = useDownloadStore.getState();
+    const { addDownload, startDownload, updateProgress, failDownload, retryDownload } =
+      useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
     expect(id).not.toBeNull();

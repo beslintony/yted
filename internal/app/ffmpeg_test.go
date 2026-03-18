@@ -7,10 +7,10 @@ import (
 
 func TestFFmpegManagerFind(t *testing.T) {
 	fm := NewFFmpegManager()
-	
+
 	// Just test that it doesn't panic
 	path := fm.Find()
-	
+
 	// On CI systems, ffmpeg might not be installed
 	// So we just verify the function works
 	t.Logf("FFmpeg path: %s", path)
@@ -18,7 +18,7 @@ func TestFFmpegManagerFind(t *testing.T) {
 
 func TestFFmpegManagerIsAvailable(t *testing.T) {
 	fm := NewFFmpegManager()
-	
+
 	// Should return boolean without error
 	available := fm.IsAvailable()
 	t.Logf("FFmpeg available: %v", available)
@@ -26,7 +26,7 @@ func TestFFmpegManagerIsAvailable(t *testing.T) {
 
 func TestFFmpegManagerGetPath(t *testing.T) {
 	fm := NewFFmpegManager()
-	
+
 	// GetPath should call Find
 	path := fm.GetPath()
 	t.Logf("FFmpeg path from GetPath: %s", path)
@@ -34,13 +34,13 @@ func TestFFmpegManagerGetPath(t *testing.T) {
 
 func TestFFmpegManagerInstallInstructions(t *testing.T) {
 	fm := NewFFmpegManager()
-	
+
 	instructions := fm.InstallInstructions()
-	
+
 	if instructions == "" {
 		t.Error("Install instructions should not be empty")
 	}
-	
+
 	// Check platform-specific instructions
 	switch runtime.GOOS {
 	case "darwin":
@@ -56,13 +56,13 @@ func TestFFmpegManagerInstallInstructions(t *testing.T) {
 			t.Error("Windows instructions should mention ffmpeg.org")
 		}
 	}
-	
+
 	t.Logf("Install instructions: %s", instructions)
 }
 
 func TestFFmpegManagerGetVersion(t *testing.T) {
 	fm := NewFFmpegManager()
-	
+
 	// If ffmpeg is not available, should return empty string
 	version := fm.GetVersion()
 	t.Logf("FFmpeg version: %s", version)

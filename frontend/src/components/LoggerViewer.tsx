@@ -1,3 +1,4 @@
+
 import {
   ActionIcon,
   Badge,
@@ -98,7 +99,7 @@ export function LoggerViewer() {
           ]}
           style={{ width: 150 }}
           value={filter}
-          onChange={(value) => setFilter((value as LogLevel) || 'ALL')}
+          onChange={value => setFilter((value as LogLevel) || 'ALL')}
         />
         <TextInput
           leftSection={<IconSearch size={16} />}
@@ -112,7 +113,7 @@ export function LoggerViewer() {
           }
           style={{ flex: 1 }}
           value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
+          onChange={e => setSearch(e.currentTarget.value)}
         />
         <Tooltip label="Refresh">
           <ActionIcon color="blue" variant="light" onClick={loadLogs}>
@@ -154,7 +155,11 @@ export function LoggerViewer() {
                   style={{
                     background: dark ? '#25262b' : '#fff',
                     borderLeft: `3px solid ${
-                      entry.level === 'ERROR' ? '#fa5252' : entry.level === 'WARN' ? '#fab005' : '#228be6'
+                      entry.level === 'ERROR'
+                        ? '#fa5252'
+                        : entry.level === 'WARN'
+                          ? '#fab005'
+                          : '#228be6'
                     }`,
                   }}
                 >

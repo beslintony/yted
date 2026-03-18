@@ -124,8 +124,6 @@ func (db *DB) migrate() error {
 	return nil
 }
 
-
-
 // backupDatabase creates a .bak copy of the database file before migrations
 func (db *DB) backupDatabase() (string, error) {
 	if db.dbPath == "" {
@@ -145,13 +143,13 @@ func (db *DB) backupDatabase() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to open database for backup: %w", err)
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	destination, err := os.Create(backupPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create backup file: %w", err)
 	}
-	defer destination.Close()
+	defer func() { _ = destination.Close() }()
 
 	if _, err := io.Copy(destination, source); err != nil {
 		return "", fmt.Errorf("failed to copy database: %w", err)
@@ -215,7 +213,7 @@ func (db *DB) migrateSchema() error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Create new table with correct schema
 	_, err = tx.Exec(`

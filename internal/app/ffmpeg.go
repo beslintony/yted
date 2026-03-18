@@ -40,7 +40,7 @@ func (f *FFmpegManager) Find() string {
 	if f.binPath != "" {
 		return f.binPath
 	}
-	
+
 	// Helper to validate a path works by running ffmpeg -version
 	validatePath := func(path string) bool {
 		if path == "" {
@@ -69,7 +69,7 @@ func (f *FFmpegManager) Find() string {
 		}
 		return true
 	}
-	
+
 	// First try custom path if set
 	if f.customPath != "" {
 		if validatePath(f.customPath) {
@@ -79,7 +79,7 @@ func (f *FFmpegManager) Find() string {
 		}
 		f.logger.Warn("FFmpeg", "Custom ffmpeg path not valid, falling back to auto-detect", map[string]string{"path": f.customPath})
 	}
-	
+
 	// Try PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
 		if validatePath(path) {
@@ -88,7 +88,7 @@ func (f *FFmpegManager) Find() string {
 			return path
 		}
 	}
-	
+
 	// Check common locations
 	commonPaths := f.getCommonPaths()
 	for _, path := range commonPaths {
@@ -98,7 +98,7 @@ func (f *FFmpegManager) Find() string {
 			return path
 		}
 	}
-	
+
 	f.logger.Warn("FFmpeg", "FFmpeg not found or not working - video/audio may not merge properly", nil)
 	return ""
 }
@@ -141,13 +141,13 @@ func (f *FFmpegManager) GetVersion() string {
 	if path == "" {
 		return ""
 	}
-	
+
 	cmd := exec.Command(path, "-version")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
-	
+
 	// Parse version from first line
 	lines := string(output)
 	if len(lines) > 0 {
@@ -170,7 +170,7 @@ func (f *FFmpegManager) MergeVideoAudio(videoPath, audioPath, outputPath string)
 	if path == "" {
 		return fmt.Errorf("ffmpeg not available")
 	}
-	
+
 	args := []string{
 		"-i", videoPath,
 		"-i", audioPath,
@@ -180,13 +180,13 @@ func (f *FFmpegManager) MergeVideoAudio(videoPath, audioPath, outputPath string)
 		"-y",
 		outputPath,
 	}
-	
+
 	cmd := exec.Command(path, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("ffmpeg merge failed: %w\nOutput: %s", err, string(output))
 	}
-	
+
 	return nil
 }
 

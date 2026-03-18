@@ -119,6 +119,7 @@ export function SettingsPage() {
 
       success('Settings Saved', 'Your settings have been saved successfully');
       setTimeout(() => setSaveSuccess(false), 3000);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Failed to save settings:', err);
       const msg = err?.message || 'Failed to save settings';
@@ -133,6 +134,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSettings(s => (s ? ({ ...s, download_path: path } as any) : null));
         setDownloadPath(path);
       }
@@ -145,6 +147,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSettings(s => (s ? ({ ...s, log_export_path: path } as any) : null));
       }
     } catch (err) {
@@ -156,6 +159,7 @@ export function SettingsPage() {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSettings(s => (s ? ({ ...s, log_path: path } as any) : null));
       }
     } catch (err) {
@@ -167,6 +171,7 @@ export function SettingsPage() {
     try {
       const path = await ShowFFmpegDialog();
       if (path) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSettings(s => (s ? ({ ...s, ffmpeg_path: path } as any) : null));
       }
     } catch (err) {
@@ -181,7 +186,9 @@ export function SettingsPage() {
   };
 
   const handleThemeChange = (value: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSettings(s => (s ? ({ ...s, theme: value } as any) : null));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setTheme(value as any);
     if (value === 'dark') {
       setColorScheme('dark');
@@ -190,7 +197,9 @@ export function SettingsPage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateSetting = (key: string, value: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSettings(s => (s ? ({ ...s, [key]: value } as any) : null));
   };
 
@@ -644,6 +653,7 @@ export function SettingsPage() {
                       try {
                         await ClearDownloadCache();
                         success('Cache Cleared', 'Download cache has been cleared successfully');
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       } catch (err: any) {
                         error('Clear Failed', 'Failed to clear download cache: ' + err?.message);
                       }
@@ -671,6 +681,7 @@ export function SettingsPage() {
                       try {
                         await ClearCompletedDownloadsCache();
                         success('Cache Cleared', 'Completed downloads cache has been cleared');
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       } catch (err: any) {
                         error(
                           'Clear Failed',
@@ -701,6 +712,7 @@ export function SettingsPage() {
                       try {
                         await ClearCompletedDownloads();
                         success('Queue Cleared', 'Completed downloads cleared from queue');
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       } catch (err: any) {
                         error('Clear Failed', 'Failed to clear queue: ' + err?.message);
                       }
@@ -831,6 +843,7 @@ function PresetForm({
               format,
               quality,
               extension,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any)
           }
         >

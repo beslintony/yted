@@ -77,6 +77,13 @@ issues:
     - linters:
         - staticcheck
       text: "SA1019"
+    # Exclude stuttering warnings for log package types
+    - linters:
+        - revive
+      text: "type name will be used as log.LogLevel"
+    - linters:
+        - revive
+      text: "type name will be used as log.LogEntry"
 
   max-issues-per-linter: 0
   max-same-issues: 0

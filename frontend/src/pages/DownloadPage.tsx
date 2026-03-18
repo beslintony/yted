@@ -1,40 +1,51 @@
+
 import {
-  TextInput,
+  ActionIcon,
+  Alert,
+  Badge,
   Button,
   Group,
-  Stack,
-  Paper,
-  Text,
-  Progress,
-  ActionIcon,
-  Badge,
-  Tooltip,
   Loader,
-  Alert,
+  Paper,
+  Progress,
   ScrollArea,
-  useMantineColorScheme,
   Select,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+  useMantineColorScheme,
 } from '@mantine/core';
 import {
-  IconDownload,
-  IconPlayerPlay,
-  IconPlayerPause,
-  IconRefresh,
-  IconTrash,
-  IconCheck,
   IconAlertCircle,
-  IconLink,
-  IconX,
-  IconSearch,
-  IconVideo,
+  IconCheck,
+  IconDownload,
   IconGauge,
+  IconLink,
+  IconPlayerPause,
+  IconPlayerPlay,
+  IconRefresh,
+  IconSearch,
+  IconTrash,
+  IconVideo,
+  IconX,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload, PauseDownload, ResumeDownload } from '../../wailsjs/go/app/App';
+import {
+  AddDownload,
+  GetDownloadQueue,
+  GetSettings,
+  GetVideoInfo,
+  PauseDownload,
+  ResumeDownload,
+  RetryDownload,
+  StartProcessingDownloads,
+  ValidateURL,
+} from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
-import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
+import { useDownloadStore, useNotifications, useSettingsStore } from '../stores';
 import { VideoFormat } from '../types';
 
 export function DownloadPage() {
@@ -67,16 +78,19 @@ export function DownloadPage() {
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
   const { success, error: showError, warning } = useNotifications();
-  
+
   // Use refs to track processed events to prevent duplicates
   const processedEvents = useRef<Set<string>>(new Set());
 
   // Wrapper to remove download and clear its processed events
-  const removeDownloadWithCleanup = useCallback((id: string) => {
-    processedEvents.current.delete(`completed_${id}`);
-    processedEvents.current.delete(`error_${id}`);
-    removeDownload(id);
-  }, [removeDownload]);
+  const removeDownloadWithCleanup = useCallback(
+    (id: string) => {
+      processedEvents.current.delete(`completed_${id}`);
+      processedEvents.current.delete(`error_${id}`);
+      removeDownload(id);
+    },
+    [removeDownload]
+  );
 
   // Load presets from settings
   useEffect(() => {
@@ -107,38 +121,43 @@ export function DownloadPage() {
   // Restore download queue from previous session
   useEffect(() => {
     if (queueRestored) return;
-    
+
     const restoreQueue = async () => {
       try {
         const queue = await GetDownloadQueue();
-        
+
         if (queue && queue.length > 0) {
           for (const data of queue) {
             if (!data?.id || !data?.url) continue;
 
             const backendStatus = data.status;
-            
+
             if (!hasDownload(data.id)) {
               // Add restored download to the store with correct metadata
-              addDownload(data.url, {
-                id: data.youtube_id || data.id || '',
-                title: data.title || 'Restored Download',
-                channel: data.channel || '',
-                channelId: '',
-                duration: 0,
-                description: '',
-                thumbnail: data.thumbnail_url || '',
-                formats: [],
-              }, {
-                formatId: data.format_id || 'best',
-                quality: data.quality || 'best',
-                ext: 'mp4',
-                resolution: '',
-                fps: 0,
-                vcodec: '',
-                acodec: '',
-                filesize: 0,
-              }, data.id);
+              addDownload(
+                data.url,
+                {
+                  id: data.youtube_id || data.id || '',
+                  title: data.title || 'Restored Download',
+                  channel: data.channel || '',
+                  channelId: '',
+                  duration: 0,
+                  description: '',
+                  thumbnail: data.thumbnail_url || '',
+                  formats: [],
+                },
+                {
+                  formatId: data.format_id || 'best',
+                  quality: data.quality || 'best',
+                  ext: 'mp4',
+                  resolution: '',
+                  fps: 0,
+                  vcodec: '',
+                  acodec: '',
+                  filesize: 0,
+                },
+                data.id
+              );
             }
 
             // Always sync status and progress from backend (fixes missed events)
@@ -162,24 +181,43 @@ export function DownloadPage() {
       }
     };
     restoreQueue();
-  }, [queueRestored, addDownload, updateProgress, startDownload, completeDownload, failDownload, hasDownload]);
+  }, [
+    queueRestored,
+    addDownload,
+    updateProgress,
+    startDownload,
+    completeDownload,
+    failDownload,
+    hasDownload,
+  ]);
 
   // Listen for download progress events from backend
   useEffect(() => {
-    const cancelProgress = EventsOn('download:progress', (data: { id?: string; progress?: number; speed?: string; eta?: string; size?: string; is_throttled?: boolean; speed_limit?: string }) => {
-      if (data?.id && typeof data.progress === 'number') {
-        updateProgress(data.id, data.progress);
-        if (data.speed || data.eta || data.size || data.is_throttled !== undefined) {
-          updateDownloadInfo(data.id, {
-            speed: data.speed,
-            eta: data.eta,
-            size: data.size,
-            isThrottled: data.is_throttled,
-            speedLimit: data.speed_limit,
-          });
+    const cancelProgress = EventsOn(
+      'download:progress',
+      (data: {
+        id?: string;
+        progress?: number;
+        speed?: string;
+        eta?: string;
+        size?: string;
+        is_throttled?: boolean;
+        speed_limit?: string;
+      }) => {
+        if (data?.id && typeof data.progress === 'number') {
+          updateProgress(data.id, data.progress);
+          if (data.speed || data.eta || data.size || data.is_throttled !== undefined) {
+            updateDownloadInfo(data.id, {
+              speed: data.speed,
+              eta: data.eta,
+              size: data.size,
+              isThrottled: data.is_throttled,
+              speedLimit: data.speed_limit,
+            });
+          }
         }
       }
-    });
+    );
 
     const cancelCompleted = EventsOn('download:completed', (data: unknown) => {
       const completedId = typeof data === 'string' ? data : (data as { id?: string })?.id;
@@ -234,7 +272,17 @@ export function DownloadPage() {
       cancelRetried();
       clearInterval(cleanupInterval);
     };
-  }, [updateProgress, completeDownload, failDownload, startDownload, retryDownload, downloads, success, showError, updateDownloadInfo]);
+  }, [
+    updateProgress,
+    completeDownload,
+    failDownload,
+    startDownload,
+    retryDownload,
+    downloads,
+    success,
+    showError,
+    updateDownloadInfo,
+  ]);
 
   const handleFetchInfo = async () => {
     if (!url.trim()) {
@@ -258,7 +306,10 @@ export function DownloadPage() {
       const info = await GetVideoInfo(url);
       if (!info || !info.id) {
         setError('Could not fetch video information. Please check the URL and try again.');
-        showError('Fetch Failed', 'Could not fetch video information. Please check the URL and try again.');
+        showError(
+          'Fetch Failed',
+          'Could not fetch video information. Please check the URL and try again.'
+        );
         return;
       }
       setVideoInfo(info);
@@ -289,25 +340,30 @@ export function DownloadPage() {
       const id = await AddDownload(url, formatId, quality);
 
       if (id) {
-        addDownload(url, {
-          id: videoInfo.id,
-          title: videoInfo.title,
-          channel: videoInfo.channel,
-          channelId: videoInfo.channel_id,
-          duration: videoInfo.duration,
-          description: videoInfo.description,
-          thumbnail: videoInfo.thumbnail,
-          formats: videoInfo.formats as unknown as VideoFormat[],
-        }, {
-          formatId: preset?.format || 'best',
-          ext: preset?.extension || 'mp4',
-          resolution: '',
-          fps: 0,
-          vcodec: '',
-          acodec: '',
-          filesize: 0,
-          quality: preset?.quality || 'best',
-        }, id);
+        addDownload(
+          url,
+          {
+            id: videoInfo.id,
+            title: videoInfo.title,
+            channel: videoInfo.channel,
+            channelId: videoInfo.channel_id,
+            duration: videoInfo.duration,
+            description: videoInfo.description,
+            thumbnail: videoInfo.thumbnail,
+            formats: videoInfo.formats as unknown as VideoFormat[],
+          },
+          {
+            formatId: preset?.format || 'best',
+            ext: preset?.extension || 'mp4',
+            resolution: '',
+            fps: 0,
+            vcodec: '',
+            acodec: '',
+            filesize: 0,
+            quality: preset?.quality || 'best',
+          },
+          id
+        );
 
         success('Download Added', `"${videoInfo.title}" has been added to the queue`);
         setUrl('');
@@ -330,11 +386,16 @@ export function DownloadPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'green';
-      case 'downloading': return 'blue';
-      case 'error': return 'red';
-      case 'paused': return 'yellow';
-      default: return 'gray';
+      case 'completed':
+        return 'green';
+      case 'downloading':
+        return 'blue';
+      case 'error':
+        return 'red';
+      case 'paused':
+        return 'yellow';
+      default:
+        return 'gray';
     }
   };
 
@@ -349,7 +410,9 @@ export function DownloadPage() {
 
   return (
     <Stack gap="lg">
-      <Text c={dark ? '#fff' : '#000'} fw={700} size="xl">Downloads</Text>
+      <Text c={dark ? '#fff' : '#000'} fw={700} size="xl">
+        Downloads
+      </Text>
 
       {/* URL Input */}
       <Paper
@@ -380,8 +443,8 @@ export function DownloadPage() {
               },
             }}
             value={url}
-            onChange={(e) => setUrl(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleFetchInfo()}
+            onChange={e => setUrl(e.currentTarget.value)}
+            onKeyDown={e => e.key === 'Enter' && handleFetchInfo()}
           />
 
           <Group justify="flex-end">
@@ -466,7 +529,7 @@ export function DownloadPage() {
                       }}
                       value={selectedPreset}
                       w={250}
-                      onChange={(value) => value && setSelectedPreset(value)}
+                      onChange={value => value && setSelectedPreset(value)}
                     />
                   )}
 
@@ -524,7 +587,7 @@ export function DownloadPage() {
               </Text>
             </Paper>
           ) : (
-            downloads.map((download) => (
+            downloads.map(download => (
               <Paper
                 key={download.id}
                 withBorder
@@ -561,7 +624,13 @@ export function DownloadPage() {
                       </Paper>
                     )}
                     <Stack gap={4}>
-                      <Text c={dark ? '#fff' : '#000'} fw={500} lineClamp={1} size="sm" style={{ maxWidth: 300 }}>
+                      <Text
+                        c={dark ? '#fff' : '#000'}
+                        fw={500}
+                        lineClamp={1}
+                        size="sm"
+                        style={{ maxWidth: 300 }}
+                      >
                         {download.title || 'Loading...'}
                       </Text>
                       <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
@@ -571,11 +640,17 @@ export function DownloadPage() {
                         <Badge
                           color={getStatusColor(download.status)}
                           leftSection={
-                            download.status === 'completed' ? <IconCheck size={12} /> :
-                            download.status === 'downloading' ? <Loader size={12} /> :
-                            download.status === 'error' ? <IconAlertCircle size={12} /> :
-                            download.status === 'paused' ? <IconPlayerPause size={12} /> :
-                            <IconDownload size={12} />
+                            download.status === 'completed' ? (
+                              <IconCheck size={12} />
+                            ) : download.status === 'downloading' ? (
+                              <Loader size={12} />
+                            ) : download.status === 'error' ? (
+                              <IconAlertCircle size={12} />
+                            ) : download.status === 'paused' ? (
+                              <IconPlayerPause size={12} />
+                            ) : (
+                              <IconDownload size={12} />
+                            )
                           }
                           size="sm"
                         >
@@ -665,7 +740,9 @@ export function DownloadPage() {
                     </Group>
 
                     {download.status === 'downloading' && (
-                      <Tooltip label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ${formatETA(download.eta)} left` : ''}`}>
+                      <Tooltip
+                        label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ${formatETA(download.eta)} left` : ''}`}
+                      >
                         <Progress
                           color="yted"
                           radius="xs"
@@ -686,16 +763,18 @@ export function DownloadPage() {
                           </Text>
                           {download.isThrottled && download.speedLimit && (
                             <Tooltip label={`Speed limited to ${download.speedLimit}`}>
-                              <IconGauge size={14} color={dark ? '#909296' : '#868e96'} />
+                              <IconGauge color={dark ? '#909296' : '#868e96'} size={14} />
                             </Tooltip>
                           )}
                         </Group>
                       )}
-                      {download.status === 'downloading' && download.eta && formatETA(download.eta) && (
-                        <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
-                          {formatETA(download.eta)} left
-                        </Text>
-                      )}
+                      {download.status === 'downloading' &&
+                        download.eta &&
+                        formatETA(download.eta) && (
+                          <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
+                            {formatETA(download.eta)} left
+                          </Text>
+                        )}
                     </Group>
                   </Stack>
                 </Group>

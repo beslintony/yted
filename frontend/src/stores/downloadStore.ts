@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { Download, DownloadStatus, VideoInfo, VideoFormat } from '../types';
+import { Download, DownloadStatus, VideoFormat, VideoInfo } from '../types';
 
 interface DownloadState {
   downloads: Download[];
@@ -8,14 +8,28 @@ interface DownloadState {
   error: string | null;
 
   // Actions
-  addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => string | null;
+  addDownload: (
+    url: string,
+    info?: VideoInfo,
+    format?: VideoFormat,
+    existingId?: string
+  ) => string | null;
   removeDownload: (id: string) => void;
   startDownload: (id: string) => void;
   pauseDownload: (id: string) => void;
   resumeDownload: (id: string) => void;
   retryDownload: (id: string) => void;
   updateProgress: (id: string, progress: number) => void;
-  updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string; isThrottled?: boolean; speedLimit?: string }) => void;
+  updateDownloadInfo: (
+    id: string,
+    info: {
+      speed?: string;
+      eta?: string;
+      size?: string;
+      isThrottled?: boolean;
+      speedLimit?: string;
+    }
+  ) => void;
   completeDownload: (id: string) => void;
   failDownload: (id: string, error: string) => void;
   clearCompleted: () => void;
@@ -34,7 +48,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
 
   addDownload: (url: string, info?: VideoInfo, format?: VideoFormat, existingId?: string) => {
     const id = existingId || crypto.randomUUID();
-    
+
     // Check if download already exists
     if (get().hasDownload(id)) {
       console.warn(`Download with id ${id} already exists, skipping`);
@@ -54,72 +68,66 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       createdAt: Date.now(),
     };
 
-    set((state) => ({
+    set(state => ({
       downloads: [newDownload, ...state.downloads],
     }));
     return id;
   },
 
-  removeDownload: (id) => {
-    set((state) => ({
-      downloads: state.downloads.filter((d) => d.id !== id),
+  removeDownload: id => {
+    set(state => ({
+      downloads: state.downloads.filter(d => d.id !== id),
     }));
   },
 
-  startDownload: (id) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
+  startDownload: id => {
+    set(state => ({
+      downloads: state.downloads.map(d =>
         d.id === id ? { ...d, status: 'downloading' as DownloadStatus, startedAt: Date.now() } : d
       ),
     }));
   },
 
-  pauseDownload: (id) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
+  pauseDownload: id => {
+    set(state => ({
+      downloads: state.downloads.map(d =>
         d.id === id ? { ...d, status: 'paused' as DownloadStatus } : d
       ),
     }));
   },
 
-  resumeDownload: (id) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
+  resumeDownload: id => {
+    set(state => ({
+      downloads: state.downloads.map(d =>
         d.id === id ? { ...d, status: 'downloading' as DownloadStatus } : d
       ),
     }));
   },
 
-  retryDownload: (id) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
-        d.id === id
-          ? { ...d, status: 'pending' as DownloadStatus, errorMessage: undefined }
-          : d
+  retryDownload: id => {
+    set(state => ({
+      downloads: state.downloads.map(d =>
+        d.id === id ? { ...d, status: 'pending' as DownloadStatus, errorMessage: undefined } : d
       ),
     }));
   },
 
   updateProgress: (id, progress) => {
     const clampedProgress = Math.min(100, Math.max(0, progress));
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, progress: clampedProgress } : d
-      ),
+    set(state => ({
+      downloads: state.downloads.map(d => (d.id === id ? { ...d, progress: clampedProgress } : d)),
     }));
   },
 
   updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string }) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
-        d.id === id ? { ...d, ...info } : d
-      ),
+    set(state => ({
+      downloads: state.downloads.map(d => (d.id === id ? { ...d, ...info } : d)),
     }));
   },
 
-  completeDownload: (id) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
+  completeDownload: id => {
+    set(state => ({
+      downloads: state.downloads.map(d =>
         d.id === id
           ? { ...d, status: 'completed' as DownloadStatus, progress: 100, completedAt: Date.now() }
           : d
@@ -128,16 +136,16 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   },
 
   failDownload: (id, error) => {
-    set((state) => ({
-      downloads: state.downloads.map((d) =>
+    set(state => ({
+      downloads: state.downloads.map(d =>
         d.id === id ? { ...d, status: 'error' as DownloadStatus, errorMessage: error } : d
       ),
     }));
   },
 
   clearCompleted: () => {
-    set((state) => ({
-      downloads: state.downloads.filter((d) => d.status !== 'completed'),
+    set(state => ({
+      downloads: state.downloads.filter(d => d.status !== 'completed'),
     }));
   },
 
@@ -145,7 +153,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set({ downloads: [] });
   },
 
-  setDownloads: (downloads) => {
+  setDownloads: downloads => {
     set({ downloads });
   },
 
@@ -162,6 +170,6 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   },
 
   hasDownload: (id: string): boolean => {
-    return get().downloads.some((d) => d.id === id);
+    return get().downloads.some(d => d.id === id);
   },
 }));

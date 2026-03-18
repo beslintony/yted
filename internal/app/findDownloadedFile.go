@@ -17,13 +17,13 @@ import (
 //  4. Most recently modified media file (within 30s window, last resort)
 func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 	log.Printf("[findDownloadedFile] Searching in %s for youtubeID=%s, formatID=%s, ext=%s", outputDir, youtubeID, formatID, ext)
-	
+
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
 		log.Printf("[findDownloadedFile] Error reading directory: %v", err)
 		return ""
 	}
-	
+
 	log.Printf("[findDownloadedFile] Found %d entries in directory", len(entries))
 
 	// Determine expected media type based on quality/format

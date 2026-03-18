@@ -10,7 +10,8 @@ import (
 	applog "yted/internal/log"
 )
 
-const YTED_FOLDER_NAME = "YTed"
+// YtedFolderName is the name of the YTed download folder
+const YtedFolderName = "YTed"
 
 // FileWarning represents a warning about file operations
 type FileWarning struct {
@@ -59,8 +60,8 @@ func (fm *FileManager) SetDownloadPath(userPath string) (string, []FileWarning, 
 	// Check if path is writable
 	testFile := filepath.Join(userPath, ".write_test")
 	if f, err := os.Create(testFile); err == nil {
-		f.Close()
-		os.Remove(testFile)
+		_ = f.Close()
+		_ = os.Remove(testFile)
 	} else {
 		warnings = append(warnings, FileWarning{
 			Type:       "permission",
@@ -71,9 +72,7 @@ func (fm *FileManager) SetDownloadPath(userPath string) (string, []FileWarning, 
 	}
 
 	// Check available disk space
-	var stat os.FileInfo
-	stat, err = os.Stat(userPath)
-	_ = stat // We already have info from earlier
+	// Note: We already have info from earlier, using it directly
 
 	// Check for common system directories (safety warning)
 	systemDirs := []string{
@@ -98,7 +97,7 @@ func (fm *FileManager) SetDownloadPath(userPath string) (string, []FileWarning, 
 		warnings = append(warnings, FileWarning{
 			Type:       "location",
 			Title:      "Home Directory Selected",
-			Message:    "Downloads will be saved to " + filepath.Join(userPath, YTED_FOLDER_NAME) + ". This will keep your home directory organized.",
+			Message:    "Downloads will be saved to " + filepath.Join(userPath, YtedFolderName) + ". This will keep your home directory organized.",
 			IsCritical: false,
 		})
 	}
@@ -107,11 +106,11 @@ func (fm *FileManager) SetDownloadPath(userPath string) (string, []FileWarning, 
 	fm.config.Update(func(cfg *config.Config) {
 		cfg.UserSelectedPath = userPath
 		// The actual download path is always the YTed subfolder
-		cfg.DownloadPath = filepath.Join(userPath, YTED_FOLDER_NAME)
+		cfg.DownloadPath = filepath.Join(userPath, YtedFolderName)
 	})
 
 	// Create the YTed subfolder
-	ytedPath := filepath.Join(userPath, YTED_FOLDER_NAME)
+	ytedPath := filepath.Join(userPath, YtedFolderName)
 	if err := os.MkdirAll(ytedPath, 0755); err != nil {
 		return "", warnings, fmt.Errorf("failed to create YTed folder: %w", err)
 	}
@@ -130,7 +129,7 @@ func (fm *FileManager) GetDownloadPath() string {
 	cfg := fm.config.Get()
 	if cfg.DownloadPath == "" && cfg.UserSelectedPath != "" {
 		// Migrate old config
-		return filepath.Join(cfg.UserSelectedPath, YTED_FOLDER_NAME)
+		return filepath.Join(cfg.UserSelectedPath, YtedFolderName)
 	}
 	return cfg.DownloadPath
 }
@@ -266,7 +265,7 @@ func (fm *FileManager) GetFolderSize() (int64, error) {
 	}
 
 	var totalSize int64
-	err := filepath.Walk(downloadPath, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(downloadPath, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // Skip files we can't access
 		}

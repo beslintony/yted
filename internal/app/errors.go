@@ -19,16 +19,16 @@ var (
 	ErrDownloadCancelled     = errors.New("download cancelled")
 
 	// Video errors
-	ErrVideoNotFound   = errors.New("video not found")
-	ErrFileNotFound    = errors.New("video file not found")
-	ErrFileNotManaged  = errors.New("file is not managed by YTed")
+	ErrVideoNotFound  = errors.New("video not found")
+	ErrFileNotFound   = errors.New("video file not found")
+	ErrFileNotManaged = errors.New("file is not managed by YTed")
 
 	// Settings errors
 	ErrInvalidSetting = errors.New("invalid setting value")
 	ErrPresetNotFound = errors.New("download preset not found")
 
 	// Storage errors
-	ErrDiskFull       = errors.New("insufficient disk space")
+	ErrDiskFull        = errors.New("insufficient disk space")
 	ErrPathNotWritable = errors.New("download path not writable")
 	ErrSystemDirectory = errors.New("cannot use system directory")
 )

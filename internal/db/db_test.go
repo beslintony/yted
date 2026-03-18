@@ -11,37 +11,37 @@ import (
 
 func setupTestDB(t *testing.T) *DB {
 	t.Helper()
-	
+
 	// Create temporary directory for database
 	tmpDir, err := os.MkdirTemp("", "yted-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	
+
 	// Clean up after test
 	t.Cleanup(func() {
 		os.RemoveAll(tmpDir)
 	})
-	
+
 	db, err := New(tmpDir)
 	if err != nil {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
-	
+
 	t.Cleanup(func() {
 		db.Close()
 	})
-	
+
 	return db
 }
 
 func TestNew(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	if db == nil {
 		t.Fatal("Expected non-nil DB")
 	}
-	
+
 	if db.conn == nil {
 		t.Fatal("Expected non-nil connection")
 	}
@@ -49,7 +49,7 @@ func TestNew(t *testing.T) {
 
 func TestCreateAndGetDownload(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	now := time.Now()
 	download := &Download{
 		ID:           "test-id-123",
@@ -67,35 +67,35 @@ func TestCreateAndGetDownload(t *testing.T) {
 		StartedAt:    nil,
 		CompletedAt:  nil,
 	}
-	
+
 	// Create download
 	err := db.CreateDownload(download)
 	if err != nil {
 		t.Fatalf("Failed to create download: %v", err)
 	}
-	
+
 	// Retrieve download
 	retrieved, err := db.GetDownload("test-id-123")
 	if err != nil {
 		t.Fatalf("Failed to get download: %v", err)
 	}
-	
+
 	if retrieved == nil {
 		t.Fatal("Expected non-nil retrieved download")
 	}
-	
+
 	if retrieved.ID != download.ID {
 		t.Errorf("ID mismatch: got %s, want %s", retrieved.ID, download.ID)
 	}
-	
+
 	if retrieved.URL != download.URL {
 		t.Errorf("URL mismatch: got %s, want %s", retrieved.URL, download.URL)
 	}
-	
+
 	if retrieved.Status != download.Status {
 		t.Errorf("Status mismatch: got %s, want %s", retrieved.Status, download.Status)
 	}
-	
+
 	if *retrieved.Title != *download.Title {
 		t.Errorf("Title mismatch: got %s, want %s", *retrieved.Title, *download.Title)
 	}
@@ -103,12 +103,12 @@ func TestCreateAndGetDownload(t *testing.T) {
 
 func TestGetDownloadNotFound(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	retrieved, err := db.GetDownload("non-existent-id")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	
+
 	if retrieved != nil {
 		t.Error("Expected nil for non-existent download")
 	}
@@ -116,7 +116,7 @@ func TestGetDownloadNotFound(t *testing.T) {
 
 func TestUpdateDownloadStatus(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	// Create initial download
 	download := &Download{
 		ID:        "status-test",
@@ -125,38 +125,38 @@ func TestUpdateDownloadStatus(t *testing.T) {
 		Progress:  0,
 		CreatedAt: time.Now(),
 	}
-	
+
 	err := db.CreateDownload(download)
 	if err != nil {
 		t.Fatalf("Failed to create download: %v", err)
 	}
-	
+
 	// Update status to downloading
 	err = db.UpdateDownloadStatus("status-test", "downloading")
 	if err != nil {
 		t.Fatalf("Failed to update status: %v", err)
 	}
-	
+
 	retrieved, _ := db.GetDownload("status-test")
 	if retrieved.Status != "downloading" {
 		t.Errorf("Status not updated: got %s, want downloading", retrieved.Status)
 	}
-	
+
 	// Update status to completed
 	err = db.CompleteDownload("status-test")
 	if err != nil {
 		t.Fatalf("Failed to complete download: %v", err)
 	}
-	
+
 	retrieved, _ = db.GetDownload("status-test")
 	if retrieved.Status != "completed" {
 		t.Errorf("Status not updated: got %s, want completed", retrieved.Status)
 	}
-	
+
 	if retrieved.Progress != 100 {
 		t.Errorf("Progress not set to 100: got %f", retrieved.Progress)
 	}
-	
+
 	if retrieved.CompletedAt == nil {
 		t.Error("CompletedAt not set")
 	}
@@ -164,7 +164,7 @@ func TestUpdateDownloadStatus(t *testing.T) {
 
 func TestFailDownload(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	// Create initial download
 	download := &Download{
 		ID:        "fail-test",
@@ -173,27 +173,27 @@ func TestFailDownload(t *testing.T) {
 		Progress:  50,
 		CreatedAt: time.Now(),
 	}
-	
+
 	err := db.CreateDownload(download)
 	if err != nil {
 		t.Fatalf("Failed to create download: %v", err)
 	}
-	
+
 	// Fail the download
 	err = db.FailDownload("fail-test", "HTTP 416 error: Range not satisfiable")
 	if err != nil {
 		t.Fatalf("Failed to fail download: %v", err)
 	}
-	
+
 	retrieved, _ := db.GetDownload("fail-test")
 	if retrieved.Status != "error" {
 		t.Errorf("Status not updated: got %s, want error", retrieved.Status)
 	}
-	
+
 	if retrieved.ErrorMessage == nil {
 		t.Fatal("ErrorMessage not set")
 	}
-	
+
 	if *retrieved.ErrorMessage != "HTTP 416 error: Range not satisfiable" {
 		t.Errorf("ErrorMessage mismatch: got %s", *retrieved.ErrorMessage)
 	}
@@ -201,7 +201,7 @@ func TestFailDownload(t *testing.T) {
 
 func TestGetPendingDownloads(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	// Create downloads with different statuses
 	downloads := []*Download{
 		{ID: "pending-1", URL: "https://youtube.com/watch?v=1", Status: "pending", CreatedAt: time.Now()},
@@ -210,24 +210,24 @@ func TestGetPendingDownloads(t *testing.T) {
 		{ID: "completed", URL: "https://youtube.com/watch?v=4", Status: "completed", CreatedAt: time.Now()},
 		{ID: "error", URL: "https://youtube.com/watch?v=5", Status: "error", CreatedAt: time.Now()},
 	}
-	
+
 	for _, d := range downloads {
 		err := db.CreateDownload(d)
 		if err != nil {
 			t.Fatalf("Failed to create download: %v", err)
 		}
 	}
-	
+
 	// Get pending downloads
 	pending, err := db.GetPendingDownloads(10)
 	if err != nil {
 		t.Fatalf("Failed to get pending downloads: %v", err)
 	}
-	
+
 	if len(pending) != 2 {
 		t.Errorf("Expected 2 pending downloads, got %d", len(pending))
 	}
-	
+
 	// Verify order (oldest first)
 	if pending[0].ID != "pending-1" {
 		t.Errorf("Expected pending-1 first, got %s", pending[0].ID)
@@ -236,7 +236,7 @@ func TestGetPendingDownloads(t *testing.T) {
 
 func TestGetPendingDownloadsLimit(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	// Create multiple pending downloads
 	for i := 0; i < 5; i++ {
 		d := &Download{
@@ -250,13 +250,13 @@ func TestGetPendingDownloadsLimit(t *testing.T) {
 			t.Fatalf("Failed to create download: %v", err)
 		}
 	}
-	
+
 	// Get with limit
 	pending, err := db.GetPendingDownloads(3)
 	if err != nil {
 		t.Fatalf("Failed to get pending downloads: %v", err)
 	}
-	
+
 	if len(pending) != 3 {
 		t.Errorf("Expected 3 pending downloads, got %d", len(pending))
 	}
@@ -264,29 +264,29 @@ func TestGetPendingDownloadsLimit(t *testing.T) {
 
 func TestStartDownload(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	download := &Download{
 		ID:        "start-test",
 		URL:       "https://youtube.com/watch?v=test",
 		Status:    "pending",
 		CreatedAt: time.Now(),
 	}
-	
+
 	err := db.CreateDownload(download)
 	if err != nil {
 		t.Fatalf("Failed to create download: %v", err)
 	}
-	
+
 	err = db.StartDownload("start-test")
 	if err != nil {
 		t.Fatalf("Failed to start download: %v", err)
 	}
-	
+
 	retrieved, _ := db.GetDownload("start-test")
 	if retrieved.Status != "downloading" {
 		t.Errorf("Status not updated: got %s, want downloading", retrieved.Status)
 	}
-	
+
 	if retrieved.StartedAt == nil {
 		t.Error("StartedAt not set")
 	}
@@ -294,7 +294,7 @@ func TestStartDownload(t *testing.T) {
 
 func TestUpdateDownloadProgress(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	download := &Download{
 		ID:        "progress-test",
 		URL:       "https://youtube.com/watch?v=test",
@@ -302,18 +302,18 @@ func TestUpdateDownloadProgress(t *testing.T) {
 		Progress:  0,
 		CreatedAt: time.Now(),
 	}
-	
+
 	err := db.CreateDownload(download)
 	if err != nil {
 		t.Fatalf("Failed to create download: %v", err)
 	}
-	
+
 	// Update progress
 	err = db.UpdateDownloadProgress("progress-test", 75)
 	if err != nil {
 		t.Fatalf("Failed to update progress: %v", err)
 	}
-	
+
 	retrieved, _ := db.GetDownload("progress-test")
 	if retrieved.Progress != 75 {
 		t.Errorf("Progress not updated: got %f, want 75", retrieved.Progress)
@@ -322,31 +322,31 @@ func TestUpdateDownloadProgress(t *testing.T) {
 
 func TestDeleteDownload(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	download := &Download{
 		ID:        "delete-test",
 		URL:       "https://youtube.com/watch?v=test",
 		Status:    "completed",
 		CreatedAt: time.Now(),
 	}
-	
+
 	err := db.CreateDownload(download)
 	if err != nil {
 		t.Fatalf("Failed to create download: %v", err)
 	}
-	
+
 	// Verify it exists
 	retrieved, _ := db.GetDownload("delete-test")
 	if retrieved == nil {
 		t.Fatal("Download should exist before deletion")
 	}
-	
+
 	// Delete it
 	err = db.DeleteDownload("delete-test")
 	if err != nil {
 		t.Fatalf("Failed to delete download: %v", err)
 	}
-	
+
 	// Verify it's gone
 	retrieved, _ = db.GetDownload("delete-test")
 	if retrieved != nil {
@@ -356,7 +356,7 @@ func TestDeleteDownload(t *testing.T) {
 
 func TestCountActiveDownloads(t *testing.T) {
 	db := setupTestDB(t)
-	
+
 	// Create downloads with different statuses
 	downloads := []*Download{
 		{ID: "active-1", URL: "https://youtube.com/watch?v=1", Status: "downloading", CreatedAt: time.Now()},
@@ -364,19 +364,19 @@ func TestCountActiveDownloads(t *testing.T) {
 		{ID: "pending", URL: "https://youtube.com/watch?v=3", Status: "pending", CreatedAt: time.Now()},
 		{ID: "completed", URL: "https://youtube.com/watch?v=4", Status: "completed", CreatedAt: time.Now()},
 	}
-	
+
 	for _, d := range downloads {
 		err := db.CreateDownload(d)
 		if err != nil {
 			t.Fatalf("Failed to create download: %v", err)
 		}
 	}
-	
+
 	count, err := db.CountActiveDownloads()
 	if err != nil {
 		t.Fatalf("Failed to count active downloads: %v", err)
 	}
-	
+
 	if count != 2 {
 		t.Errorf("Expected 2 active downloads, got %d", count)
 	}
@@ -387,7 +387,7 @@ func TestGetActiveDownloadByURL(t *testing.T) {
 
 	// Create downloads with different statuses for same URL
 	url := "https://youtube.com/watch?v=duplicate-test"
-	
+
 	downloads := []*Download{
 		{ID: "pending-dl", URL: url, Status: "pending", CreatedAt: time.Now()},
 		{ID: "downloading-dl", URL: url, Status: "downloading", CreatedAt: time.Now()},
@@ -664,21 +664,21 @@ func TestVideoOperations(t *testing.T) {
 
 	// Create video
 	video := &Video{
-		ID:           "video-1",
-		YoutubeID:    "youtube123",
-		Title:        "Test Video",
-		Channel:      "Test Channel",
-		ChannelID:    "channel123",
-		Duration:     300,
-		Description:  "Test description",
-		ThumbnailURL: "https://example.com/thumb.jpg",
-		FilePath:     "/path/to/video.mp4",
-		FileSize:     1024 * 1024 * 100, // 100MB
-		FileHash:     "youtube123_best",
-		IsManaged:    true,
-		Format:       "best",
-		Quality:      "1080p",
-		DownloadedAt: time.Now(),
+		ID:            "video-1",
+		YoutubeID:     "youtube123",
+		Title:         "Test Video",
+		Channel:       "Test Channel",
+		ChannelID:     "channel123",
+		Duration:      300,
+		Description:   "Test description",
+		ThumbnailURL:  "https://example.com/thumb.jpg",
+		FilePath:      "/path/to/video.mp4",
+		FileSize:      1024 * 1024 * 100, // 100MB
+		FileHash:      "youtube123_best",
+		IsManaged:     true,
+		Format:        "best",
+		Quality:       "1080p",
+		DownloadedAt:  time.Now(),
 		WatchPosition: 0,
 		WatchCount:    0,
 	}

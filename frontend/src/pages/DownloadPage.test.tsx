@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { act } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { GetDownloadQueue, StartProcessingDownloads } from '../../wailsjs/go/app/App';
 import { useDownloadStore } from '../stores/downloadStore';
 
 // Mock the wails runtime
@@ -13,9 +15,6 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   StartProcessingDownloads: vi.fn(),
   GetSettings: vi.fn(() => Promise.resolve({ download_presets: [] })),
 }));
-
-import { EventsOn } from '../../wailsjs/runtime';
-import { GetDownloadQueue, StartProcessingDownloads } from '../../wailsjs/go/app/App';
 
 describe('DownloadPage - Queue Restoration', () => {
   beforeEach(() => {
@@ -45,7 +44,9 @@ describe('DownloadPage - Queue Restoration', () => {
     };
 
     // Mock GetDownloadQueue to return the failed download
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (GetDownloadQueue as any).mockResolvedValue([failedDownload]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (StartProcessingDownloads as any).mockResolvedValue(undefined);
 
     // Add download to frontend store with outdated status (simulating missed event)
@@ -83,7 +84,7 @@ describe('DownloadPage - Queue Restoration', () => {
 
     // Simulate queue restoration (normally done in useEffect)
     const { failDownload, updateProgress } = useDownloadStore.getState();
-    
+
     act(() => {
       // This simulates what should happen during queue restoration
       updateProgress(failedDownload.id, failedDownload.progress);
@@ -109,6 +110,7 @@ describe('DownloadPage - Queue Restoration', () => {
       created_at: new Date().toISOString(),
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (GetDownloadQueue as any).mockResolvedValue([completedDownload]);
 
     // Add download with outdated status
@@ -146,7 +148,7 @@ describe('DownloadPage - Queue Restoration', () => {
 
     // Simulate queue restoration syncing status
     const { completeDownload, updateProgress } = useDownloadStore.getState();
-    
+
     act(() => {
       updateProgress(completedDownload.id, completedDownload.progress);
       if (completedDownload.status === 'completed') {
@@ -173,6 +175,7 @@ describe('DownloadPage - Queue Restoration', () => {
       created_at: new Date().toISOString(),
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (GetDownloadQueue as any).mockResolvedValue([newDownload]);
 
     // Store is empty initially
@@ -227,11 +230,11 @@ describe('DownloadPage - Event Deduplication', () => {
 
     // First error event
     const errorKey = `error_${downloadId}`;
-    
+
     // Simulate event handler logic
     const shouldProcess1 = !processedEvents.has(errorKey);
     expect(shouldProcess1).toBe(true);
-    
+
     if (shouldProcess1) {
       processedEvents.add(errorKey);
     }
@@ -251,7 +254,7 @@ describe('DownloadPage - Event Deduplication', () => {
     // Original failure
     const errorKey = `error_${downloadId}`;
     processedEvents.add(errorKey);
-    
+
     const completedKey = `completed_${downloadId}`;
     processedEvents.add(completedKey);
 
@@ -351,7 +354,7 @@ describe('DownloadPage - Event Handlers', () => {
   it('should handle download:started event correctly', () => {
     const { addDownload } = useDownloadStore.getState();
     let downloadId: string;
-    
+
     act(() => {
       const id = addDownload('https://youtube.com/watch?v=start-test');
       downloadId = id!;
@@ -375,7 +378,7 @@ describe('DownloadPage - Event Handlers', () => {
     // Setup failed download
     const { addDownload, startDownload, failDownload } = useDownloadStore.getState();
     let downloadId: string;
-    
+
     act(() => {
       const id = addDownload('https://youtube.com/watch?v=retry-test');
       downloadId = id!;
@@ -406,7 +409,7 @@ describe('DownloadPage - HTTP 416 Regression', () => {
   it('should document the HTTP 416 bug fix requirements', () => {
     // This test documents the fix for the HTTP 416 bug where errors
     // were incorrectly shown as "completed" in the UI
-    
+
     const requirements = [
       'Backend must call FailDownload() before emitting download:error event',
       'Frontend queue restoration must ALWAYS sync status from backend',

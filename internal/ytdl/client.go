@@ -131,13 +131,13 @@ type ProgressCallback func(progress DownloadProgress)
 
 // DownloadProgress represents download progress
 type DownloadProgress struct {
-	Percent      float64 `json:"percent"`
-	Speed        string  `json:"speed"`
-	ETA          string  `json:"eta"`
-	Size         string  `json:"size"`
-	Status       string  `json:"status"`
-	IsThrottled  bool    `json:"is_throttled"`  // true if speed limit is active
-	SpeedLimit   string  `json:"speed_limit"`   // formatted speed limit (e.g., "1.5 MiB/s")
+	Percent     float64 `json:"percent"`
+	Speed       string  `json:"speed"`
+	ETA         string  `json:"eta"`
+	Size        string  `json:"size"`
+	Status      string  `json:"status"`
+	IsThrottled bool    `json:"is_throttled"` // true if speed limit is active
+	SpeedLimit  string  `json:"speed_limit"`  // formatted speed limit (e.g., "1.5 MiB/s")
 }
 
 // rawVideoInfo is the yt-dlp JSON output structure
@@ -288,16 +288,17 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		TrimFilenames(100)
 
 	// Apply format selection with proper merging
-	if opts.Quality == "audio" {
+	switch {
+	case opts.Quality == "audio":
 		log.Println("[YTDLP] Using audio-only format (mp3)")
 		dl = dl.ExtractAudio().AudioFormat("mp3")
 		// Embed metadata (title, artist) and thumbnail for MP3 files
 		dl = dl.EmbedMetadata().EmbedThumbnail()
-	} else if opts.Format != "" && opts.Format != "best" {
+	case opts.Format != "" && opts.Format != "best":
 		// Use specific format if provided - these already include video+audio merging
 		log.Printf("[YTDLP] Using specific format: %s", opts.Format)
 		dl = dl.Format(opts.Format)
-	} else {
+	default:
 		// Default to best quality video+audio with merge
 		log.Println("[YTDLP] Using default format: bestvideo*+bestaudio/best")
 		dl = dl.Format("bestvideo*+bestaudio/best")
@@ -305,7 +306,7 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	// IMPORTANT: Set merge output format to mp4 to ensure audio+video are merged
 	dl = dl.MergeOutputFormat("mp4")
-	
+
 	// Note: yt-dlp will find ffmpeg automatically if it's in PATH
 	// We log whether ffmpeg is available for debugging purposes
 	if c.ffmpegPath != "" {
