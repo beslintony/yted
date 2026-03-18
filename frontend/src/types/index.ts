@@ -38,6 +38,8 @@ export interface Download {
   speed?: string;
   eta?: string;
   size?: string;
+  isThrottled?: boolean;  // true if speed limit is being enforced
+  speedLimit?: string;    // formatted limit (e.g., "1.5 MiB/s")
   createdAt: number;
   startedAt?: number;
   completedAt?: number;

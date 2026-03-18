@@ -89,11 +89,13 @@ type ProgressCallback func(progress DownloadProgress)
 
 // DownloadProgress represents download progress
 type DownloadProgress struct {
-	Percent float64 `json:"percent"`
-	Speed   string  `json:"speed"`
-	ETA     string  `json:"eta"`
-	Size    string  `json:"size"`
-	Status  string  `json:"status"`
+	Percent      float64 `json:"percent"`
+	Speed        string  `json:"speed"`
+	ETA          string  `json:"eta"`
+	Size         string  `json:"size"`
+	Status       string  `json:"status"`
+	IsThrottled  bool    `json:"is_throttled"`  // true if speed limit is active
+	SpeedLimit   string  `json:"speed_limit"`   // formatted speed limit (e.g., "1.5 MiB/s")
 }
 
 // rawVideoInfo is the yt-dlp JSON output structure
@@ -282,12 +284,18 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		dl = dl.Proxy(*c.config.ProxyURL)
 	}
 
+	// Get speed limit for progress tracking
+	var speedLimitKbps int
+	if c.config.SpeedLimitKbps != nil && *c.config.SpeedLimitKbps > 0 {
+		speedLimitKbps = *c.config.SpeedLimitKbps
+	}
+
 	// Add progress parsing
 	if callback != nil {
 		dl = dl.ProgressFunc(100*time.Millisecond, func(update ytdlp.ProgressUpdate) {
-			progress := calculateProgress(update)
-			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s)",
-				progress.Percent, update.Status, progress.Speed, progress.ETA)
+			progress := calculateProgress(update, speedLimitKbps)
+			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s, throttled: %v)",
+				progress.Percent, update.Status, progress.Speed, progress.ETA, progress.IsThrottled)
 			callback(progress)
 		})
 		// Ensure progress callback is cleared after download completes or fails
@@ -331,7 +339,8 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 }
 
 // calculateProgress calculates progress from ytdlp update
-func calculateProgress(update ytdlp.ProgressUpdate) DownloadProgress {
+// speedLimitKbps is the configured limit in KB/s (0 means unlimited)
+func calculateProgress(update ytdlp.ProgressUpdate, speedLimitKbps int) DownloadProgress {
 	var percent float64
 	if update.TotalBytes > 0 {
 		percent = float64(update.DownloadedBytes) / float64(update.TotalBytes) * 100
@@ -339,10 +348,11 @@ func calculateProgress(update ytdlp.ProgressUpdate) DownloadProgress {
 
 	// Calculate speed and ETA
 	var speed, etaStr string
+	var bytesPerSec float64
 	if !update.Started.IsZero() {
 		elapsed := time.Since(update.Started).Seconds()
 		if elapsed > 0 && update.DownloadedBytes > 0 {
-			bytesPerSec := float64(update.DownloadedBytes) / elapsed
+			bytesPerSec = float64(update.DownloadedBytes) / elapsed
 			speed = FormatFileSize(int64(bytesPerSec)) + "/s"
 
 			if update.TotalBytes > 0 && bytesPerSec > 0 {
@@ -354,12 +364,32 @@ func calculateProgress(update ytdlp.ProgressUpdate) DownloadProgress {
 		}
 	}
 
+	// Determine if throttling is active
+	var isThrottled bool
+	var speedLimitStr string
+	if speedLimitKbps > 0 {
+		speedLimitStr = FormatFileSize(int64(speedLimitKbps)*1024) + "/s"
+		// Consider throttled if actual speed is within 10% of limit
+		// and we've been downloading for at least 5 seconds
+		if !update.Started.IsZero() {
+			elapsed := time.Since(update.Started).Seconds()
+			if elapsed > 5 {
+				limitBytesPerSec := float64(speedLimitKbps) * 1024
+				if bytesPerSec > 0 && bytesPerSec >= limitBytesPerSec*0.9 {
+					isThrottled = true
+				}
+			}
+		}
+	}
+
 	return DownloadProgress{
-		Percent: percent,
-		Status:  string(update.Status),
-		Speed:   speed,
-		ETA:     etaStr,
-		Size:    FormatFileSize(int64(update.TotalBytes)),
+		Percent:     percent,
+		Status:      string(update.Status),
+		Speed:       speed,
+		ETA:         etaStr,
+		Size:        FormatFileSize(int64(update.TotalBytes)),
+		IsThrottled: isThrottled,
+		SpeedLimit:  speedLimitStr,
 	}
 }
 

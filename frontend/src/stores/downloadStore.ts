@@ -15,7 +15,7 @@ interface DownloadState {
   resumeDownload: (id: string) => void;
   retryDownload: (id: string) => void;
   updateProgress: (id: string, progress: number) => void;
-  updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string }) => void;
+  updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string; isThrottled?: boolean; speedLimit?: string }) => void;
   completeDownload: (id: string) => void;
   failDownload: (id: string, error: string) => void;
   clearCompleted: () => void;

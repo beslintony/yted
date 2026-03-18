@@ -27,6 +27,7 @@ import {
   IconX,
   IconSearch,
   IconVideo,
+  IconGauge,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -165,14 +166,16 @@ export function DownloadPage() {
 
   // Listen for download progress events from backend
   useEffect(() => {
-    const cancelProgress = EventsOn('download:progress', (data: { id?: string; progress?: number; speed?: string; eta?: string; size?: string }) => {
+    const cancelProgress = EventsOn('download:progress', (data: { id?: string; progress?: number; speed?: string; eta?: string; size?: string; is_throttled?: boolean; speed_limit?: string }) => {
       if (data?.id && typeof data.progress === 'number') {
         updateProgress(data.id, data.progress);
-        if (data.speed || data.eta || data.size) {
+        if (data.speed || data.eta || data.size || data.is_throttled !== undefined) {
           updateDownloadInfo(data.id, {
             speed: data.speed,
             eta: data.eta,
             size: data.size,
+            isThrottled: data.is_throttled,
+            speedLimit: data.speed_limit,
           });
         }
       }
@@ -661,9 +664,16 @@ export function DownloadPage() {
                         {Math.round(download.progress)}%
                       </Text>
                       {download.status === 'downloading' && download.speed && (
-                        <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
-                          {download.speed}
-                        </Text>
+                        <Group gap={4}>
+                          <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
+                            {download.speed}
+                          </Text>
+                          {download.isThrottled && download.speedLimit && (
+                            <Tooltip label={`Speed limited to ${download.speedLimit}`}>
+                              <IconGauge size={14} color={dark ? '#909296' : '#868e96'} />
+                            </Tooltip>
+                          )}
+                        </Group>
                       )}
                       {download.status === 'downloading' && download.eta && formatETA(download.eta) && (
                         <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
