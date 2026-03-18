@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	goRuntime "runtime"
 	"sync"
@@ -352,7 +351,7 @@ func (a *App) ShowSaveDialog(defaultFilename string) (string, error) {
 	})
 }
 
-// OpenFile opens a file with the default application using xdg-open
+// OpenFile opens a file with the default application
 func (a *App) OpenFile(path string) error {
 	logger := applog.GetLogger()
 
@@ -381,21 +380,16 @@ func (a *App) OpenFile(path string) error {
 
 	logger.Info("App", "Opening file", map[string]string{"path": path})
 
-	// Open file with default application based on OS
-	var cmd *exec.Cmd
-	switch goRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", path)
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", path)
-	default: // Linux and others
-		cmd = exec.Command("xdg-open", "--", path)
+	// Convert to absolute path for file:// URL
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		absPath = path
 	}
-	
-	if err := cmd.Start(); err != nil {
-		logger.Error("App", "Failed to open file", err, map[string]string{"path": path})
-		return fmt.Errorf("failed to open file: %w", err)
-	}
+
+	// Use file:// URL for cross-platform compatibility
+	// This works better than xdg-open/exec on Linux (snap, AppImage, flatpak)
+	fileURL := "file://" + absPath
+	runtime.BrowserOpenURL(a.ctx, fileURL)
 
 	return nil
 }
@@ -431,21 +425,16 @@ func (a *App) OpenFolder(filePath string) error {
 
 	logger.Info("App", "Opening folder", map[string]string{"path": dir})
 
-	// Open folder with default application based on OS
-	var cmd *exec.Cmd
-	switch goRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", dir)
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", dir)
-	default: // Linux and others
-		cmd = exec.Command("xdg-open", "--", dir)
+	// Convert to absolute path for file:// URL
+	absPath, err := filepath.Abs(dir)
+	if err != nil {
+		absPath = dir
 	}
-	
-	if err := cmd.Start(); err != nil {
-		logger.Error("App", "Failed to open folder", err, map[string]string{"path": dir})
-		return fmt.Errorf("failed to open folder: %w", err)
-	}
+
+	// Use file:// URL for cross-platform compatibility
+	// This works better than xdg-open/exec on Linux (snap, AppImage, flatpak)
+	folderURL := "file://" + absPath
+	runtime.BrowserOpenURL(a.ctx, folderURL)
 
 	return nil
 }
