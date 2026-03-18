@@ -31,7 +31,7 @@ import {
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload } from '../../wailsjs/go/app/App';
+import { GetVideoInfo, AddDownload, ValidateURL, GetSettings, GetDownloadQueue, StartProcessingDownloads, RetryDownload, PauseDownload, ResumeDownload } from '../../wailsjs/go/app/App';
 import { app, config } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 import { useDownloadStore, useSettingsStore, useNotifications } from '../stores';
@@ -598,7 +598,15 @@ export function DownloadPage() {
                             color="yellow"
                             size="sm"
                             variant="light"
-                            onClick={() => pauseDownload(download.id)}
+                            onClick={async () => {
+                              try {
+                                await PauseDownload(download.id);
+                                pauseDownload(download.id);
+                              } catch (err) {
+                                console.error('Failed to pause download:', err);
+                                showError('Pause Failed', 'Failed to pause download');
+                              }
+                            }}
                           >
                             <IconPlayerPause size={14} />
                           </ActionIcon>
@@ -610,7 +618,15 @@ export function DownloadPage() {
                             color="green"
                             size="sm"
                             variant="light"
-                            onClick={() => resumeDownload(download.id)}
+                            onClick={async () => {
+                              try {
+                                await ResumeDownload(download.id);
+                                resumeDownload(download.id);
+                              } catch (err) {
+                                console.error('Failed to resume download:', err);
+                                showError('Resume Failed', 'Failed to resume download');
+                              }
+                            }}
                           >
                             <IconPlayerPlay size={14} />
                           </ActionIcon>
