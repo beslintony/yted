@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	goRuntime "runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -361,45 +362,55 @@ func (a *App) OpenFile(path string) error {
 		return fmt.Errorf("file path is empty")
 	}
 
-	// Clean the path
+	// Clean and validate the path
 	path = filepath.Clean(path)
 
+	// Security: Check for path traversal attempts
+	if strings.Contains(path, "..") {
+		return fmt.Errorf("invalid path: path traversal detected")
+	}
+
+	// Convert to absolute path for validation
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+
 	// Check if file exists
-	fileInfo, err := os.Stat(path)
+	fileInfo, err := os.Stat(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Error("App", "File not found", err, map[string]string{"path": path})
-			return fmt.Errorf("file not found: %s", path)
+			logger.Error("App", "File not found", err, map[string]string{"path": absPath})
+			return fmt.Errorf("file not found: %s", absPath)
 		}
-		logger.Error("App", "Cannot access file", err, map[string]string{"path": path})
+		logger.Error("App", "Cannot access file", err, map[string]string{"path": absPath})
 		return fmt.Errorf("cannot access file: %w", err)
 	}
 
 	if fileInfo.IsDir() {
-		return fmt.Errorf("path is a directory, not a file: %s", path)
+		return fmt.Errorf("path is a directory, not a file: %s", absPath)
 	}
 
-	logger.Info("App", "Opening file", map[string]string{"path": path})
+	logger.Info("App", "Opening file", map[string]string{"path": absPath})
 
-	// Try native OS command first
+	// Try native OS command first (using separate args to prevent injection)
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", path)
+		cmd = exec.Command("open", absPath)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", path)
+		cmd = exec.Command("cmd", "/c", "start", "", absPath)
 	default: // Linux and others
-		cmd = exec.Command("xdg-open", path)
+		cmd = exec.Command("xdg-open", absPath)
 	}
 
 	if err := cmd.Start(); err != nil {
 		// Fallback to BrowserOpenURL (especially for Linux sandboxed apps)
 		logger.Warn("App", "Failed to open file with native command, trying BrowserOpenURL", map[string]string{
-			"path":  path,
+			"path":  absPath,
 			"error": err.Error(),
 		})
 
-		absPath, _ := filepath.Abs(path)
 		fileURL := "file://" + absPath
 		runtime.BrowserOpenURL(a.ctx, fileURL)
 	}
@@ -415,49 +426,59 @@ func (a *App) OpenFolder(filePath string) error {
 		return fmt.Errorf("file path is empty")
 	}
 
-	// Clean the path
+	// Clean and validate the path
 	filePath = filepath.Clean(filePath)
+
+	// Security: Check for path traversal attempts
+	if strings.Contains(filePath, "..") {
+		return fmt.Errorf("invalid path: path traversal detected")
+	}
 
 	// Get the directory containing the file
 	dir := filepath.Dir(filePath)
 
+	// Convert to absolute path for validation
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+
 	// Verify directory exists
-	dirInfo, err := os.Stat(dir)
+	dirInfo, err := os.Stat(absDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Error("App", "Folder not found", err, map[string]string{"path": dir})
-			return fmt.Errorf("folder not found: %s", dir)
+			logger.Error("App", "Folder not found", err, map[string]string{"path": absDir})
+			return fmt.Errorf("folder not found: %s", absDir)
 		}
-		logger.Error("App", "Cannot access folder", err, map[string]string{"path": dir})
+		logger.Error("App", "Cannot access folder", err, map[string]string{"path": absDir})
 		return fmt.Errorf("cannot access folder: %w", err)
 	}
 
 	if !dirInfo.IsDir() {
-		return fmt.Errorf("path is not a directory: %s", dir)
+		return fmt.Errorf("path is not a directory: %s", absDir)
 	}
 
-	logger.Info("App", "Opening folder", map[string]string{"path": dir})
+	logger.Info("App", "Opening folder", map[string]string{"path": absDir})
 
-	// Try native OS command first
+	// Try native OS command first (using separate args to prevent injection)
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", dir)
+		cmd = exec.Command("open", absDir)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", dir)
+		cmd = exec.Command("cmd", "/c", "start", "", absDir)
 	default: // Linux and others
-		cmd = exec.Command("xdg-open", dir)
+		cmd = exec.Command("xdg-open", absDir)
 	}
 
 	if err := cmd.Start(); err != nil {
 		// Fallback to BrowserOpenURL (especially for Linux sandboxed apps)
 		logger.Warn("App", "Failed to open folder with native command, trying BrowserOpenURL", map[string]string{
-			"path":  dir,
+			"path":  absDir,
 			"error": err.Error(),
 		})
 
-		absPath, _ := filepath.Abs(dir)
-		folderURL := "file://" + absPath
+		folderURL := "file://" + absDir
 		runtime.BrowserOpenURL(a.ctx, folderURL)
 	}
 
