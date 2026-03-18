@@ -66,6 +66,8 @@ export function GetVideoByYoutubeID(arg1:string):Promise<app.VideoResult>;
 
 export function GetVideoInfo(arg1:string):Promise<app.VideoInfoResult>;
 
+export function GetYtdlpVersion():Promise<string>;
+
 export function ListVideos(arg1:app.ListVideosOptions):Promise<Array<app.VideoResult>>;
 
 export function OpenFile(arg1:string):Promise<void>;
@@ -105,6 +107,8 @@ export function UpdateDownloadPreset(arg1:string,arg2:config.DownloadPreset):Pro
 export function UpdateSetting(arg1:string,arg2:any):Promise<void>;
 
 export function UpdateWatchPosition(arg1:string,arg2:number):Promise<void>;
+
+export function UpdateYtdlp():Promise<boolean>;
 
 export function ValidateURL(arg1:string):Promise<boolean>;
 

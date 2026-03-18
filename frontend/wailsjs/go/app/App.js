@@ -126,6 +126,10 @@ export function GetVideoInfo(arg1) {
   return window['go']['app']['App']['GetVideoInfo'](arg1);
 }
 
+export function GetYtdlpVersion() {
+  return window['go']['app']['App']['GetYtdlpVersion']();
+}
+
 export function ListVideos(arg1) {
   return window['go']['app']['App']['ListVideos'](arg1);
 }
@@ -204,6 +208,10 @@ export function UpdateSetting(arg1, arg2) {
 
 export function UpdateWatchPosition(arg1, arg2) {
   return window['go']['app']['App']['UpdateWatchPosition'](arg1, arg2);
+}
+
+export function UpdateYtdlp() {
+  return window['go']['app']['App']['UpdateYtdlp']();
 }
 
 export function ValidateURL(arg1) {
