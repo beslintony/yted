@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	goRuntime "runtime"
 	"sync"
@@ -380,16 +381,28 @@ func (a *App) OpenFile(path string) error {
 
 	logger.Info("App", "Opening file", map[string]string{"path": path})
 
-	// Convert to absolute path for file:// URL
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		absPath = path
+	// Try native OS command first
+	var cmd *exec.Cmd
+	switch goRuntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", path)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", path)
 	}
 
-	// Use file:// URL for cross-platform compatibility
-	// This works better than xdg-open/exec on Linux (snap, AppImage, flatpak)
-	fileURL := "file://" + absPath
-	runtime.BrowserOpenURL(a.ctx, fileURL)
+	if err := cmd.Start(); err != nil {
+		// Fallback to BrowserOpenURL (especially for Linux sandboxed apps)
+		logger.Warn("App", "Failed to open file with native command, trying BrowserOpenURL", map[string]string{
+			"path":  path,
+			"error": err.Error(),
+		})
+
+		absPath, _ := filepath.Abs(path)
+		fileURL := "file://" + absPath
+		runtime.BrowserOpenURL(a.ctx, fileURL)
+	}
 
 	return nil
 }
@@ -425,16 +438,28 @@ func (a *App) OpenFolder(filePath string) error {
 
 	logger.Info("App", "Opening folder", map[string]string{"path": dir})
 
-	// Convert to absolute path for file:// URL
-	absPath, err := filepath.Abs(dir)
-	if err != nil {
-		absPath = dir
+	// Try native OS command first
+	var cmd *exec.Cmd
+	switch goRuntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", dir)
+	default: // Linux and others
+		cmd = exec.Command("xdg-open", dir)
 	}
 
-	// Use file:// URL for cross-platform compatibility
-	// This works better than xdg-open/exec on Linux (snap, AppImage, flatpak)
-	folderURL := "file://" + absPath
-	runtime.BrowserOpenURL(a.ctx, folderURL)
+	if err := cmd.Start(); err != nil {
+		// Fallback to BrowserOpenURL (especially for Linux sandboxed apps)
+		logger.Warn("App", "Failed to open folder with native command, trying BrowserOpenURL", map[string]string{
+			"path":  dir,
+			"error": err.Error(),
+		})
+
+		absPath, _ := filepath.Abs(dir)
+		folderURL := "file://" + absPath
+		runtime.BrowserOpenURL(a.ctx, folderURL)
+	}
 
 	return nil
 }
