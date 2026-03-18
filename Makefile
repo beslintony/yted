@@ -1,6 +1,14 @@
 # YTed Makefile
 
-.PHONY: all build dev test lint fmt clean help
+.PHONY: all build build-versioned dev test lint fmt clean help
+
+# Version (override with VERSION=x.y.z)
+VERSION ?= dev
+COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# LDFLAGS for version injection
+LDFLAGS := -ldflags "-X yted/internal/version.Version=$(VERSION) -X yted/internal/version.Commit=$(COMMIT) -X yted/internal/version.BuildDate=$(BUILD_DATE)"
 
 # Default target
 all: fmt lint build
@@ -9,6 +17,11 @@ all: fmt lint build
 build:
 	@echo "Building YTed..."
 	wails build -tags webkit2_41
+
+## Build with version info injected
+build-versioned:
+	@echo "Building YTed version $(VERSION) (commit: $(COMMIT))..."
+	wails build -tags webkit2_41 -ldflags "$(LDFLAGS)"
 
 ## Build with dev mode
 dev:
