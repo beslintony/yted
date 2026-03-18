@@ -94,7 +94,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set((state) => ({
       downloads: state.downloads.map((d) =>
         d.id === id
-          ? { ...d, status: 'pending' as DownloadStatus, progress: 0, errorMessage: undefined }
+          ? { ...d, status: 'pending' as DownloadStatus, errorMessage: undefined }
           : d
       ),
     }));

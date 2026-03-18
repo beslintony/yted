@@ -244,6 +244,16 @@ func (db *DB) FailDownload(id string, errorMsg string) error {
 	return nil
 }
 
+// ClearDownloadError clears the error message for a download (used before retry)
+func (db *DB) ClearDownloadError(id string) error {
+	query := `UPDATE downloads SET error_message = NULL WHERE id = ?`
+	_, err := db.conn.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to clear download error: %w", err)
+	}
+	return nil
+}
+
 // DeleteDownload removes a download
 func (db *DB) DeleteDownload(id string) error {
 	query := `DELETE FROM downloads WHERE id = ?`

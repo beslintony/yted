@@ -247,6 +247,8 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	if opts.Quality == "audio" {
 		log.Println("[YTDLP] Using audio-only format (mp3)")
 		dl = dl.ExtractAudio().AudioFormat("mp3")
+		// Embed metadata (title, artist) and thumbnail for MP3 files
+		dl = dl.EmbedMetadata().EmbedThumbnail()
 	} else if opts.Format != "" && opts.Format != "best" {
 		// Use specific format if provided - these already include video+audio merging
 		log.Printf("[YTDLP] Using specific format: %s", opts.Format)

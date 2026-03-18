@@ -210,6 +210,7 @@ func (a *App) ResumeDownload(id string) error {
 }
 
 // RetryDownload retries a failed download
+// Note: Progress is NOT reset to allow yt-dlp's --continue to resume partial downloads
 func (a *App) RetryDownload(id string) error {
 	logger := applog.GetLogger()
 
@@ -217,17 +218,23 @@ func (a *App) RetryDownload(id string) error {
 		return fmt.Errorf("database not initialized")
 	}
 
+	// Clear error message but preserve progress for resume
+	if err := a.db.ClearDownloadError(id); err != nil {
+		logger.Error("Download", "Failed to clear download error", err, map[string]string{"id": id})
+		return err
+	}
+
 	if err := a.db.UpdateDownloadStatus(id, "pending"); err != nil {
 		logger.Error("Download", "Failed to retry download", err, map[string]string{"id": id})
 		return err
 	}
 
-	if err := a.db.UpdateDownloadProgress(id, 0); err != nil {
-		logger.Error("Download", "Failed to reset download progress", err, map[string]string{"id": id})
-		return err
-	}
-
-	logger.Info("Download", "Download retry initiated", map[string]string{"id": id})
+	// Note: We intentionally do NOT reset progress to 0 here
+	// yt-dlp's --continue flag will resume from the partial file
+	// and the progress will update when download starts again
+	logger.Info("Download", "Download retry initiated (preserving progress for resume)", map[string]string{
+		"id": id,
+	})
 	runtime.EventsEmit(a.ctx, "download:retried", id)
 
 	// Try to process downloads

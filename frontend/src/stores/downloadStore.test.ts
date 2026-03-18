@@ -101,18 +101,19 @@ describe('downloadStore', () => {
     expect(download.errorMessage).toBe('Network error');
   });
 
-  it('should retry a failed download', () => {
-    const { addDownload, startDownload, failDownload, retryDownload } = useDownloadStore.getState();
+  it('should retry a failed download preserving progress for resume', () => {
+    const { addDownload, startDownload, updateProgress, failDownload, retryDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
     expect(id).not.toBeNull();
     startDownload(id!);
+    updateProgress(id!, 45); // Simulate partial download progress
     failDownload(id!, 'Network error');
     retryDownload(id!);
 
     const download = useDownloadStore.getState().downloads[0];
     expect(download.status).toBe('pending');
-    expect(download.progress).toBe(0);
+    expect(download.progress).toBe(45); // Progress preserved for yt-dlp --continue
     expect(download.errorMessage).toBeUndefined();
   });
 
