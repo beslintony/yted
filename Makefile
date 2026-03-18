@@ -21,6 +21,8 @@ build:
 ## Build with version info injected
 build-versioned:
 	@echo "Building YTed version $(VERSION) (commit: $(COMMIT))..."
+	@echo "Updating version in frontend/package.json..."
+	@cd frontend && npm version $(VERSION) --no-git-tag-version --allow-same-version 2>/dev/null || true
 	wails build -tags webkit2_41 -ldflags "$(LDFLAGS)"
 
 ## Build with dev mode
