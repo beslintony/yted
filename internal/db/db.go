@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -97,14 +98,26 @@ func (db *DB) migrate() error {
 
 	for _, migration := range migrations {
 		if _, err := db.conn.Exec(migration); err != nil {
-			// Ignore errors for optional migrations (e.g., column already exists)
-			// Log but continue - this allows idempotent migrations
-			continue
+			// Check if this is a "already exists" error (safe to ignore)
+			errStr := err.Error()
+			isExistsError := strings.Contains(errStr, "already exists") ||
+				strings.Contains(errStr, "duplicate column name")
+
+			if isExistsError {
+				// Idempotent migration - object already exists, continue
+				continue
+			}
+
+			// Critical error - fail fast to prevent running with corrupt schema
+			log.Printf("CRITICAL: Database migration failed: %v\nQuery: %s", err, migration)
+			return fmt.Errorf("migration failed: %w", err)
 		}
 	}
 
 	return nil
 }
+
+
 
 // backupDatabase creates a .bak copy of the database file before migrations
 func (db *DB) backupDatabase() (string, error) {

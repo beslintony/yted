@@ -288,6 +288,9 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 				progress.Percent, update.Status, progress.Speed, progress.ETA)
 			callback(progress)
 		})
+		// Ensure progress callback is cleared after download completes or fails
+		// This prevents potential memory retention if the download object lingers
+		defer dl.UnsetProgressFunc()
 	}
 
 	// Add speed limit if configured

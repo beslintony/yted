@@ -139,13 +139,10 @@ func (m *Manager) Load() error {
 		homeDir, _ := os.UserHomeDir()
 		cfg.LogExportPath = filepath.Join(homeDir, "Downloads")
 	}
-	// Ensure filename template includes YouTube ID and format for unique identification
+	// Set default filename template if not configured
 	// Format ID is included to allow multiple versions (e.g., 720p vs 1080p) of same video
-	// Title is truncated to 100 chars to prevent "file name too long" errors
-	if cfg.FilenameTemplate == "" ||
-		cfg.FilenameTemplate == "%(title)s.%(ext)s" ||
-		cfg.FilenameTemplate == "%(title)s [%(id)s].%(ext)s" ||
-		cfg.FilenameTemplate == "%(title)s [%(id)s][%(format_id)s].%(ext)s" {
+	// Title is truncated to 60 chars to prevent "file name too long" errors
+	if cfg.FilenameTemplate == "" {
 		cfg.FilenameTemplate = "%(title).60s [%(id)s][%(format_id)s].%(ext)s"
 	}
 
