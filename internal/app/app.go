@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	goRuntime "runtime"
 	"sync"
+	"time"
 
 	"yted/internal/config"
 	"yted/internal/db"
@@ -29,11 +30,17 @@ type App struct {
 
 	// Mutex to prevent concurrent download processing
 	downloadMu sync.Mutex
+
+	// Active downloads map for cancellation (pause/resume)
+	activeDownloads   map[string]context.CancelFunc
+	activeDownloadsMu sync.RWMutex
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		activeDownloads: make(map[string]context.CancelFunc),
+	}
 }
 
 // Startup is called when the app starts
@@ -125,6 +132,10 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Info("YTDLP", "yt-dlp installed successfully")
 	}
 
+	// Check for yt-dlp updates in the background (non-blocking)
+	// yt-dlp requires frequent updates to handle YouTube changes
+	go a.checkForYtdlpUpdate()
+
 	// Find and configure ffmpeg for video/audio merging
 	a.ffmpeg = NewFFmpegManager()
 	
@@ -181,6 +192,41 @@ func (a *App) Shutdown(ctx context.Context) {
 	}
 }
 
+// checkForYtdlpUpdate checks for and installs yt-dlp updates
+// Runs in the background - yt-dlp requires frequent updates for YouTube compatibility
+func (a *App) checkForYtdlpUpdate() {
+	if a.ytdl == nil {
+		return
+	}
+
+	// Check current version first
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	version, err := a.ytdl.GetVersion(ctx)
+	cancel()
+	if err != nil {
+		a.logger.Warn("YTDLP", "Could not get current version", err)
+	} else {
+		a.logger.Info("YTDLP", "Current version", map[string]string{"version": version})
+	}
+
+	// Attempt update
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	updated, err := a.ytdl.Update(ctx)
+	if err != nil {
+		a.logger.Error("YTDLP", "Update check failed", err)
+		return
+	}
+
+	if updated {
+		a.logger.Info("YTDLP", "yt-dlp updated to latest version")
+		runtime.EventsEmit(a.ctx, "ytdlp:updated", nil)
+	} else {
+		a.logger.Info("YTDLP", "yt-dlp is up to date")
+	}
+}
+
 // DOMReady is called when the frontend is ready
 func (a *App) DOMReady(ctx context.Context) {
 	a.logger.Info("App", "Frontend DOM ready")
@@ -191,6 +237,32 @@ func (a *App) DOMReady(ctx context.Context) {
 // GetVersion returns the app version
 func (a *App) GetVersion() string {
 	return "1.0.0"
+}
+
+// GetYtdlpVersion returns the current yt-dlp version
+func (a *App) GetYtdlpVersion() string {
+	if a.ytdl == nil {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	version, err := a.ytdl.GetVersion(ctx)
+	if err != nil {
+		a.logger.Error("YTDLP", "Failed to get version", err)
+		return ""
+	}
+	return version
+}
+
+// UpdateYtdlp manually triggers a yt-dlp update check
+// Returns true if an update was performed
+func (a *App) UpdateYtdlp() (bool, error) {
+	if a.ytdl == nil {
+		return false, fmt.Errorf("yt-dlp client not initialized")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	return a.ytdl.Update(ctx)
 }
 
 // GetAppName returns the app name

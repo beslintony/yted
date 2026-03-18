@@ -60,6 +60,48 @@ func (c *Client) Install(ctx context.Context) error {
 	return nil
 }
 
+// Update updates yt-dlp to the latest version
+// Returns true if an update was performed, false if already up to date
+func (c *Client) Update(ctx context.Context) (bool, error) {
+	log.Println("Checking for yt-dlp updates...")
+
+	// Create a timeout context for update
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	result, err := c.dl.Update(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to update yt-dlp: %w", err)
+	}
+
+	// Check if update actually happened
+	output := strings.ToLower(result.Stdout + result.Stderr)
+	if strings.Contains(output, "up to date") || strings.Contains(output, "already up") {
+		log.Println("yt-dlp is already up to date")
+		return false, nil
+	}
+
+	log.Printf("yt-dlp updated successfully: %s", result.Stdout)
+	return true, nil
+}
+
+// GetVersion returns the installed yt-dlp version
+func (c *Client) GetVersion(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	result, err := c.dl.Version(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get version: %w", err)
+	}
+
+	version := strings.TrimSpace(result.Stdout)
+	if version == "" {
+		version = strings.TrimSpace(result.Stderr)
+	}
+	return version, nil
+}
+
 // VideoInfo represents video metadata
 type VideoInfo struct {
 	ID          string       `json:"id"`

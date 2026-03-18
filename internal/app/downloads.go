@@ -169,12 +169,22 @@ func (a *App) GetDownloadsByStatus(status string) ([]db.Download, error) {
 	return a.db.ListDownloads(status)
 }
 
-// PauseDownload pauses a download
+// PauseDownload pauses a download by cancelling its context
 func (a *App) PauseDownload(id string) error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
 		return fmt.Errorf("database not initialized")
+	}
+
+	// Cancel the active download if it's running
+	a.activeDownloadsMu.RLock()
+	cancel, exists := a.activeDownloads[id]
+	a.activeDownloadsMu.RUnlock()
+
+	if exists && cancel != nil {
+		cancel()
+		logger.Info("Download", "Download cancelled for pause", map[string]string{"id": id})
 	}
 
 	if err := a.db.UpdateDownloadStatus(id, "paused"); err != nil {
@@ -353,8 +363,17 @@ func (a *App) startDownload(dl db.Download) {
 	logger := applog.GetLogger()
 
 	// Create a context with timeout for the download
+	// Store cancel function for pause/resume support
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Minute)
-	defer cancel()
+	a.activeDownloadsMu.Lock()
+	a.activeDownloads[dl.ID] = cancel
+	a.activeDownloadsMu.Unlock()
+	defer func() {
+		cancel()
+		a.activeDownloadsMu.Lock()
+		delete(a.activeDownloads, dl.ID)
+		a.activeDownloadsMu.Unlock()
+	}()
 
 	logger.Info("Download", "Download worker starting", map[string]string{
 		"id":  dl.ID,
@@ -458,6 +477,16 @@ func (a *App) startDownload(dl db.Download) {
 	// Perform download
 	err = a.ytdl.Download(ctx, dl.URL, opts, progressCallback)
 	if err != nil {
+		// Check if this was a pause (context cancelled) vs a real error
+		if ctx.Err() == context.Canceled {
+			// Check current status - if paused, this was intentional
+			currentDl, _ := a.db.GetDownload(dl.ID)
+			if currentDl != nil && currentDl.Status == "paused" {
+				logger.Info("Download", "Download stopped for pause", map[string]string{"id": dl.ID})
+				return
+			}
+		}
+
 		logger.Error("Download", "Download failed", err, map[string]string{"id": dl.ID})
 		if failErr := a.db.FailDownload(dl.ID, err.Error()); failErr != nil {
 			logger.Error("Download", "Failed to mark download as failed", failErr, map[string]string{"id": dl.ID})
