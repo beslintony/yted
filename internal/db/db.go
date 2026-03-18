@@ -27,6 +27,13 @@ func New(appDataDir string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Configure connection pool for better performance
+	// SQLite handles concurrency via WAL mode, so we don't need many connections
+	conn.SetMaxOpenConns(10)                  // Maximum concurrent connections
+	conn.SetMaxIdleConns(5)                   // Keep some connections warm
+	conn.SetConnMaxLifetime(10 * time.Minute) // Recycle connections periodically
+	conn.SetConnMaxIdleTime(5 * time.Minute)  // Close idle connections after 5 min
+
 	db := &DB{conn: conn, dbPath: dbPath}
 	if err := db.migrate(); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)

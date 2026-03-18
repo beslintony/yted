@@ -34,12 +34,17 @@ type App struct {
 	// Active downloads map for cancellation (pause/resume)
 	activeDownloads   map[string]context.CancelFunc
 	activeDownloadsMu sync.RWMutex
+
+	// Graceful shutdown support
+	activeDownloadsWg sync.WaitGroup
+	shutdownCh        chan struct{}
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
 		activeDownloads: make(map[string]context.CancelFunc),
+		shutdownCh:      make(chan struct{}),
 	}
 }
 
@@ -180,6 +185,36 @@ func (a *App) Startup(ctx context.Context) {
 func (a *App) Shutdown(ctx context.Context) {
 	a.logger.Info("App", "Shutting down YTed")
 
+	// Signal shutdown to all goroutines
+	close(a.shutdownCh)
+
+	// Cancel all active downloads gracefully
+	a.activeDownloadsMu.Lock()
+	activeCount := len(a.activeDownloads)
+	for id, cancel := range a.activeDownloads {
+		a.logger.Info("Download", "Cancelling active download", map[string]string{"id": id})
+		cancel()
+	}
+	a.activeDownloadsMu.Unlock()
+
+	// Wait for active downloads to finish (with timeout)
+	if activeCount > 0 {
+		a.logger.Info("App", "Waiting for downloads to finish", map[string]int{"count": activeCount})
+		
+		done := make(chan struct{})
+		go func() {
+			a.activeDownloadsWg.Wait()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			a.logger.Info("App", "All downloads finished gracefully")
+		case <-time.After(5 * time.Second):
+			a.logger.Warn("App", "Timeout waiting for downloads, forcing shutdown")
+		}
+	}
+
 	if a.config != nil {
 		if err := a.config.Save(); err != nil {
 			a.logger.Error("Config", "Failed to save config", err)
@@ -190,6 +225,8 @@ func (a *App) Shutdown(ctx context.Context) {
 			a.logger.Error("Database", "Failed to close database", err)
 		}
 	}
+
+	a.logger.Info("App", "YTed shutdown complete")
 }
 
 // checkForYtdlpUpdate checks for and installs yt-dlp updates

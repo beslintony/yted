@@ -87,18 +87,20 @@ func (a *App) AddDownload(videoURL string, formatID string, quality string) (str
 	})
 
 	if a.db == nil {
-		err := fmt.Errorf("database not initialized")
-		logger.Error("Download", "Database not ready", err)
-		return "", err
+		logger.Error("Download", "Database not ready", ErrDatabaseNotInitialized)
+		return "", ErrDatabaseNotInitialized
 	}
 
 	if a.ytdl == nil {
-		err := fmt.Errorf("ytdl client not initialized")
-		logger.Error("Download", "ytdl client not ready", err)
-		return "", err
+		logger.Error("Download", "ytdl client not ready", ErrYtdlNotInitialized)
+		return "", ErrYtdlNotInitialized
 	}
 
 	// Check for existing active download to prevent duplicates
+	// Use a timeout to prevent hanging on database lock
+	ctx, cancel := context.WithTimeout(a.ctx, 5*time.Second)
+	defer cancel()
+	
 	existingDownload, err := a.db.GetActiveDownloadByURL(videoURL)
 	if err != nil {
 		logger.Error("Download", "Failed to check for existing download", err)
@@ -110,6 +112,11 @@ func (a *App) AddDownload(videoURL string, formatID string, quality string) (str
 			"id":  existingDownload.ID,
 		})
 		return existingDownload.ID, nil
+	}
+	
+	// Verify context wasn't cancelled
+	if ctx.Err() != nil {
+		return "", fmt.Errorf("operation cancelled or timed out")
 	}
 
 	download := &db.Download{
@@ -362,6 +369,18 @@ func (a *App) processDownloads() {
 func (a *App) startDownload(dl db.Download) {
 	logger := applog.GetLogger()
 
+	// Register with WaitGroup for graceful shutdown
+	a.activeDownloadsWg.Add(1)
+	defer a.activeDownloadsWg.Done()
+
+	// Check if shutdown is in progress
+	select {
+	case <-a.shutdownCh:
+		logger.Info("Download", "Download cancelled due to shutdown", map[string]string{"id": dl.ID})
+		return
+	default:
+	}
+
 	// Create a context with timeout for the download
 	// Store cancel function for pause/resume support
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Minute)
@@ -456,17 +475,36 @@ func (a *App) startDownload(dl db.Download) {
 		ProxyURL:  a.config.Get().ProxyURL,
 	}
 
-	// Progress callback
+	// Progress callback with debouncing to prevent frontend flooding
+	// Throttle UI updates to max 2 per second (every 500ms)
+	var lastEmitTime time.Time
+	var lastProgress float64
 	progressCallback := func(progress ytdl.DownloadProgress) {
+		// Always update database
 		if updateErr := a.db.UpdateDownloadProgress(dl.ID, progress.Percent); updateErr != nil {
 			logger.Debug("Download", "Failed to update progress", map[string]string{"error": updateErr.Error()})
 		}
-		runtime.EventsEmit(a.ctx, "download:progress", map[string]interface{}{
-			"id":       dl.ID,
-			"progress": progress.Percent,
-			"speed":    progress.Speed,
-			"eta":      progress.ETA,
-		})
+
+		// Throttle UI events: emit if:
+		// 1. First event (lastEmitTime.IsZero)
+		// 2. 500ms has passed since last emit
+		// 3. Progress changed by more than 5%
+		// 4. Download completed (100%)
+		shouldEmit := lastEmitTime.IsZero() ||
+			time.Since(lastEmitTime) > 500*time.Millisecond ||
+			progress.Percent-lastProgress > 5 ||
+			progress.Percent >= 100
+
+		if shouldEmit {
+			lastEmitTime = time.Now()
+			lastProgress = progress.Percent
+			runtime.EventsEmit(a.ctx, "download:progress", map[string]interface{}{
+				"id":       dl.ID,
+				"progress": progress.Percent,
+				"speed":    progress.Speed,
+				"eta":      progress.ETA,
+			})
+		}
 
 		logger.Debug("Download", "Progress update", map[string]interface{}{
 			"id":       dl.ID,
