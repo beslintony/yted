@@ -454,3 +454,468 @@ func durationPtr(i int) *int {
 	return &i
 }
 
+// ============ NEW TESTS ============
+
+func TestListDownloads(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create downloads with different statuses
+	downloads := []*Download{
+		{ID: "list-1", URL: "https://youtube.com/watch?v=1", Status: "pending", CreatedAt: time.Now()},
+		{ID: "list-2", URL: "https://youtube.com/watch?v=2", Status: "downloading", CreatedAt: time.Now()},
+		{ID: "list-3", URL: "https://youtube.com/watch?v=3", Status: "completed", CreatedAt: time.Now()},
+	}
+
+	for _, d := range downloads {
+		err := db.CreateDownload(d)
+		if err != nil {
+			t.Fatalf("Failed to create download: %v", err)
+		}
+	}
+
+	// List all downloads
+	list, err := db.ListDownloads()
+	if err != nil {
+		t.Fatalf("Failed to list downloads: %v", err)
+	}
+
+	if len(list) != 3 {
+		t.Errorf("Expected 3 downloads, got %d", len(list))
+	}
+
+	// List with status filter
+	pendingList, err := db.ListDownloads("pending")
+	if err != nil {
+		t.Fatalf("Failed to list pending downloads: %v", err)
+	}
+
+	if len(pendingList) != 1 {
+		t.Errorf("Expected 1 pending download, got %d", len(pendingList))
+	}
+}
+
+func TestUpdateDownload(t *testing.T) {
+	db := setupTestDB(t)
+
+	download := &Download{
+		ID:        "update-test",
+		URL:       "https://youtube.com/watch?v=test",
+		Status:    "pending",
+		Progress:  0,
+		CreatedAt: time.Now(),
+	}
+
+	err := db.CreateDownload(download)
+	if err != nil {
+		t.Fatalf("Failed to create download: %v", err)
+	}
+
+	// Update download
+	download.Status = "completed"
+	download.Progress = 100
+	download.Title = strPtr("Updated Title")
+
+	err = db.UpdateDownload(download)
+	if err != nil {
+		t.Fatalf("Failed to update download: %v", err)
+	}
+
+	retrieved, _ := db.GetDownload("update-test")
+	if retrieved.Status != "completed" {
+		t.Errorf("Status not updated: got %s, want completed", retrieved.Status)
+	}
+
+	if *retrieved.Title != "Updated Title" {
+		t.Errorf("Title not updated: got %s, want 'Updated Title'", *retrieved.Title)
+	}
+}
+
+func TestGetIncompleteDownloads(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create downloads with different statuses
+	downloads := []*Download{
+		{ID: "inc-1", URL: "https://youtube.com/watch?v=1", Status: "pending", CreatedAt: time.Now()},
+		{ID: "inc-2", URL: "https://youtube.com/watch?v=2", Status: "downloading", CreatedAt: time.Now()},
+		{ID: "inc-3", URL: "https://youtube.com/watch?v=3", Status: "error", CreatedAt: time.Now()},
+		{ID: "inc-4", URL: "https://youtube.com/watch?v=4", Status: "completed", CreatedAt: time.Now()},
+	}
+
+	for _, d := range downloads {
+		err := db.CreateDownload(d)
+		if err != nil {
+			t.Fatalf("Failed to create download: %v", err)
+		}
+	}
+
+	// Get incomplete downloads
+	incomplete, err := db.GetIncompleteDownloads()
+	if err != nil {
+		t.Fatalf("Failed to get incomplete downloads: %v", err)
+	}
+
+	if len(incomplete) != 3 {
+		t.Errorf("Expected 3 incomplete downloads, got %d", len(incomplete))
+	}
+
+	for _, d := range incomplete {
+		if d.Status == "completed" {
+			t.Errorf("Should not include completed downloads: %s", d.ID)
+		}
+	}
+}
+
+func TestClearDownloadError(t *testing.T) {
+	db := setupTestDB(t)
+
+	download := &Download{
+		ID:           "clear-error-test",
+		URL:          "https://youtube.com/watch?v=test",
+		Status:       "error",
+		Progress:     50,
+		ErrorMessage: strPtr("Some error"),
+		CreatedAt:    time.Now(),
+	}
+
+	err := db.CreateDownload(download)
+	if err != nil {
+		t.Fatalf("Failed to create download: %v", err)
+	}
+
+	// Clear error
+	err = db.ClearDownloadError("clear-error-test")
+	if err != nil {
+		t.Fatalf("Failed to clear error: %v", err)
+	}
+
+	retrieved, _ := db.GetDownload("clear-error-test")
+	if retrieved.ErrorMessage != nil && *retrieved.ErrorMessage != "" {
+		t.Errorf("Error message should be cleared, got: %v", retrieved.ErrorMessage)
+	}
+}
+
+func TestDeleteCompletedDownloads(t *testing.T) {
+	db := setupTestDB(t)
+
+	downloads := []*Download{
+		{ID: "del-comp-1", URL: "https://youtube.com/watch?v=1", Status: "completed", CreatedAt: time.Now()},
+		{ID: "del-comp-2", URL: "https://youtube.com/watch?v=2", Status: "completed", CreatedAt: time.Now()},
+		{ID: "del-pending", URL: "https://youtube.com/watch?v=3", Status: "pending", CreatedAt: time.Now()},
+	}
+
+	for _, d := range downloads {
+		err := db.CreateDownload(d)
+		if err != nil {
+			t.Fatalf("Failed to create download: %v", err)
+		}
+	}
+
+	// Delete completed downloads
+	err := db.DeleteCompletedDownloads()
+	if err != nil {
+		t.Fatalf("Failed to delete completed downloads: %v", err)
+	}
+
+	// Verify completed are deleted
+	for _, id := range []string{"del-comp-1", "del-comp-2"} {
+		retrieved, _ := db.GetDownload(id)
+		if retrieved != nil {
+			t.Errorf("Completed download %s should be deleted", id)
+		}
+	}
+
+	// Verify pending still exists
+	retrieved, _ := db.GetDownload("del-pending")
+	if retrieved == nil {
+		t.Error("Pending download should still exist")
+	}
+}
+
+func TestClearAllDownloads(t *testing.T) {
+	db := setupTestDB(t)
+
+	downloads := []*Download{
+		{ID: "clear-1", URL: "https://youtube.com/watch?v=1", Status: "completed", CreatedAt: time.Now()},
+		{ID: "clear-2", URL: "https://youtube.com/watch?v=2", Status: "pending", CreatedAt: time.Now()},
+	}
+
+	for _, d := range downloads {
+		err := db.CreateDownload(d)
+		if err != nil {
+			t.Fatalf("Failed to create download: %v", err)
+		}
+	}
+
+	// Clear all downloads
+	err := db.ClearAllDownloads()
+	if err != nil {
+		t.Fatalf("Failed to clear downloads: %v", err)
+	}
+
+	// Verify all deleted
+	list, _ := db.ListDownloads()
+	if len(list) != 0 {
+		t.Errorf("Expected 0 downloads after clear, got %d", len(list))
+	}
+}
+
+func TestVideoOperations(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create video
+	video := &Video{
+		ID:           "video-1",
+		YoutubeID:    "youtube123",
+		Title:        "Test Video",
+		Channel:      "Test Channel",
+		ChannelID:    "channel123",
+		Duration:     300,
+		Description:  "Test description",
+		ThumbnailURL: "https://example.com/thumb.jpg",
+		FilePath:     "/path/to/video.mp4",
+		FileSize:     1024 * 1024 * 100, // 100MB
+		FileHash:     "youtube123_best",
+		IsManaged:    true,
+		Format:       "best",
+		Quality:      "1080p",
+		DownloadedAt: time.Now(),
+		WatchPosition: 0,
+		WatchCount:    0,
+	}
+
+	err := db.CreateVideo(video)
+	if err != nil {
+		t.Fatalf("Failed to create video: %v", err)
+	}
+
+	// Get video
+	retrieved, err := db.GetVideo("video-1")
+	if err != nil {
+		t.Fatalf("Failed to get video: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("Expected non-nil video")
+	}
+
+	if retrieved.Title != video.Title {
+		t.Errorf("Title mismatch: got %s, want %s", retrieved.Title, video.Title)
+	}
+
+	// Get video by YouTube ID
+	byYoutubeID, err := db.GetVideosByYoutubeID("youtube123")
+	if err != nil {
+		t.Fatalf("Failed to get video by YouTube ID: %v", err)
+	}
+
+	if len(byYoutubeID) != 1 {
+		t.Errorf("Expected 1 video, got %d", len(byYoutubeID))
+	}
+
+	// Get video by file hash
+	byHash, err := db.GetVideoByFileHash("youtube123_best")
+	if err != nil {
+		t.Fatalf("Failed to get video by hash: %v", err)
+	}
+
+	if byHash == nil {
+		t.Error("Expected to find video by hash")
+	}
+
+	// Update watch position
+	err = db.UpdateWatchPosition("video-1", 150)
+	if err != nil {
+		t.Fatalf("Failed to update watch position: %v", err)
+	}
+
+	retrieved, _ = db.GetVideo("video-1")
+	if retrieved.WatchPosition != 150 {
+		t.Errorf("Watch position not updated: got %d, want 150", retrieved.WatchPosition)
+	}
+
+	// Update video
+	video.Title = "Updated Title"
+	err = db.UpdateVideo(video)
+	if err != nil {
+		t.Fatalf("Failed to update video: %v", err)
+	}
+
+	retrieved, _ = db.GetVideo("video-1")
+	if retrieved.Title != "Updated Title" {
+		t.Errorf("Title not updated: got %s", retrieved.Title)
+	}
+
+	// Delete video
+	err = db.DeleteVideo("video-1")
+	if err != nil {
+		t.Fatalf("Failed to delete video: %v", err)
+	}
+
+	retrieved, _ = db.GetVideo("video-1")
+	if retrieved != nil {
+		t.Error("Video should be deleted")
+	}
+}
+
+func TestGetStats(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create videos
+	videos := []*Video{
+		{
+			ID:           "stats-1",
+			YoutubeID:    "yt1",
+			Title:        "Video 1",
+			FilePath:     "/path/1.mp4",
+			FileSize:     1000,
+			DownloadedAt: time.Now(),
+		},
+		{
+			ID:           "stats-2",
+			YoutubeID:    "yt2",
+			Title:        "Video 2",
+			FilePath:     "/path/2.mp4",
+			FileSize:     2000,
+			DownloadedAt: time.Now(),
+		},
+	}
+
+	for _, v := range videos {
+		err := db.CreateVideo(v)
+		if err != nil {
+			t.Fatalf("Failed to create video: %v", err)
+		}
+	}
+
+	// Get stats
+	totalVideos, totalSize, err := db.GetStats()
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
+	}
+
+	if totalVideos != 2 {
+		t.Errorf("Expected 2 videos, got %d", totalVideos)
+	}
+
+	if totalSize != 3000 {
+		t.Errorf("Expected total size 3000, got %d", totalSize)
+	}
+}
+
+func TestListVideos(t *testing.T) {
+	db := setupTestDB(t)
+
+	now := time.Now()
+	videos := []*Video{
+		{
+			ID:           "list-v-1",
+			YoutubeID:    "yt1",
+			Title:        "Alpha Video",
+			Channel:      "Channel A",
+			FilePath:     "/path/1.mp4",
+			DownloadedAt: now,
+		},
+		{
+			ID:           "list-v-2",
+			YoutubeID:    "yt2",
+			Title:        "Beta Video",
+			Channel:      "Channel B",
+			FilePath:     "/path/2.mp4",
+			DownloadedAt: now.Add(time.Hour),
+		},
+		{
+			ID:           "list-v-3",
+			YoutubeID:    "yt3",
+			Title:        "Gamma Video",
+			Channel:      "Channel A",
+			FilePath:     "/path/3.mp4",
+			DownloadedAt: now.Add(2 * time.Hour),
+		},
+	}
+
+	for _, v := range videos {
+		err := db.CreateVideo(v)
+		if err != nil {
+			t.Fatalf("Failed to create video: %v", err)
+		}
+	}
+
+	// List all videos
+	list, err := db.ListVideos(ListVideosOptions{Limit: 10, Offset: 0})
+	if err != nil {
+		t.Fatalf("Failed to list videos: %v", err)
+	}
+
+	if len(list) != 3 {
+		t.Errorf("Expected 3 videos, got %d", len(list))
+	}
+
+	// List with limit
+	limited, err := db.ListVideos(ListVideosOptions{Limit: 2, Offset: 0})
+	if err != nil {
+		t.Fatalf("Failed to list videos: %v", err)
+	}
+
+	if len(limited) != 2 {
+		t.Errorf("Expected 2 videos with limit, got %d", len(limited))
+	}
+
+	// List with channel filter
+	channelA, err := db.ListVideos(ListVideosOptions{Limit: 10, Offset: 0, Channel: "Channel A"})
+	if err != nil {
+		t.Fatalf("Failed to list videos: %v", err)
+	}
+
+	if len(channelA) != 2 {
+		t.Errorf("Expected 2 videos from Channel A, got %d", len(channelA))
+	}
+
+	// List with search
+	search, err := db.ListVideos(ListVideosOptions{Limit: 10, Offset: 0, Search: "Alpha"})
+	if err != nil {
+		t.Fatalf("Failed to search videos: %v", err)
+	}
+
+	if len(search) != 1 {
+		t.Errorf("Expected 1 video matching 'Alpha', got %d", len(search))
+	}
+}
+
+func TestGetChannels(t *testing.T) {
+	db := setupTestDB(t)
+
+	videos := []*Video{
+		{ID: "ch-1", YoutubeID: "yt1", Title: "Video 1", Channel: "Channel A", FilePath: "/1.mp4", DownloadedAt: time.Now()},
+		{ID: "ch-2", YoutubeID: "yt2", Title: "Video 2", Channel: "Channel B", FilePath: "/2.mp4", DownloadedAt: time.Now()},
+		{ID: "ch-3", YoutubeID: "yt3", Title: "Video 3", Channel: "Channel A", FilePath: "/3.mp4", DownloadedAt: time.Now()},
+	}
+
+	for _, v := range videos {
+		err := db.CreateVideo(v)
+		if err != nil {
+			t.Fatalf("Failed to create video: %v", err)
+		}
+	}
+
+	channels, err := db.GetChannels()
+	if err != nil {
+		t.Fatalf("Failed to get channels: %v", err)
+	}
+
+	if len(channels) != 2 {
+		t.Errorf("Expected 2 channels, got %d", len(channels))
+	}
+
+	// Verify both channels exist
+	channelMap := make(map[string]bool)
+	for _, ch := range channels {
+		channelMap[ch] = true
+	}
+
+	if !channelMap["Channel A"] {
+		t.Error("Expected Channel A in list")
+	}
+	if !channelMap["Channel B"] {
+		t.Error("Expected Channel B in list")
+	}
+}
