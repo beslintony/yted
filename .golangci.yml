@@ -1,6 +1,7 @@
 # golangci-lint configuration for YTed
 run:
   timeout: 5m
+  go: '1.24'
 
 linters:
   enable:
