@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 
 import {
   ActionIcon,
@@ -9,6 +10,7 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
+
 import {
   IconDownload,
   IconFileText,
@@ -17,7 +19,6 @@ import {
   IconSun,
   IconVideo,
 } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
 
 import { LoggerViewer } from './components/LoggerViewer';
 import { DownloadPage } from './pages/DownloadPage';

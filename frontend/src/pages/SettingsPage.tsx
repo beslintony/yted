@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 
 import {
   ActionIcon,
@@ -17,6 +18,7 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
+
 import {
   IconDeviceFloppy,
   IconEdit,
@@ -25,7 +27,6 @@ import {
   IconRefresh,
   IconTrash,
 } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
 
 import {
   ClearCompletedDownloads,

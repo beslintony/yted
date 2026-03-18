@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GetVersion } from '../../wailsjs/go/app/App';
-
 import { useVersionStore } from './versionStore';
 
 // Mock the Wails API

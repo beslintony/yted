@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   ActionIcon,
@@ -13,6 +14,7 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
+
 import {
   IconFolder,
   IconGridDots,
@@ -24,7 +26,6 @@ import {
   IconSortDescending,
   IconTrash,
 } from '@tabler/icons-react';
-import { useCallback, useEffect, useState } from 'react';
 
 import {
   DeleteVideo,
@@ -49,7 +50,7 @@ const handleOpenFile = async (
   }
   try {
     await OpenFile(filePath);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error('Cannot Open File', err?.message || 'Failed to open file');
   }
@@ -65,7 +66,7 @@ const handleOpenFolder = async (
   }
   try {
     await OpenFolder(filePath);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error('Cannot Open Folder', err?.message || 'Failed to open folder');
   }

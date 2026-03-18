@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { DEFAULT_SETTINGS } from '../types';
-
 import { useSettingsStore } from './settingsStore';
 
 describe('settingsStore', () => {
