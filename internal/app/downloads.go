@@ -50,7 +50,7 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 	defer cancel()
 
 	info, err := a.ytdl.GetInfo(ctx, videoURL)
@@ -346,7 +346,7 @@ func (a *App) startDownload(dl db.Download) {
 	logger := applog.GetLogger()
 
 	// Create a context with timeout for the download
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Minute)
 	defer cancel()
 
 	logger.Info("Download", "Download worker starting", map[string]string{
@@ -510,7 +510,7 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 	}
 
 	// Get video info if we have the URL and any metadata is missing
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 	defer cancel()
 
 	var videoInfo *ytdl.VideoInfo
