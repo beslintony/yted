@@ -9,5 +9,12 @@
   "author": {
     "name": "beslintony",
     "email": "beslintony@gmail.com"
+  },
+  "info": {
+    "companyName": "YTed",
+    "productName": "YTed",
+    "productVersion": "1.1.0",
+    "copyright": "Copyright © 2026",
+    "comments": "A modern YouTube downloader and library manager"
   }
 }

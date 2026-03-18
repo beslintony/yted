@@ -74,7 +74,7 @@ func main() {
 			About: &mac.AboutInfo{
 				Title:   "YTed",
 				Message: "A modern YouTube downloader and editor",
-				Icon:    nil,
+				Icon:    iconBytes,
 			},
 		},
 		// Linux platform specific options
