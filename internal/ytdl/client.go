@@ -436,31 +436,6 @@ func calculateProgress(update ytdlp.ProgressUpdate, speedLimitKbps int) Download
 	}
 }
 
-// GetFormats returns available formats for a video
-func (c *Client) GetFormats(ctx context.Context, url string) ([]FormatInfo, error) {
-	result, err := c.dl.
-		NoWarnings().
-		Quiet().
-		ListFormats().
-		Run(ctx, url)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get formats: %w", err)
-	}
-
-	// Parse formats from output
-	formats := parseFormatsList(result.Stdout)
-	return formats, nil
-}
-
-// parseFormatsList parses format list output
-func parseFormatsList(data string) []FormatInfo {
-	// Format list is printed to stderr in list format
-	// For now, return empty - full implementation would parse the table
-	_ = data
-	return []FormatInfo{}
-}
-
 // IsValidURL checks if a URL is a valid YouTube/video URL
 func IsValidURL(url string) bool {
 	validPrefixes := []string{
