@@ -138,6 +138,10 @@ export function GetLogs(arg1) {
   return window['go']['app']['App']['GetLogs'](arg1);
 }
 
+export function GetPreviewImage(arg1) {
+  return window['go']['app']['App']['GetPreviewImage'](arg1);
+}
+
 export function GetRotationOptions() {
   return window['go']['app']['App']['GetRotationOptions']();
 }
@@ -164,6 +168,10 @@ export function GetVideo(arg1) {
 
 export function GetVideoByYoutubeID(arg1) {
   return window['go']['app']['App']['GetVideoByYoutubeID'](arg1);
+}
+
+export function GetVideoFile(arg1) {
+  return window['go']['app']['App']['GetVideoFile'](arg1);
 }
 
 export function GetVideoInfo(arg1) {

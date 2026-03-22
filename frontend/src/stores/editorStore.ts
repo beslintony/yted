@@ -4,6 +4,7 @@ import {
   CheckFFmpegWithGuidance,
   GetEditJobStatus,
   GetFFmpegInstallGuide,
+  GetPreviewImage,
   GetVideoMetadata,
   ListEditJobs,
   PreviewEdit,
@@ -51,6 +52,9 @@ interface EditorState {
   activeTab: 'tools' | 'presets' | 'history';
   showReplaceConfirm: boolean;
 
+  // Polling
+  pollInterval: ReturnType<typeof setInterval> | null;
+
   // Actions
   checkFFmpeg: () => Promise<void>;
   getInstallGuide: () => Promise<InstallGuide>;
@@ -66,6 +70,8 @@ interface EditorState {
   setActiveTab: (tab: 'tools' | 'presets' | 'history') => void;
   setShowReplaceConfirm: (show: boolean) => void;
   reset: () => void;
+  startJobPolling: (videoId: string) => void;
+  stopJobPolling: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -93,7 +99,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeTab: 'tools',
   showReplaceConfirm: false,
 
-  // Actions
+  pollInterval: null,
   checkFFmpeg: async () => {
     set({ isCheckingFFmpeg: true });
     try {
@@ -194,8 +200,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         settings as unknown as app.EditSettingsInput
       );
       if (previewPath) {
-        // Convert path to file URL for display
-        set({ previewFrame: `file://${previewPath}` });
+        // Load the preview image through the backend to get a data URL
+        const dataUrl = await GetPreviewImage(previewPath);
+        if (dataUrl) {
+          set({ previewFrame: dataUrl });
+        }
       }
     } catch (err) {
       console.error('Failed to generate preview:', err);
@@ -230,8 +239,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   submitJob: async (replaceOriginal = false) => {
-    const { selectedVideoId, currentOperation, settings } = get();
+    const { selectedVideoId, currentOperation, settings, isSubmitting } = get();
     if (!selectedVideoId || !currentOperation) {
+      return null;
+    }
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) {
       return null;
     }
 
@@ -251,7 +265,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ lastJobId: jobId });
 
       // Reload jobs list
-      get().loadJobs(selectedVideoId);
+      await get().loadJobs(selectedVideoId);
+
+      // Start polling for job status
+      get().startJobPolling(selectedVideoId);
 
       return jobId;
     } catch (err) {
@@ -259,6 +276,45 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return null;
     } finally {
       set({ isSubmitting: false });
+    }
+  },
+
+  // Poll for job status updates (since we don't have websocket events from backend)
+  startJobPolling: (videoId: string) => {
+    // Clear any existing interval
+    const currentInterval = get().pollInterval;
+    if (currentInterval) {
+      clearInterval(currentInterval);
+    }
+
+    // Poll every 2 seconds for updates
+    const interval = setInterval(async () => {
+      const { jobs } = get();
+      
+      // Check if there are any active jobs
+      const hasActiveJobs = jobs.some(
+        job => job.status === 'pending' || job.status === 'processing'
+      );
+      
+      if (hasActiveJobs) {
+        await get().loadJobs(videoId);
+      } else {
+        // No active jobs, stop polling
+        const current = get().pollInterval;
+        if (current) {
+          clearInterval(current);
+          set({ pollInterval: null });
+        }
+      }
+    }, 2000);
+
+    set({ pollInterval: interval });
+  },
+  stopJobPolling: () => {
+    const interval = get().pollInterval;
+    if (interval) {
+      clearInterval(interval);
+      set({ pollInterval: null });
     }
   },
 
@@ -280,6 +336,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   reset: () => {
+    // Stop any active polling
+    const interval = get().pollInterval;
+    if (interval) {
+      clearInterval(interval);
+    }
     set({
       selectedVideoId: null,
       videoMetadata: null,
@@ -289,6 +350,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       jobs: [],
       lastJobId: null,
       showReplaceConfirm: false,
+      pollInterval: null,
     });
   },
 }));

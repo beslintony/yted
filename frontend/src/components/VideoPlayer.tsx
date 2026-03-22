@@ -1,21 +1,67 @@
-import { Paper, Stack, Text } from '@mantine/core';
-import { IconPlayerPlay } from '@tabler/icons-react';
+import { Paper, Stack, Text, useMantineColorScheme } from '@mantine/core';
+import { IconVideo } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
 
+import { GetVideoFile } from '../../wailsjs/go/app/App';
 import { VideoMetadata } from '../types/editor';
 
 interface VideoPlayerProps {
-  src: string;
+  videoId: string;
   previewFrame?: string | null;
   isGeneratingPreview?: boolean;
   metadata?: VideoMetadata | null;
+  onPlay?: () => void;
 }
 
 export function VideoPlayer({
-  src,
+  videoId,
   previewFrame,
   isGeneratingPreview,
   metadata,
+  onPlay,
 }: VideoPlayerProps) {
+  const { colorScheme } = useMantineColorScheme();
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!videoId) {
+      setVideoUrl(null);
+      return;
+    }
+
+    // Load video file as blob URL
+    let objectUrl: string | null = null;
+
+    const loadVideo = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await GetVideoFile(videoId);
+        // Convert byte array to blob
+        const blob = new Blob([new Uint8Array(data)], { type: 'video/mp4' });
+        objectUrl = URL.createObjectURL(blob);
+        setVideoUrl(objectUrl);
+      } catch (err) {
+        console.error('Failed to load video:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load video');
+        setVideoUrl(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadVideo();
+
+    // Cleanup object URL on unmount or when videoId changes
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [videoId]);
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -30,7 +76,7 @@ export function VideoPlayer({
           flex: 1,
           position: 'relative',
           overflow: 'hidden',
-          backgroundColor: '#000',
+          backgroundColor: 'var(--mantine-color-dark-filled)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -46,17 +92,35 @@ export function VideoPlayer({
               objectFit: 'contain',
             }}
           />
-        ) : (
+        ) : videoUrl ? (
           <video
-            src={`file://${src}`}
+            src={videoUrl}
             controls
+            onClick={onPlay}
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
+              width: '100%',
+              height: '100%',
             }}
+            controlsList="nodownload"
+            preload="metadata"
           >
             <track kind="captions" />
           </video>
+        ) : error ? (
+          <Stack align="center" gap="md">
+            <Text c="red" ta="center">
+              Error: {error}
+            </Text>
+          </Stack>
+        ) : (
+          <Stack align="center" gap="md">
+            <IconVideo size={64} color="var(--mantine-color-gray-5)" />
+            <Text c="dimmed" ta="center">
+              {isLoading ? 'Loading video...' : 'No video selected'}
+            </Text>
+          </Stack>
         )}
 
         {isGeneratingPreview && (
@@ -71,6 +135,7 @@ export function VideoPlayer({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              zIndex: 10,
             }}
           >
             <Text c="white">Generating Preview...</Text>
@@ -79,7 +144,7 @@ export function VideoPlayer({
       </Paper>
 
       {metadata && (
-        <Paper withBorder p="sm">
+        <Paper withBorder p="sm" bg="var(--mantine-color-body)">
           <Text size="sm" c="dimmed">
             {metadata.width}x{metadata.height} • {metadata.codec?.toUpperCase() || 'Unknown Codec'}
             {metadata.duration > 0 && ` • ${formatDuration(metadata.duration)}`}

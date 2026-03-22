@@ -72,6 +72,8 @@ export function GetLogExportPath():Promise<string>;
 
 export function GetLogs(arg1:number):Promise<Array<app.LogEntry>>;
 
+export function GetPreviewImage(arg1:string):Promise<string>;
+
 export function GetRotationOptions():Promise<Array<Record<string, any>>>;
 
 export function GetSettings():Promise<config.Config>;
@@ -85,6 +87,8 @@ export function GetVersion():Promise<string>;
 export function GetVideo(arg1:string):Promise<app.VideoResult>;
 
 export function GetVideoByYoutubeID(arg1:string):Promise<app.VideoResult>;
+
+export function GetVideoFile(arg1:string):Promise<Array<number>>;
 
 export function GetVideoInfo(arg1:string):Promise<app.VideoInfoResult>;
 

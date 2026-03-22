@@ -29,6 +29,7 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
+import { EventsOn } from '../../wailsjs/runtime';
 import { FFmpegInstallerModal } from '../components/FFmpegInstallerModal';
 import { ConvertTool } from '../components/editor/ConvertTool';
 import { CropTool } from '../components/editor/CropTool';
@@ -40,7 +41,7 @@ import { EditOperation } from '../types/editor';
 
 export function EditorPage() {
   const { colorScheme } = useMantineColorScheme();
-  const dark = colorScheme === 'dark';
+  const isDark = colorScheme === 'dark';
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
 
@@ -64,12 +65,38 @@ export function EditorPage() {
     setActiveTab,
     submitJob,
     reset,
+    loadJobs,
   } = useEditorStore();
 
   useEffect(() => {
     checkFFmpeg();
-    return () => reset();
+    // Don't reset on unmount - we want to preserve state when switching tabs
   }, []);
+
+  // Listen for editor events - separate effect to avoid recreating listeners unnecessarily
+  useEffect(() => {
+    if (!selectedVideoId) return;
+
+    // Listen for editor events
+    const cancelJobProgress = EventsOn('editor:job_progress', () => {
+      loadJobs(selectedVideoId);
+    });
+
+    const cancelJobCompleted = EventsOn('editor:job_completed', () => {
+      loadJobs(selectedVideoId);
+    });
+
+    const cancelJobFailed = EventsOn('editor:job_failed', () => {
+      loadJobs(selectedVideoId);
+    });
+
+    return () => {
+      cancelJobProgress();
+      cancelJobCompleted();
+      cancelJobFailed();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVideoId]);
 
   useEffect(() => {
     if (ffmpegStatus && !ffmpegStatus.installed) {
@@ -124,7 +151,7 @@ export function EditorPage() {
         return (
           <Paper p="xl" withBorder>
             <Stack align="center" gap="md">
-              <IconTool size={48} color={dark ? '#5c5f66' : '#adb5bd'} />
+              <IconTool size={48} color="var(--mantine-color-gray-5)" />
               <Text c="dimmed" ta="center">
                 Select an operation from the toolbar to start editing
               </Text>
@@ -137,7 +164,7 @@ export function EditorPage() {
   return (
     <Stack gap="lg" h="100%">
       <Group justify="space-between">
-        <Title c={dark ? '#fff' : '#000'} fw={700} size="xl">
+        <Title fw={700} size="xl">
           Video Editor
         </Title>
         {!ffmpegReady && (
@@ -237,7 +264,7 @@ export function EditorPage() {
                       </Stack>
                     ) : (
                       <VideoPlayer
-                        src={selectedVideo.filePath}
+                        videoId={selectedVideo.id}
                         previewFrame={previewFrame}
                         isGeneratingPreview={isGeneratingPreview}
                         metadata={videoMetadata}
@@ -293,7 +320,7 @@ export function EditorPage() {
               </Stack>
             ) : (
               <Stack align="center" justify="center" h="100%">
-                <IconVideo size={64} color={dark ? '#5c5f66' : '#adb5bd'} />
+                <IconVideo size={64} color="var(--mantine-color-gray-5)" />
                 <Text c="dimmed" ta="center" size="lg">
                   Select a video from your library to start editing
                 </Text>

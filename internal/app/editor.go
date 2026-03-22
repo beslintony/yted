@@ -1,7 +1,11 @@
 package app
 
 import (
+	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -534,4 +538,98 @@ func intPtr(i int) *int {
 
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+// GetVideoFile reads a video file and returns its contents as bytes
+// This is used by the frontend to display videos in the player
+// since file:// URLs don't work reliably in Wails v2 webview
+func (a *App) GetVideoFile(videoID string) ([]byte, error) {
+	logger := a.logger
+
+	// Get video from database
+	video, err := a.db.GetVideoWithHash(videoID)
+	if err != nil {
+		return nil, err
+	}
+	if video == nil {
+		return nil, fmt.Errorf("video not found")
+	}
+
+	// Check file size - limit to 500MB to prevent memory issues
+	info, err := os.Stat(video.FilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat video file: %w", err)
+	}
+	const maxSize = 500 * 1024 * 1024 // 500MB
+	if info.Size() > maxSize {
+		return nil, fmt.Errorf("video file too large (max 500MB for preview)")
+	}
+
+	// Read file
+	data, err := os.ReadFile(video.FilePath)
+	if err != nil {
+		logger.Error("Editor", "Failed to read video file", err, map[string]string{
+			"path": video.FilePath,
+		})
+		return nil, fmt.Errorf("failed to read video file: %w", err)
+	}
+
+	return data, nil
+}
+
+// GetPreviewImage reads a preview image file and returns its contents as base64 data URL
+// This is used for displaying preview frames in the editor
+func (a *App) GetPreviewImage(imagePath string) (string, error) {
+	// Security check - only allow reading files from temp/preview directories
+	// and the configured download path
+	isAllowed := false
+	downloadPath := a.fm.GetDownloadPath()
+	
+	// Check if path is in allowed locations
+	if strings.Contains(imagePath, "preview") || 
+	   strings.Contains(imagePath, "temp") ||
+	   strings.HasPrefix(imagePath, downloadPath) {
+		isAllowed = true
+	}
+	
+	if !isAllowed {
+		return "", fmt.Errorf("access denied: path not in allowed locations")
+	}
+
+	// Verify file exists and is an image
+	info, err := os.Stat(imagePath)
+	if err != nil {
+		return "", fmt.Errorf("file not found: %w", err)
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("path is a directory")
+	}
+	if info.Size() > 10*1024*1024 { // Max 10MB
+		return "", fmt.Errorf("file too large")
+	}
+
+	// Read file
+	data, err := os.ReadFile(imagePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read image: %w", err)
+	}
+
+	// Detect mime type from extension
+	ext := strings.ToLower(filepath.Ext(imagePath))
+	var mimeType string
+	switch ext {
+	case ".jpg", ".jpeg":
+		mimeType = "image/jpeg"
+	case ".png":
+		mimeType = "image/png"
+	case ".gif":
+		mimeType = "image/gif"
+	case ".webp":
+		mimeType = "image/webp"
+	default:
+		mimeType = "image/jpeg"
+	}
+
+	// Return as base64 data URL
+	return fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(data)), nil
 }
