@@ -119,7 +119,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   loadLibrary: async () => {
-    console.log('[LibraryStore] loadLibrary called');
     set({ isLoading: true, error: null });
     try {
       const options = new app.ListVideosOptions({
@@ -130,9 +129,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         limit: 1000,
         offset: 0,
       });
-      console.log('[LibraryStore] Calling ListVideos...');
       const backendVideos = await ListVideos(options);
-      console.log('[LibraryStore] ListVideos returned:', backendVideos?.length, 'videos');
 
       // Map backend VideoResult to frontend Video type
       const videos: Video[] = (backendVideos || []).map((v: app.VideoResult) => ({

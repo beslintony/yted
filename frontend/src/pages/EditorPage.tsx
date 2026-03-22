@@ -73,26 +73,17 @@ export function EditorPage() {
   } = useEditorStore();
 
   useEffect(() => {
-    console.log('[EditorPage] Mounting, loading data...');
-    
     // Load global settings first (needed for proper initialization)
-    loadSettings().catch(err => {
-      console.error('[EditorPage] Failed to load settings:', err);
-    });
+    loadSettings().catch(() => {});
     
     // Check FFmpeg availability
     setIsCheckingFfmpeg(true);
-    checkFFmpeg().catch(err => {
-      console.error('[EditorPage] Failed to check FFmpeg:', err);
+    checkFFmpeg().catch(() => {
       setIsCheckingFfmpeg(false);
     });
     
     // Load library videos for the dropdown
-    loadLibrary().then(() => {
-      console.log('[EditorPage] Library loaded, videos:', videos.length);
-    }).catch(err => {
-      console.error('[EditorPage] Failed to load library:', err);
-    });
+    loadLibrary().catch(() => {});
     
     // Don't reset on unmount - we want to preserve state when switching tabs
   }, []);
@@ -123,20 +114,16 @@ export function EditorPage() {
   }, [selectedVideoId]);
 
   useEffect(() => {
-    console.log('[EditorPage] FFmpeg status changed:', ffmpegStatus);
     if (ffmpegStatus === null) {
       // Still checking, don't show anything yet
-      console.log('[EditorPage] FFmpeg status is null, waiting...');
       return;
     }
     
     setIsCheckingFfmpeg(false);
     if (!ffmpegStatus.installed) {
-      console.log('[EditorPage] FFmpeg not installed, showing modal');
       setShowFFmpegModal(true);
       setFfmpegReady(false);
     } else {
-      console.log('[EditorPage] FFmpeg installed, hiding modal');
       setFfmpegReady(true);
       setShowFFmpegModal(false);
     }

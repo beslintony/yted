@@ -139,11 +139,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   loadVideoMetadata: async (videoId: string) => {
-    console.log('[EditorStore] Loading video metadata for:', videoId);
     set({ isLoadingMetadata: true });
     try {
       const metadata = await GetVideoMetadata(videoId);
-      console.log('[EditorStore] Metadata received:', metadata);
       if (metadata) {
         // Convert backend type to frontend type
         const videoMeta: VideoMetadata = {
@@ -166,11 +164,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             },
           }));
         }
-      } else {
-        console.warn('[EditorStore] No metadata returned for video:', videoId);
       }
     } catch (err) {
-      console.error('[EditorStore] Failed to load video metadata:', err);
+      console.error('Failed to load video metadata:', err);
     } finally {
       set({ isLoadingMetadata: false });
     }

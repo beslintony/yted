@@ -16,20 +16,15 @@ function hasWails(): boolean {
 // Function to initialize mocks
 function initMocks() {
   if (!isDev) {
-    console.log('[DevMock] Not in dev mode, skipping');
     return;
   }
   
   if (hasWails()) {
-    console.log('[DevMock] Wails detected, skipping mocks');
     return;
   }
   
-  console.log('[DevMock] Wails NOT detected, initializing mocks...');
-  
   // Safety check - never overwrite existing go
   if ((window as any).go) {
-    console.warn('[DevMock] window.go already exists but looks incomplete, skipping to avoid conflicts');
     return;
   }
 
@@ -174,7 +169,6 @@ function initMocks() {
     }),
   };
 
-  console.log('[DevMock] Wails mocks initialized');
 }
 
 // Initialize mocks immediately

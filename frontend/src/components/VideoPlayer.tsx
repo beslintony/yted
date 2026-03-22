@@ -64,21 +64,17 @@ export function VideoPlayer({
       setIsLoading(true);
       setError(null);
       try {
-        console.log('[VideoPlayer] Loading video:', videoId, 'format:', format);
         const data = await GetVideoFile(videoId);
-        console.log('[VideoPlayer] Video data loaded, size:', data.length);
         
         // Convert byte array to blob with proper MIME type
         const mimeType = getVideoMimeType(format);
-        console.log('[VideoPlayer] Using MIME type:', mimeType);
         
         const blob = new Blob([new Uint8Array(data)], { type: mimeType });
         objectUrl = URL.createObjectURL(blob);
-        console.log('[VideoPlayer] Object URL created:', objectUrl);
         
         setVideoUrl(objectUrl);
       } catch (err) {
-        console.error('[VideoPlayer] Failed to load video:', err);
+        console.error('Failed to load video:', err);
         setError(err instanceof Error ? err.message : 'Failed to load video');
         setVideoUrl(null);
       } finally {
