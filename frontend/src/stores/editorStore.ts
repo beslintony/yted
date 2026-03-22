@@ -9,7 +9,7 @@ import {
   PreviewEdit,
   SubmitEditJob,
 } from '../../wailsjs/go/app/App';
-import { app, editor } from '../../wailsjs/go/models';
+import { app } from '../../wailsjs/go/models';
 import {
   DEFAULT_EDIT_SETTINGS,
   EditJob,
@@ -135,13 +135,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       const metadata = await GetVideoMetadata(videoId);
       if (metadata) {
-        set({ videoMetadata: metadata as VideoMetadata });
+        // Convert backend type to frontend type
+        const videoMeta: VideoMetadata = {
+          duration: (metadata as app.VideoMetadataResult).duration,
+          width: (metadata as app.VideoMetadataResult).width,
+          height: (metadata as app.VideoMetadataResult).height,
+          fps: (metadata as app.VideoMetadataResult).fps,
+          bitrate: (metadata as app.VideoMetadataResult).bitrate,
+          codec: (metadata as app.VideoMetadataResult).codec,
+          audioCodec: (metadata as app.VideoMetadataResult).audio_codec,
+          hasAudio: (metadata as app.VideoMetadataResult).has_audio,
+        };
+        set({ videoMetadata: videoMeta });
         // Set default crop end to video duration
-        if ((metadata as VideoMetadata).duration > 0) {
+        if (videoMeta.duration > 0) {
           set(state => ({
             settings: {
               ...state.settings,
-              cropEnd: (metadata as VideoMetadata).duration,
+              cropEnd: videoMeta.duration,
             },
           }));
         }
@@ -180,7 +191,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const previewPath = await PreviewEdit(
         selectedVideoId,
         currentOperation,
-        settings as editor.EditSettingsInput
+        settings as unknown as app.EditSettingsInput
       );
       if (previewPath) {
         // Convert path to file URL for display
@@ -197,7 +208,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isLoadingJobs: true });
     try {
       const jobs = await ListEditJobs(videoId);
-      set({ jobs: (jobs || []) as EditJob[] });
+      // Convert backend job results to frontend job types
+      const convertedJobs: EditJob[] = ((jobs || []) as app.EditJobResult[]).map(j => ({
+        id: j.id,
+        sourceVideoId: j.source_video_id,
+        outputVideoId: j.output_video_id || undefined,
+        status: j.status as EditJob['status'],
+        operation: j.operation as EditOperation,
+        settings: {}, // Settings are stored as JSON string in backend
+        progress: j.progress,
+        errorMessage: j.error_message || undefined,
+        createdAt: j.created_at,
+        completedAt: j.completed_at || undefined,
+      }));
+      set({ jobs: convertedJobs });
     } catch (err) {
       console.error('Failed to load edit jobs:', err);
     } finally {
@@ -221,7 +245,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const jobId = await SubmitEditJob(
         selectedVideoId,
         currentOperation,
-        jobSettings as editor.EditSettingsInput
+        jobSettings as unknown as app.EditSettingsInput
       );
 
       set({ lastJobId: jobId });

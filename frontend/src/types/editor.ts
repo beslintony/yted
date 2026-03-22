@@ -154,6 +154,17 @@ export interface EditorUIState {
   showReplaceConfirm: boolean;
 }
 
+// Output resolutions for conversion
+export const OUTPUT_RESOLUTIONS = [
+  { id: 'original', name: 'Original Resolution' },
+  { id: '2160p', name: '4K (2160p)' },
+  { id: '1440p', name: '2K (1440p)' },
+  { id: '1080p', name: '1080p Full HD' },
+  { id: '720p', name: '720p HD' },
+  { id: '480p', name: '480p SD' },
+  { id: '360p', name: '360p' },
+] as const;
+
 // Default settings
 export const DEFAULT_EDIT_SETTINGS: EditSettings = {
   cropStart: 0,
