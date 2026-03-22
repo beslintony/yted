@@ -134,15 +134,17 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
                   {installGuide.description}
                 </Text>
 
-                <Timeline active={-1} bulletSize={24} lineWidth={2}>
-                  {installGuide.steps.map((step, index) => (
-                    <Timeline.Item
-                      key={index}
-                      bullet={<Text size="xs">{index + 1}</Text>}
-                      title={<Text size="sm">{step}</Text>}
-                    />
-                  ))}
-                </Timeline>
+                {installGuide.steps && installGuide.steps.length > 0 && (
+                  <Timeline active={-1} bulletSize={24} lineWidth={2}>
+                    {installGuide.steps.map((step, index) => (
+                      <Timeline.Item
+                        key={index}
+                        bullet={<Text size="xs">{index + 1}</Text>}
+                        title={<Text size="sm">{step}</Text>}
+                      />
+                    ))}
+                  </Timeline>
+                )}
 
                 {installGuide.command && (
                   <Paper withBorder p="sm" bg="gray.0">
@@ -172,7 +174,7 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
                   </Paper>
                 )}
 
-                {installGuide.tips.length > 0 && (
+                {installGuide.tips && installGuide.tips.length > 0 && (
                   <Stack gap="xs">
                     <Text size="sm" fw={500}>
                       Tips:
