@@ -56,6 +56,187 @@ export namespace app {
 	        this.youtube_id = source["youtube_id"];
 	    }
 	}
+	export class EditJobResult {
+	    id: string;
+	    source_video_id: string;
+	    output_video_id?: string;
+	    status: string;
+	    operation: string;
+	    progress: number;
+	    error_message?: string;
+	    created_at: number;
+	    completed_at?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditJobResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.source_video_id = source["source_video_id"];
+	        this.output_video_id = source["output_video_id"];
+	        this.status = source["status"];
+	        this.operation = source["operation"];
+	        this.progress = source["progress"];
+	        this.error_message = source["error_message"];
+	        this.created_at = source["created_at"];
+	        this.completed_at = source["completed_at"];
+	    }
+	}
+	export class EditSettingsInput {
+	    crop_start?: number;
+	    crop_end?: number;
+	    crop_x?: number;
+	    crop_y?: number;
+	    crop_width?: number;
+	    crop_height?: number;
+	    watermark_type?: string;
+	    watermark_text?: string;
+	    watermark_image?: string;
+	    watermark_position?: string;
+	    watermark_opacity?: number;
+	    watermark_size?: number;
+	    output_format?: string;
+	    output_codec?: string;
+	    output_quality?: number;
+	    output_resolution?: string;
+	    brightness?: number;
+	    contrast?: number;
+	    saturation?: number;
+	    rotation?: number;
+	    speed?: number;
+	    volume?: number;
+	    remove_audio?: boolean;
+	    output_filename?: string;
+	    replace_original?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditSettingsInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.crop_start = source["crop_start"];
+	        this.crop_end = source["crop_end"];
+	        this.crop_x = source["crop_x"];
+	        this.crop_y = source["crop_y"];
+	        this.crop_width = source["crop_width"];
+	        this.crop_height = source["crop_height"];
+	        this.watermark_type = source["watermark_type"];
+	        this.watermark_text = source["watermark_text"];
+	        this.watermark_image = source["watermark_image"];
+	        this.watermark_position = source["watermark_position"];
+	        this.watermark_opacity = source["watermark_opacity"];
+	        this.watermark_size = source["watermark_size"];
+	        this.output_format = source["output_format"];
+	        this.output_codec = source["output_codec"];
+	        this.output_quality = source["output_quality"];
+	        this.output_resolution = source["output_resolution"];
+	        this.brightness = source["brightness"];
+	        this.contrast = source["contrast"];
+	        this.saturation = source["saturation"];
+	        this.rotation = source["rotation"];
+	        this.speed = source["speed"];
+	        this.volume = source["volume"];
+	        this.remove_audio = source["remove_audio"];
+	        this.output_filename = source["output_filename"];
+	        this.replace_original = source["replace_original"];
+	    }
+	}
+	export class EditPresetResult {
+	    id: string;
+	    name: string;
+	    description: string;
+	    icon: string;
+	    operation: string;
+	    settings: EditSettingsInput;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditPresetResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.icon = source["icon"];
+	        this.operation = source["operation"];
+	        this.settings = this.convertValues(source["settings"], EditSettingsInput);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class FFmpegCheckResult {
+	    installed: boolean;
+	    version: string;
+	    path: string;
+	    canAutoInstall: boolean;
+	    installMethod: string;
+	    installCommand: string;
+	    installGuide: string;
+	    downloadURL: string;
+	    requiresAdmin: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FFmpegCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.version = source["version"];
+	        this.path = source["path"];
+	        this.canAutoInstall = source["canAutoInstall"];
+	        this.installMethod = source["installMethod"];
+	        this.installCommand = source["installCommand"];
+	        this.installGuide = source["installGuide"];
+	        this.downloadURL = source["downloadURL"];
+	        this.requiresAdmin = source["requiresAdmin"];
+	    }
+	}
+	export class InstallGuide {
+	    title: string;
+	    description: string;
+	    steps: string[];
+	    command: string;
+	    commandDescription: string;
+	    alternativeURL: string;
+	    tips: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallGuide(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.description = source["description"];
+	        this.steps = source["steps"];
+	        this.command = source["command"];
+	        this.commandDescription = source["commandDescription"];
+	        this.alternativeURL = source["alternativeURL"];
+	        this.tips = source["tips"];
+	    }
+	}
 	export class ListVideosOptions {
 	    search: string;
 	    channel: string;
@@ -141,6 +322,32 @@ export namespace app {
 		    }
 		    return a;
 		}
+	}
+	export class VideoMetadataResult {
+	    duration: number;
+	    width: number;
+	    height: number;
+	    fps: number;
+	    bitrate: number;
+	    codec: string;
+	    audio_codec?: string;
+	    has_audio: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoMetadataResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.duration = source["duration"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.fps = source["fps"];
+	        this.bitrate = source["bitrate"];
+	        this.codec = source["codec"];
+	        this.audio_codec = source["audio_codec"];
+	        this.has_audio = source["has_audio"];
+	    }
 	}
 	export class VideoResult {
 	    id: string;
