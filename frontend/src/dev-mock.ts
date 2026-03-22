@@ -137,12 +137,19 @@ if (isDev && !isWails) {
     },
   };
 
-  // Mock window.runtime
+  // Mock window.runtime with all common functions
   (window as any).runtime = {
     EventsOn: () => () => {},
+    EventsOnMultiple: () => () => {},
     EventsOff: () => {},
+    EventsOffAll: () => {},
     EventsEmit: () => {},
     BrowserOpenURL: (url: string) => window.open(url, '_blank'),
+    Environment: async () => ({
+      OS: 'linux',
+      Platform: 'desktop',
+      Arch: 'amd64',
+    }),
   };
 
   console.log('[DevMock] Wails mocks initialized');
