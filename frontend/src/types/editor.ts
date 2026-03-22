@@ -143,6 +143,9 @@ export interface EffectRange {
   description: string;
 }
 
+/** Preview / History tabs in the editor main panel */
+export type EditorPanelTab = 'preview' | 'history';
+
 // Editor UI state
 export interface EditorUIState {
   selectedVideoId: string | null;
@@ -150,7 +153,7 @@ export interface EditorUIState {
   settings: EditSettings;
   previewFrame: string | null;
   isGeneratingPreview: boolean;
-  activeTab: 'tools' | 'presets' | 'history';
+  activeTab: EditorPanelTab;
   showReplaceConfirm: boolean;
 }
 

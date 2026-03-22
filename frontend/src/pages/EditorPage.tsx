@@ -37,7 +37,7 @@ import { EffectsTool } from '../components/editor/EffectsTool';
 import { WatermarkTool } from '../components/editor/WatermarkTool';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { useEditorStore, useLibraryStore } from '../stores';
-import { EditOperation } from '../types/editor';
+import { EditOperation, EditorPanelTab } from '../types/editor';
 
 export function EditorPage() {
   const { colorScheme } = useMantineColorScheme();
@@ -183,8 +183,7 @@ export function EditorPage() {
       </Group>
 
       <Grid gutter="md" style={{ flex: 1 }}>
-        <Grid.Col span={4} style={{ border: '2px dashed red' }}>
-          <Text c="red" size="xs" mb="xs">LEFT COLUMN (span=4)</Text>
+        <Grid.Col span={4}>
           <Stack gap="md">
             <Paper withBorder p="md">
               <Stack gap="sm">
@@ -248,13 +247,12 @@ export function EditorPage() {
           </Stack>
         </Grid.Col>
 
-        <Grid.Col span={8} style={{ border: '2px dashed blue' }}>
-          <Text c="blue" size="xs" mb="xs">RIGHT COLUMN (span=8)</Text>
+        <Grid.Col span={8}>
           <Paper withBorder p="md" h="100%" style={{ minHeight: 500 }}>
             {selectedVideo ? (
               <Tabs 
                 value={activeTab} 
-                onChange={val => setActiveTab(val as typeof activeTab)}
+                onChange={val => val && setActiveTab(val as EditorPanelTab)}
                 style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
               >
                 <Tabs.List>

@@ -16,6 +16,7 @@ import {
   EditJob,
   EditOperation,
   EditSettings,
+  EditorPanelTab,
   FFmpegCheckResult,
   InstallGuide,
   VideoMetadata,
@@ -49,7 +50,7 @@ interface EditorState {
   lastJobId: string | null;
 
   // UI state
-  activeTab: 'tools' | 'presets' | 'history';
+  activeTab: EditorPanelTab;
   showReplaceConfirm: boolean;
 
   // Polling
@@ -67,7 +68,7 @@ interface EditorState {
   loadJobs: (videoId: string) => Promise<void>;
   submitJob: (replaceOriginal?: boolean) => Promise<string | null>;
   cancelJob: (jobId: string) => Promise<void>;
-  setActiveTab: (tab: 'tools' | 'presets' | 'history') => void;
+  setActiveTab: (tab: EditorPanelTab) => void;
   setShowReplaceConfirm: (show: boolean) => void;
   reset: () => void;
   startJobPolling: (videoId: string) => void;
@@ -96,7 +97,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isSubmitting: false,
   lastJobId: null,
 
-  activeTab: 'tools',
+  activeTab: 'preview',
   showReplaceConfirm: false,
 
   pollInterval: null,
@@ -129,6 +130,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       videoMetadata: null,
       previewFrame: null,
       settings: { ...DEFAULT_EDIT_SETTINGS },
+      ...(videoId ? { activeTab: 'preview' as const } : {}),
     });
     if (videoId) {
       get().loadVideoMetadata(videoId);
@@ -331,7 +333,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  setActiveTab: (tab: 'tools' | 'presets' | 'history') => {
+  setActiveTab: (tab: EditorPanelTab) => {
     set({ activeTab: tab });
   },
 

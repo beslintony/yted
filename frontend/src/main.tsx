@@ -6,6 +6,9 @@ import '@mantine/notifications/styles.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
+// Initialize development mocks before importing App
+import './dev-mock';
+
 import App from './App';
 import { theme } from './theme';
 
