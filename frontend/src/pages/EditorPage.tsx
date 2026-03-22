@@ -36,7 +36,7 @@ import { CropTool } from '../components/editor/CropTool';
 import { EffectsTool } from '../components/editor/EffectsTool';
 import { WatermarkTool } from '../components/editor/WatermarkTool';
 import { VideoPlayer } from '../components/VideoPlayer';
-import { useEditorStore, useLibraryStore } from '../stores';
+import { useEditorStore, useLibraryStore, useSettingsStore } from '../stores';
 import { EditOperation, EditorPanelTab } from '../types/editor';
 
 export function EditorPage() {
@@ -45,6 +45,7 @@ export function EditorPage() {
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
 
+  const { settings: globalSettings, loadSettings } = useSettingsStore();
   const libraryStore = useLibraryStore();
   const { videos, loadLibrary, isLoading: isLoadingLibrary } = libraryStore;
   const {
@@ -72,13 +73,21 @@ export function EditorPage() {
 
   useEffect(() => {
     console.log('[EditorPage] Mounting, loading data...');
+    
+    // Load global settings first (needed for proper initialization)
+    loadSettings().catch(err => {
+      console.error('[EditorPage] Failed to load settings:', err);
+    });
+    
     checkFFmpeg();
+    
     // Load library videos for the dropdown
     loadLibrary().then(() => {
       console.log('[EditorPage] Library loaded, videos:', videos.length);
     }).catch(err => {
       console.error('[EditorPage] Failed to load library:', err);
     });
+    
     // Don't reset on unmount - we want to preserve state when switching tabs
   }, []);
 
