@@ -101,7 +101,7 @@ export function CropTool({
         </>
       )}
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder p="sm" bg="var(--mantine-color-body)">
         <Stack gap="xs">
           <Text size="sm" fw={500}>
             <IconAspectRatio size={14} style={{ marginRight: 6 }} />

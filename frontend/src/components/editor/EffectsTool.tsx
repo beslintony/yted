@@ -84,7 +84,7 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
         </Button>
       </Group>
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder p="sm" >
         <Stack gap="md">
           <Text size="sm" fw={500}>
             <IconBrightness size={14} style={{ marginRight: 6 }} />
@@ -119,7 +119,7 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
         </Stack>
       </Paper>
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder p="sm" >
         <Stack gap="md">
           <Text size="sm" fw={500}>
             <IconRotate size={14} style={{ marginRight: 6 }} />
@@ -149,7 +149,7 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
         </Stack>
       </Paper>
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder p="sm" >
         <Stack gap="md">
           <Text size="sm" fw={500}>
             <IconVolume size={14} style={{ marginRight: 6 }} />

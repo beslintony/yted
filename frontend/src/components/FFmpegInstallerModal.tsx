@@ -126,7 +126,7 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
             <Paper withBorder p="md">
               <Stack gap="md">
                 <Group gap="xs">
-                  <IconInfoCircle size={18} color="#228be6" />
+                  <IconInfoCircle size={18} color="var(--mantine-color-blue-6)" />
                   <Text fw={600}>{installGuide.title}</Text>
                 </Group>
 
@@ -147,7 +147,7 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
                 )}
 
                 {installGuide.command && (
-                  <Paper withBorder p="sm" bg="gray.0">
+                  <Paper withBorder p="sm" bg="var(--mantine-color-default)">
                     <Stack gap="xs">
                       <Group justify="space-between">
                         <Text size="xs" c="dimmed">

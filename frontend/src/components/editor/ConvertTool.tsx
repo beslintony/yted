@@ -24,7 +24,7 @@ export function ConvertTool({ settings, onChange }: ConvertToolProps) {
 
   return (
     <Stack gap="md">
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder p="sm">
         <Stack gap="sm">
           <Text size="sm" fw={500}>
             <IconFile size={14} style={{ marginRight: 6 }} />

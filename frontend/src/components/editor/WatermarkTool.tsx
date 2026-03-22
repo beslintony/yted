@@ -33,7 +33,7 @@ export function WatermarkTool({ settings, onChange }: WatermarkToolProps) {
       </Radio.Group>
 
       {settings.watermarkType === 'text' ? (
-        <Paper withBorder p="sm" bg="gray.0">
+        <Paper withBorder p="sm" >
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               <IconTypography size={14} style={{ marginRight: 6 }} />
@@ -55,7 +55,7 @@ export function WatermarkTool({ settings, onChange }: WatermarkToolProps) {
           </Stack>
         </Paper>
       ) : (
-        <Paper withBorder p="sm" bg="gray.0">
+        <Paper withBorder p="sm" >
           <Stack gap="sm">
             <Text size="sm" fw={500}>
               <IconPhoto size={14} style={{ marginRight: 6 }} />
