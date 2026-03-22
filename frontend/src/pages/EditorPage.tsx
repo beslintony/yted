@@ -45,7 +45,7 @@ export function EditorPage() {
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
 
-  const { videos } = useLibraryStore();
+  const { videos, loadLibrary } = useLibraryStore();
   const {
     ffmpegStatus,
     checkFFmpeg,
@@ -70,6 +70,8 @@ export function EditorPage() {
 
   useEffect(() => {
     checkFFmpeg();
+    // Load library videos for the dropdown
+    loadLibrary();
     // Don't reset on unmount - we want to preserve state when switching tabs
   }, []);
 
