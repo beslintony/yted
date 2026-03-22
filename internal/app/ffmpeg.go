@@ -1,10 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
+	goRuntime "runtime"
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -41,7 +42,8 @@ type FFmpegManager struct {
 	binPath    string
 	customPath string
 	logger     *log.Logger
-	ctx        interface{}} // Context for opening URLs}}
+	ctx        context.Context
+}
 
 // NewFFmpegManager creates a new ffmpeg manager
 func NewFFmpegManager() *FFmpegManager {
@@ -131,7 +133,7 @@ func (f *FFmpegManager) Find() string {
 
 // getCommonPaths returns common ffmpeg installation paths
 func (f *FFmpegManager) getCommonPaths() []string {
-	switch runtime.GOOS {
+	switch goRuntime.GOOS {
 	case "darwin":
 		return []string{
 			"/opt/homebrew/bin/ffmpeg",
@@ -218,7 +220,7 @@ func (f *FFmpegManager) MergeVideoAudio(videoPath, audioPath, outputPath string)
 
 // InstallInstructions returns instructions for installing ffmpeg
 func (f *FFmpegManager) InstallInstructions() string {
-	switch runtime.GOOS {
+	switch goRuntime.GOOS {
 	case "darwin":
 		return "Install ffmpeg using: brew install ffmpeg"
 	case "linux":
@@ -231,7 +233,7 @@ func (f *FFmpegManager) InstallInstructions() string {
 }
 
 // SetContext sets the Wails context for opening URLs
-func (f *FFmpegManager) SetContext(ctx interface{}) {
+func (f *FFmpegManager) SetContext(ctx context.Context) {
 	f.ctx = ctx
 }
 
@@ -252,8 +254,8 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 		result.InstallCommand = guide.Command
 		result.InstallGuide = f.formatInstallGuide(guide)
 		result.DownloadURL = guide.AlternativeURL
-		result.RequiresAdmin = runtime.GOOS != "darwin" || !f.isHomebrewAvailable()
-		result.CanAutoInstall = runtime.GOOS == "darwin" && f.isHomebrewAvailable()
+		result.RequiresAdmin = goRuntime.GOOS != "darwin" || !f.isHomebrewAvailable()
+		result.CanAutoInstall = goRuntime.GOOS == "darwin" && f.isHomebrewAvailable()
 	}
 
 	return result
@@ -261,7 +263,7 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 
 // GetInstallGuide returns OS-specific installation instructions
 func (f *FFmpegManager) GetInstallGuide() InstallGuide {
-	switch runtime.GOOS {
+	switch goRuntime.GOOS {
 	case "darwin":
 		return f.getMacOSInstallGuide()
 	case "linux":
@@ -270,13 +272,13 @@ func (f *FFmpegManager) GetInstallGuide() InstallGuide {
 		return f.getWindowsInstallGuide()
 	default:
 		return InstallGuide{
-			Title:           "Install FFmpeg",
-			Description:     "Please install FFmpeg for your operating system",
-			Steps:           []string{"Visit the FFmpeg download page", "Download the appropriate version", "Follow the installation instructions"},
-			Command:         "",
-			AlternativeURL:  "https://ffmpeg.org/download.html",
+			Title:              "Install FFmpeg",
+			Description:        "Please install FFmpeg for your operating system",
+			Steps:              []string{"Visit the FFmpeg download page", "Download the appropriate version", "Follow the installation instructions"},
+			Command:            "",
+			AlternativeURL:     "https://ffmpeg.org/download.html",
 			CommandDescription: "See website for instructions",
-			Tips:            []string{"Make sure to add FFmpeg to your system PATH"},
+			Tips:               []string{"Make sure to add FFmpeg to your system PATH"},
 		}
 	}
 }
@@ -363,8 +365,8 @@ func (f *FFmpegManager) getLinuxInstallGuide() InstallGuide {
 
 func (f *FFmpegManager) getWindowsInstallGuide() InstallGuide {
 	return InstallGuide{
-		Title:              "Install FFmpeg on Windows",
-		Description:        "Download and add FFmpeg to your system PATH",
+		Title:       "Install FFmpeg on Windows",
+		Description: "Download and add FFmpeg to your system PATH",
 		Steps: []string{
 			"Download FFmpeg from the link below",
 			"Extract the zip file to C:\\ffmpeg",
@@ -406,7 +408,7 @@ func (f *FFmpegManager) isHomebrewAvailable() bool {
 }
 
 func (f *FFmpegManager) getInstallMethod() string {
-	switch runtime.GOOS {
+	switch goRuntime.GOOS {
 	case "darwin":
 		if f.isHomebrewAvailable() {
 			return "package_manager"
@@ -444,6 +446,6 @@ func (f *FFmpegManager) formatInstallGuide(guide InstallGuide) string {
 // OpenDownloadPage opens the FFmpeg download page in browser
 func (f *FFmpegManager) OpenDownloadPage() {
 	if f.ctx != nil {
-		runtime.BrowserOpenURL(f.ctx.(interface{ Context() interface{} }).Context(), "https://ffmpeg.org/download.html")
+		runtime.BrowserOpenURL(f.ctx, "https://ffmpeg.org/download.html")
 	}
 }

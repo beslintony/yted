@@ -143,7 +143,7 @@ func GetEffectRanges() map[string]struct {
 	Default     float64
 	Step        float64
 	Description string
-}{
+} {
 	return map[string]struct {
 		Min         float64
 		Max         float64
@@ -194,7 +194,7 @@ func GetRotationOptions() []struct {
 	Value       int
 	Label       string
 	Description string
-}{
+} {
 	return []struct {
 		Value       int
 		Label       string

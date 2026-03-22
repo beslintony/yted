@@ -64,12 +64,6 @@ func (e *Editor) executeCrop(ctx context.Context, video *db.Video, settings db.E
 	// Execute command with progress monitoring
 	cmd := exec.CommandContext(ctx, e.ffmpegPath, args...)
 
-	// Get video duration for progress calculation
-	metadata, err := e.GetVideoMetadata(video.FilePath)
-	if err != nil {
-		metadata = &VideoMetadata{Duration: 0}
-	}
-
 	// Run command
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() == context.Canceled {
@@ -91,18 +85,18 @@ func GetCropPresets() map[string]struct {
 	Name   string
 	Width  int
 	Height int
-}{
+} {
 	return map[string]struct {
 		Name   string
 		Width  int
 		Height int
 	}{
-		"16:9":  {Name: "Widescreen (16:9)", Width: 16, Height: 9},
-		"4:3":   {Name: "Standard (4:3)", Width: 4, Height: 3},
-		"1:1":   {Name: "Square (1:1)", Width: 1, Height: 1},
-		"9:16":  {Name: "Vertical (9:16)", Width: 9, Height: 16},
-		"21:9":  {Name: "Cinema (21:9)", Width: 21, Height: 9},
-		"free":  {Name: "Freeform", Width: 0, Height: 0},
+		"16:9": {Name: "Widescreen (16:9)", Width: 16, Height: 9},
+		"4:3":  {Name: "Standard (4:3)", Width: 4, Height: 3},
+		"1:1":  {Name: "Square (1:1)", Width: 1, Height: 1},
+		"9:16": {Name: "Vertical (9:16)", Width: 9, Height: 16},
+		"21:9": {Name: "Cinema (21:9)", Width: 21, Height: 9},
+		"free": {Name: "Freeform", Width: 0, Height: 0},
 	}
 }
 

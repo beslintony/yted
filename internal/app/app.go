@@ -15,6 +15,7 @@ import (
 
 	"yted/internal/config"
 	"yted/internal/db"
+	"yted/internal/editor"
 	applog "yted/internal/log"
 	"yted/internal/version"
 	"yted/internal/ytdl"
@@ -35,6 +36,7 @@ type App struct {
 	logger *applog.Logger
 	fm     *FileManager
 	ffmpeg *FFmpegManager
+	editor *editor.Editor
 
 	// Mutex to prevent concurrent download processing
 	downloadMu sync.Mutex

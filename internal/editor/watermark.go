@@ -221,14 +221,14 @@ func (e *Editor) calculateOverlayPosition(position string) (x, y string) {
 // GetWatermarkPositions returns available watermark positions
 func GetWatermarkPositions() map[string]string {
 	return map[string]string{
-		"top-left":     "Top Left",
-		"top-center":   "Top Center",
-		"top-right":    "Top Right",
-		"center-left":  "Center Left",
-		"center":       "Center",
-		"center-right": "Center Right",
-		"bottom-left":  "Bottom Left",
+		"top-left":      "Top Left",
+		"top-center":    "Top Center",
+		"top-right":     "Top Right",
+		"center-left":   "Center Left",
+		"center":        "Center",
+		"center-right":  "Center Right",
+		"bottom-left":   "Bottom Left",
 		"bottom-center": "Bottom Center",
-		"bottom-right": "Bottom Right",
+		"bottom-right":  "Bottom Right",
 	}
 }

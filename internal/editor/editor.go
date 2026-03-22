@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,15 +25,15 @@ type ProgressCallback func(progress float64, eta string)
 
 // Editor handles video editing operations
 type Editor struct {
-	ffmpegPath   string
-	db           *db.DB
-	config       *config.Manager
-	logger       *log.Logger
-	queue        *EditQueue
-	activeJobs   map[string]*EditJob
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
+	ffmpegPath string
+	db         *db.DB
+	config     *config.Manager
+	logger     *log.Logger
+	queue      *EditQueue
+	activeJobs map[string]*EditJob
+	mu         sync.RWMutex
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 // EditJob represents an active editing job
@@ -215,15 +216,15 @@ func (e *Editor) getMetadataFromFFmpeg(filePath string) (*VideoMetadata, error) 
 
 // VideoMetadata contains video file metadata
 type VideoMetadata struct {
-	Duration    float64 `json:"duration"`
-	Width       int     `json:"width"`
-	Height      int     `json:"height"`
-	FPS         float64 `json:"fps"`
-	Bitrate     int64   `json:"bitrate"`
-	Codec       string  `json:"codec"`
-	AudioCodec  string  `json:"audio_codec,omitempty"`
-	AudioBitrate int64  `json:"audio_bitrate,omitempty"`
-	HasAudio    bool    `json:"has_audio"`
+	Duration     float64 `json:"duration"`
+	Width        int     `json:"width"`
+	Height       int     `json:"height"`
+	FPS          float64 `json:"fps"`
+	Bitrate      int64   `json:"bitrate"`
+	Codec        string  `json:"codec"`
+	AudioCodec   string  `json:"audio_codec,omitempty"`
+	AudioBitrate int64   `json:"audio_bitrate,omitempty"`
+	HasAudio     bool    `json:"has_audio"`
 }
 
 func parseFFProbeOutput(output []byte) (*VideoMetadata, error) {

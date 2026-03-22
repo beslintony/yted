@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -12,27 +11,27 @@ import (
 
 // VideoMetadataResult is exposed to frontend
 type VideoMetadataResult struct {
-	Duration     float64 `json:"duration"`
-	Width        int     `json:"width"`
-	Height       int     `json:"height"`
-	FPS          float64 `json:"fps"`
-	Bitrate      int64   `json:"bitrate"`
-	Codec        string  `json:"codec"`
-	AudioCodec   string  `json:"audio_codec,omitempty"`
-	HasAudio     bool    `json:"has_audio"`
+	Duration   float64 `json:"duration"`
+	Width      int     `json:"width"`
+	Height     int     `json:"height"`
+	FPS        float64 `json:"fps"`
+	Bitrate    int64   `json:"bitrate"`
+	Codec      string  `json:"codec"`
+	AudioCodec string  `json:"audio_codec,omitempty"`
+	HasAudio   bool    `json:"has_audio"`
 }
 
 // EditJobResult is exposed to frontend
 type EditJobResult struct {
-	ID            string   `json:"id"`
-	SourceVideoID string   `json:"source_video_id"`
-	OutputVideoID *string  `json:"output_video_id,omitempty"`
-	Status        string   `json:"status"`
-	Operation     string   `json:"operation"`
-	Progress      float64  `json:"progress"`
-	ErrorMessage  *string  `json:"error_message,omitempty"`
-	CreatedAt     int64    `json:"created_at"`
-	CompletedAt   *int64   `json:"completed_at,omitempty"`
+	ID            string  `json:"id"`
+	SourceVideoID string  `json:"source_video_id"`
+	OutputVideoID *string `json:"output_video_id,omitempty"`
+	Status        string  `json:"status"`
+	Operation     string  `json:"operation"`
+	Progress      float64 `json:"progress"`
+	ErrorMessage  *string `json:"error_message,omitempty"`
+	CreatedAt     int64   `json:"created_at"`
+	CompletedAt   *int64  `json:"completed_at,omitempty"`
 }
 
 // EditSettingsInput is received from frontend
@@ -60,13 +59,13 @@ type EditSettingsInput struct {
 	OutputResolution *string `json:"output_resolution,omitempty"`
 
 	// Effects
-	Brightness   *float64 `json:"brightness,omitempty"`
-	Contrast     *float64 `json:"contrast,omitempty"`
-	Saturation   *float64 `json:"saturation,omitempty"`
-	Rotation     *int     `json:"rotation,omitempty"`
-	Speed        *float64 `json:"speed,omitempty"`
-	Volume       *float64 `json:"volume,omitempty"`
-	RemoveAudio  *bool    `json:"remove_audio,omitempty"`
+	Brightness  *float64 `json:"brightness,omitempty"`
+	Contrast    *float64 `json:"contrast,omitempty"`
+	Saturation  *float64 `json:"saturation,omitempty"`
+	Rotation    *int     `json:"rotation,omitempty"`
+	Speed       *float64 `json:"speed,omitempty"`
+	Volume      *float64 `json:"volume,omitempty"`
+	RemoveAudio *bool    `json:"remove_audio,omitempty"`
 
 	// Output
 	OutputFilename  *string `json:"output_filename,omitempty"`
@@ -75,12 +74,12 @@ type EditSettingsInput struct {
 
 // EditPresetResult is exposed to frontend
 type EditPresetResult struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Icon        string             `json:"icon"`
-	Operation   string             `json:"operation"`
-	Settings    EditSettingsInput  `json:"settings"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Icon        string            `json:"icon"`
+	Operation   string            `json:"operation"`
+	Settings    EditSettingsInput `json:"settings"`
 }
 
 // InitEditor initializes the video editor (called during app startup)
@@ -103,7 +102,7 @@ func (a *App) initEditor() {
 func (a *App) CheckFFmpegWithGuidance() FFmpegCheckResult {
 	if a.ffmpeg == nil {
 		return FFmpegCheckResult{
-			Installed: false,
+			Installed:    false,
 			InstallGuide: "FFmpeg manager not initialized",
 		}
 	}
@@ -155,14 +154,14 @@ func (a *App) GetVideoMetadata(videoID string) (*VideoMetadataResult, error) {
 	}
 
 	return &VideoMetadataResult{
-		Duration:     metadata.Duration,
-		Width:        metadata.Width,
-		Height:       metadata.Height,
-		FPS:          metadata.FPS,
-		Bitrate:      metadata.Bitrate,
-		Codec:        metadata.Codec,
-		AudioCodec:   metadata.AudioCodec,
-		HasAudio:     metadata.HasAudio,
+		Duration:   metadata.Duration,
+		Width:      metadata.Width,
+		Height:     metadata.Height,
+		FPS:        metadata.FPS,
+		Bitrate:    metadata.Bitrate,
+		Codec:      metadata.Codec,
+		AudioCodec: metadata.AudioCodec,
+		HasAudio:   metadata.HasAudio,
 	}, nil
 }
 

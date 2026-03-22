@@ -172,7 +172,7 @@ func GetSupportedFormats() map[string]struct {
 	Extension   string
 	Description string
 	Codecs      []string
-}{
+} {
 	return map[string]struct {
 		Name        string
 		Extension   string
@@ -224,7 +224,7 @@ func GetSupportedCodecs() map[string]struct {
 	Description string
 	Quality     string // good, better, best
 	Speed       string // fast, medium, slow
-}{
+} {
 	return map[string]struct {
 		Name        string
 		Description string

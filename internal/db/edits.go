@@ -32,7 +32,7 @@ type EditSettings struct {
 	CropHeight *int     `json:"crop_height,omitempty"` // Crop region height
 
 	// Watermark settings
-	WatermarkType     *string  `json:"watermark_type,omitempty"`     // "text" or "image"
+	WatermarkType     *string  `json:"watermark_type,omitempty"` // "text" or "image"
 	WatermarkText     *string  `json:"watermark_text,omitempty"`
 	WatermarkImage    *string  `json:"watermark_image,omitempty"`    // Path to image
 	WatermarkPosition *string  `json:"watermark_position,omitempty"` // "top-left", "top-right", etc.
@@ -40,18 +40,18 @@ type EditSettings struct {
 	WatermarkSize     *int     `json:"watermark_size,omitempty"`     // Font size or image scale
 
 	// Convert settings
-	OutputFormat     *string `json:"output_format,omitempty"`      // mp4, avi, mkv, mov, webm, gif
-	OutputCodec      *string `json:"output_codec,omitempty"`       // h264, h265, vp9, av1
-	OutputQuality    *int    `json:"output_quality,omitempty"`     // CRF value (18-28)
-	OutputResolution *string `json:"output_resolution,omitempty"`  // "original", "1080p", "720p", etc.
+	OutputFormat     *string `json:"output_format,omitempty"`     // mp4, avi, mkv, mov, webm, gif
+	OutputCodec      *string `json:"output_codec,omitempty"`      // h264, h265, vp9, av1
+	OutputQuality    *int    `json:"output_quality,omitempty"`    // CRF value (18-28)
+	OutputResolution *string `json:"output_resolution,omitempty"` // "original", "1080p", "720p", etc.
 
 	// Effects
-	Brightness  *float64 `json:"brightness,omitempty"`   // -1 to 1
-	Contrast    *float64 `json:"contrast,omitempty"`     // -1 to 1
-	Saturation  *float64 `json:"saturation,omitempty"`   // 0 to 2
-	Rotation    *int     `json:"rotation,omitempty"`     // 0, 90, 180, 270
-	Speed       *float64 `json:"speed,omitempty"`        // 0.5 to 2.0
-	Volume      *float64 `json:"volume,omitempty"`       // 0 to 2
+	Brightness  *float64 `json:"brightness,omitempty"` // -1 to 1
+	Contrast    *float64 `json:"contrast,omitempty"`   // -1 to 1
+	Saturation  *float64 `json:"saturation,omitempty"` // 0 to 2
+	Rotation    *int     `json:"rotation,omitempty"`   // 0, 90, 180, 270
+	Speed       *float64 `json:"speed,omitempty"`      // 0.5 to 2.0
+	Volume      *float64 `json:"volume,omitempty"`     // 0 to 2
 	RemoveAudio *bool    `json:"remove_audio,omitempty"`
 
 	// Output options

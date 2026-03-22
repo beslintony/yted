@@ -13,27 +13,27 @@ import (
 var FFmpegBestPractices = struct {
 	// Video codecs - prioritized by compatibility
 	VideoCodecs struct {
-		H264     string // libx264 - best compatibility
-		H265     string // libx265 - better compression
-		VP9      string // libvpx-vp9 - web optimized
-		AV1      string // libaom-av1 - future format
-		Copy     string // copy - no re-encoding
+		H264 string // libx264 - best compatibility
+		H265 string // libx265 - better compression
+		VP9  string // libvpx-vp9 - web optimized
+		AV1  string // libaom-av1 - future format
+		Copy string // copy - no re-encoding
 	}
 
 	// Audio codecs - prioritized by compatibility
 	AudioCodecs struct {
-		AAC      string // aac - best compatibility
-		Opus     string // libopus - best quality at low bitrate
-		MP3      string // libmp3lame - universal compatibility
-		FLAC     string // flac - lossless
-		Copy     string // copy - no re-encoding
+		AAC  string // aac - best compatibility
+		Opus string // libopus - best quality at low bitrate
+		MP3  string // libmp3lame - universal compatibility
+		FLAC string // flac - lossless
+		Copy string // copy - no re-encoding
 	}
 
 	// Pixel formats
 	PixelFormats struct {
-		YUV420P  string // yuv420p - most compatible (required for MP4/Web)
-		YUV444P  string // yuv444p - higher quality, less compatible
-		Auto     string // auto - let FFmpeg decide
+		YUV420P string // yuv420p - most compatible (required for MP4/Web)
+		YUV444P string // yuv444p - higher quality, less compatible
+		Auto    string // auto - let FFmpeg decide
 	}
 
 	// Presets (speed vs compression)
@@ -51,11 +51,11 @@ var FFmpegBestPractices = struct {
 
 	// Tune options for specific content
 	Tune struct {
-		Film       string // film - for high quality movie content
-		Animation  string // animation - for cartoons
-		Grain      string // grain - preserves film grain
-		StillImage string // stillimage - for slideshow-like content
-		FastDecode string // fastdecode - faster decoding
+		Film        string // film - for high quality movie content
+		Animation   string // animation - for cartoons
+		Grain       string // grain - preserves film grain
+		StillImage  string // stillimage - for slideshow-like content
+		FastDecode  string // fastdecode - faster decoding
 		ZeroLatency string // zerolatency - for streaming
 	}
 
@@ -70,42 +70,42 @@ var FFmpegBestPractices = struct {
 
 	// Audio bitrates (kbps)
 	AudioBitrates struct {
-		Low    int // 96 - voice/podcast
-		Medium int // 128 - standard music
-		High   int // 192 - high quality
+		Low      int // 96 - voice/podcast
+		Medium   int // 128 - standard music
+		High     int // 192 - high quality
 		Lossless int // 320 or use FLAC
 	}
 }{
 	VideoCodecs: struct {
-		H264     string
-		H265     string
-		VP9      string
-		AV1      string
-		Copy     string
+		H264 string
+		H265 string
+		VP9  string
+		AV1  string
+		Copy string
 	}{
-		H264:  "libx264",
-		H265:  "libx265",
-		VP9:   "libvpx-vp9",
-		AV1:   "libaom-av1",
-		Copy:  "copy",
+		H264: "libx264",
+		H265: "libx265",
+		VP9:  "libvpx-vp9",
+		AV1:  "libaom-av1",
+		Copy: "copy",
 	},
 	AudioCodecs: struct {
-		AAC      string
-		Opus     string
-		MP3      string
-		FLAC     string
-		Copy     string
+		AAC  string
+		Opus string
+		MP3  string
+		FLAC string
+		Copy string
 	}{
-		AAC:   "aac",
-		Opus:  "libopus",
-		MP3:   "libmp3lame",
-		FLAC:  "flac",
-		Copy:  "copy",
+		AAC:  "aac",
+		Opus: "libopus",
+		MP3:  "libmp3lame",
+		FLAC: "flac",
+		Copy: "copy",
 	},
 	PixelFormats: struct {
-		YUV420P  string
-		YUV444P  string
-		Auto     string
+		YUV420P string
+		YUV444P string
+		Auto    string
 	}{
 		YUV420P: "yuv420p",
 		YUV444P: "yuv444p",
@@ -122,22 +122,22 @@ var FFmpegBestPractices = struct {
 		Slower    string
 		VerySlow  string
 	}{
-		UltraFast:  "ultrafast",
-		SuperFast:  "superfast",
-		VeryFast:   "veryfast",
-		Faster:     "faster",
-		Fast:       "fast",
-		Medium:     "medium",
-		Slow:       "slow",
-		Slower:     "slower",
-		VerySlow:   "veryslow",
+		UltraFast: "ultrafast",
+		SuperFast: "superfast",
+		VeryFast:  "veryfast",
+		Faster:    "faster",
+		Fast:      "fast",
+		Medium:    "medium",
+		Slow:      "slow",
+		Slower:    "slower",
+		VerySlow:  "veryslow",
 	},
 	Tune: struct {
-		Film       string
-		Animation  string
-		Grain      string
-		StillImage string
-		FastDecode string
+		Film        string
+		Animation   string
+		Grain       string
+		StillImage  string
+		FastDecode  string
 		ZeroLatency string
 	}{
 		Film:        "film",
@@ -268,21 +268,21 @@ func BuildFFmpegArgs(options FFmpegOptions) []string {
 
 // FFmpegOptions contains all options for building FFmpeg command
 type FFmpegOptions struct {
-	InputPath      string
-	OutputPath     string
-	SeekTime       float64
-	Duration       float64
-	VideoCodec     string
-	AudioCodec     string
-	VideoFilters   []string
-	AudioFilters   []string
-	CRF            int
-	Preset         string
-	Tune           string
-	AudioBitrate   int
-	RemoveAudio    bool
-	FastStart      bool
-	Metadata       map[string]string
+	InputPath    string
+	OutputPath   string
+	SeekTime     float64
+	Duration     float64
+	VideoCodec   string
+	AudioCodec   string
+	VideoFilters []string
+	AudioFilters []string
+	CRF          int
+	Preset       string
+	Tune         string
+	AudioBitrate int
+	RemoveAudio  bool
+	FastStart    bool
+	Metadata     map[string]string
 }
 
 // GetRecommendedSettings returns recommended settings based on use case
@@ -317,11 +317,11 @@ func GetRecommendedSettings(useCase string) FFmpegOptions {
 		}
 	case "fast_processing":
 		return FFmpegOptions{
-			VideoCodec:   FFmpegBestPractices.VideoCodecs.H264,
-			AudioCodec:   FFmpegBestPractices.AudioCodecs.Copy,
-			CRF:          FFmpegBestPractices.CRF.GoodQuality,
-			Preset:       FFmpegBestPractices.Presets.UltraFast,
-			FastStart:    false,
+			VideoCodec: FFmpegBestPractices.VideoCodecs.H264,
+			AudioCodec: FFmpegBestPractices.AudioCodecs.Copy,
+			CRF:        FFmpegBestPractices.CRF.GoodQuality,
+			Preset:     FFmpegBestPractices.Presets.UltraFast,
+			FastStart:  false,
 		}
 	default:
 		return FFmpegOptions{
