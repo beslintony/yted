@@ -70,9 +70,14 @@ export function EditorPage() {
   } = useEditorStore();
 
   useEffect(() => {
+    console.log('[EditorPage] Mounting, loading data...');
     checkFFmpeg();
     // Load library videos for the dropdown
-    loadLibrary();
+    loadLibrary().then(() => {
+      console.log('[EditorPage] Library loaded, videos:', videos.length);
+    }).catch(err => {
+      console.error('[EditorPage] Failed to load library:', err);
+    });
     // Don't reset on unmount - we want to preserve state when switching tabs
   }, []);
 
@@ -188,18 +193,24 @@ export function EditorPage() {
             <Paper withBorder p="md">
               <Stack gap="sm">
                 <Text fw={600}>Select Video</Text>
-                <Select
-                  placeholder="Choose a video from library"
-                  value={selectedVideoId}
-                  onChange={handleVideoSelect}
-                  data={videos.map(v => ({
-                    value: v.id,
-                    label: v.title,
-                  }))}
-                  leftSection={<IconVideo size={16} />}
-                  disabled={isLoadingLibrary}
-                  rightSection={isLoadingLibrary ? <Loader size={16} /> : null}
-                />
+                {videos.length === 0 && !isLoadingLibrary ? (
+                  <Text c="dimmed" size="sm">
+                    No videos in library. Go to Downloads to add videos.
+                  </Text>
+                ) : (
+                  <Select
+                    placeholder="Choose a video from library"
+                    value={selectedVideoId}
+                    onChange={handleVideoSelect}
+                    data={videos.map(v => ({
+                      value: v.id,
+                      label: v.title,
+                    }))}
+                    leftSection={<IconVideo size={16} />}
+                    disabled={isLoadingLibrary}
+                    rightSection={isLoadingLibrary ? <Loader size={16} /> : null}
+                  />
+                )}
               </Stack>
             </Paper>
 
