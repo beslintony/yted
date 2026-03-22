@@ -82,8 +82,13 @@ function EditorPageContent({
   ffmpegReady,
   setFfmpegReady,
 }: EditorPageContentProps) {
+  console.log('[EditorPage] Rendering, colorScheme:', colorScheme);
 
+  console.log('[EditorPage] Before store hooks');
+  
   const { videos, loadLibrary, isLoading: isLoadingLibrary } = useLibraryStore();
+  console.log('[EditorPage] Library store loaded, videos count:', videos.length);
+  
   const {
     ffmpegStatus,
     checkFFmpeg,
@@ -106,6 +111,8 @@ function EditorPageContent({
     loadJobs,
     loadVideoMetadata,
   } = useEditorStore();
+  
+  console.log('[EditorPage] Editor store loaded, selectedVideoId:', selectedVideoId);
 
   useEffect(() => {
     checkFFmpeg();
@@ -202,8 +209,17 @@ function EditorPageContent({
     }
   };
 
+  console.log('[EditorPage] About to render main content');
+  
   return (
     <Stack gap="lg" h="100%">
+      {/* Debug banner - remove after fixing */}
+      <Paper bg="blue" p="xs">
+        <Text c="white" ta="center" size="sm">
+          EditorPage Rendered - Videos: {videos.length}, Selected: {selectedVideoId || 'none'}
+        </Text>
+      </Paper>
+      
       <Group justify="space-between">
         <Title fw={700} size="xl">
           Video Editor
