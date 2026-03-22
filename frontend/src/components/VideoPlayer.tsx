@@ -7,17 +7,18 @@ import { VideoMetadata } from '../types/editor';
 
 interface VideoPlayerProps {
   videoId: string;
+  format?: string;
   previewFrame?: string | null;
   isGeneratingPreview?: boolean;
   metadata?: VideoMetadata | null;
   onPlay?: () => void;
 }
 
-// Get MIME type from file format
+// Get MIME type from file format (extension)
 function getVideoMimeType(format?: string): string {
   if (!format) return 'video/mp4';
   
-  const formatLower = format.toLowerCase();
+  const formatLower = format.toLowerCase().replace(/^\./, '');
   switch (formatLower) {
     case 'webm':
       return 'video/webm';
@@ -38,6 +39,7 @@ function getVideoMimeType(format?: string): string {
 
 export function VideoPlayer({
   videoId,
+  format,
   previewFrame,
   isGeneratingPreview,
   metadata,
@@ -62,14 +64,21 @@ export function VideoPlayer({
       setIsLoading(true);
       setError(null);
       try {
+        console.log('[VideoPlayer] Loading video:', videoId, 'format:', format);
         const data = await GetVideoFile(videoId);
+        console.log('[VideoPlayer] Video data loaded, size:', data.length);
+        
         // Convert byte array to blob with proper MIME type
-        const mimeType = getVideoMimeType(metadata?.codec);
+        const mimeType = getVideoMimeType(format);
+        console.log('[VideoPlayer] Using MIME type:', mimeType);
+        
         const blob = new Blob([new Uint8Array(data)], { type: mimeType });
         objectUrl = URL.createObjectURL(blob);
+        console.log('[VideoPlayer] Object URL created:', objectUrl);
+        
         setVideoUrl(objectUrl);
       } catch (err) {
-        console.error('Failed to load video:', err);
+        console.error('[VideoPlayer] Failed to load video:', err);
         setError(err instanceof Error ? err.message : 'Failed to load video');
         setVideoUrl(null);
       } finally {
@@ -85,7 +94,7 @@ export function VideoPlayer({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [videoId, metadata?.codec]);
+  }, [videoId, format]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -119,7 +128,7 @@ export function VideoPlayer({
           />
         ) : videoUrl ? (
           <video
-            src={videoUrl}
+            key={videoUrl}
             controls
             onClick={onPlay}
             style={{
@@ -131,7 +140,9 @@ export function VideoPlayer({
             controlsList="nodownload"
             preload="metadata"
           >
+            <source src={videoUrl} type={getVideoMimeType(format)} />
             <track kind="captions" />
+            Your browser does not support the video tag.
           </video>
         ) : error ? (
           <Stack align="center" gap="md" p="xl">

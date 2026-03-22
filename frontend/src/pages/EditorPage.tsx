@@ -267,6 +267,7 @@ export function EditorPage() {
                     ) : (
                       <VideoPlayer
                         videoId={selectedVideo.id}
+                        format={selectedVideo.format}
                         previewFrame={previewFrame}
                         isGeneratingPreview={isGeneratingPreview}
                         metadata={videoMetadata}
