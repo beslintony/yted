@@ -44,6 +44,7 @@ export function EditorPage() {
   const isDark = colorScheme === 'dark';
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
+  const [isCheckingFfmpeg, setIsCheckingFfmpeg] = useState(true);
 
   const { loadSettings } = useSettingsStore();
   const libraryStore = useLibraryStore();
@@ -79,7 +80,12 @@ export function EditorPage() {
       console.error('[EditorPage] Failed to load settings:', err);
     });
     
-    checkFFmpeg();
+    // Check FFmpeg availability
+    setIsCheckingFfmpeg(true);
+    checkFFmpeg().catch(err => {
+      console.error('[EditorPage] Failed to check FFmpeg:', err);
+      setIsCheckingFfmpeg(false);
+    });
     
     // Load library videos for the dropdown
     loadLibrary().then(() => {
@@ -117,11 +123,15 @@ export function EditorPage() {
   }, [selectedVideoId]);
 
   useEffect(() => {
-    if (ffmpegStatus && !ffmpegStatus.installed) {
-      setShowFFmpegModal(true);
-      setFfmpegReady(false);
-    } else if (ffmpegStatus?.installed) {
-      setFfmpegReady(true);
+    if (ffmpegStatus) {
+      setIsCheckingFfmpeg(false);
+      if (!ffmpegStatus.installed) {
+        setShowFFmpegModal(true);
+        setFfmpegReady(false);
+      } else {
+        setFfmpegReady(true);
+        setShowFFmpegModal(false);
+      }
     }
   }, [ffmpegStatus]);
 
@@ -185,7 +195,7 @@ export function EditorPage() {
         <Title fw={700} size="xl">
           Video Editor
         </Title>
-        {!ffmpegReady && (
+        {!ffmpegReady && !isCheckingFfmpeg && (
           <Alert color="red" icon={<IconAlertCircle size={16} />}>
             <Group gap="xs">
               <Text size="sm">FFmpeg not installed</Text>
