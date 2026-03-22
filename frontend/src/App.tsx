@@ -14,12 +14,14 @@ import {
   IconMoon,
   IconSettings,
   IconSun,
+  IconTool,
   IconVideo,
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import { LoggerViewer } from './components/LoggerViewer';
 import { DownloadPage } from './pages/DownloadPage';
+import { EditorPage } from './pages/EditorPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useSettingsStore, useVersionStore } from './stores';
@@ -27,7 +29,7 @@ import { useSettingsStore, useVersionStore } from './stores';
 function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [mobileOpened, setMobileOpened] = useState(false);
-  const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
+  const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'editor' | 'settings'>('downloads');
   const [loggerOpened, setLoggerOpened] = useState(false);
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
   const { version, fetchVersion } = useVersionStore();
@@ -42,6 +44,7 @@ function App() {
   const navItems = [
     { id: 'downloads' as const, label: 'Downloads', icon: IconDownload },
     { id: 'library' as const, label: 'Library', icon: IconVideo },
+    { id: 'editor' as const, label: 'Editor', icon: IconTool },
     { id: 'settings' as const, label: 'Settings', icon: IconSettings },
   ];
 
@@ -165,6 +168,7 @@ function App() {
       <AppShell.Main bg={dark ? '#1a1b1e' : '#f8f9fa'}>
         {activeTab === 'downloads' && <DownloadPage />}
         {activeTab === 'library' && <LibraryPage />}
+        {activeTab === 'editor' && <EditorPage />}
         {activeTab === 'settings' && <SettingsPage />}
       </AppShell.Main>
 
