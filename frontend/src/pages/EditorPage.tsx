@@ -45,7 +45,7 @@ export function EditorPage() {
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
 
-  const { videos, loadLibrary } = useLibraryStore();
+  const { videos, loadLibrary, isLoading: isLoadingLibrary } = useLibraryStore();
   const {
     ffmpegStatus,
     checkFFmpeg,
@@ -66,6 +66,7 @@ export function EditorPage() {
     submitJob,
     reset,
     loadJobs,
+    loadVideoMetadata,
   } = useEditorStore();
 
   useEffect(() => {
@@ -196,6 +197,8 @@ export function EditorPage() {
                     label: v.title,
                   }))}
                   leftSection={<IconVideo size={16} />}
+                  disabled={isLoadingLibrary}
+                  rightSection={isLoadingLibrary ? <Loader size={16} /> : null}
                 />
               </Stack>
             </Paper>
@@ -258,11 +261,23 @@ export function EditorPage() {
                     </Tabs.Tab>
                   </Tabs.List>
 
-                  <Tabs.Panel value="preview" pt="md" style={{ flex: 1 }}>
-                    {isLoadingMetadata ? (
+                  <Tabs.Panel value="preview" pt="md" style={{ flex: 1, minHeight: 400 }}>
+                    {!videoMetadata && isLoadingMetadata ? (
                       <Stack align="center" justify="center" h={400}>
                         <Loader />
                         <Text c="dimmed">Loading video metadata...</Text>
+                      </Stack>
+                    ) : !videoMetadata ? (
+                      <Stack align="center" justify="center" h={400}>
+                        <Text c="red" ta="center">
+                          Failed to load video metadata
+                        </Text>
+                        <Button 
+                          variant="light" 
+                          onClick={() => loadVideoMetadata(selectedVideo.id)}
+                        >
+                          Retry
+                        </Button>
                       </Stack>
                     ) : (
                       <VideoPlayer

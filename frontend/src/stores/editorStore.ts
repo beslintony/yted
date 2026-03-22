@@ -137,20 +137,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   loadVideoMetadata: async (videoId: string) => {
+    console.log('[EditorStore] Loading video metadata for:', videoId);
     set({ isLoadingMetadata: true });
     try {
       const metadata = await GetVideoMetadata(videoId);
+      console.log('[EditorStore] Metadata received:', metadata);
       if (metadata) {
         // Convert backend type to frontend type
         const videoMeta: VideoMetadata = {
-          duration: (metadata as app.VideoMetadataResult).duration,
-          width: (metadata as app.VideoMetadataResult).width,
-          height: (metadata as app.VideoMetadataResult).height,
-          fps: (metadata as app.VideoMetadataResult).fps,
-          bitrate: (metadata as app.VideoMetadataResult).bitrate,
-          codec: (metadata as app.VideoMetadataResult).codec,
+          duration: (metadata as app.VideoMetadataResult).duration || 0,
+          width: (metadata as app.VideoMetadataResult).width || 0,
+          height: (metadata as app.VideoMetadataResult).height || 0,
+          fps: (metadata as app.VideoMetadataResult).fps || 0,
+          bitrate: (metadata as app.VideoMetadataResult).bitrate || 0,
+          codec: (metadata as app.VideoMetadataResult).codec || 'unknown',
           audioCodec: (metadata as app.VideoMetadataResult).audio_codec,
-          hasAudio: (metadata as app.VideoMetadataResult).has_audio,
+          hasAudio: (metadata as app.VideoMetadataResult).has_audio || false,
         };
         set({ videoMetadata: videoMeta });
         // Set default crop end to video duration
@@ -162,9 +164,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             },
           }));
         }
+      } else {
+        console.warn('[EditorStore] No metadata returned for video:', videoId);
       }
     } catch (err) {
-      console.error('Failed to load video metadata:', err);
+      console.error('[EditorStore] Failed to load video metadata:', err);
     } finally {
       set({ isLoadingMetadata: false });
     }
