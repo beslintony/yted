@@ -183,7 +183,8 @@ export function EditorPage() {
       </Group>
 
       <Grid gutter="md" style={{ flex: 1 }}>
-        <Grid.Col span={4}>
+        <Grid.Col span={4} style={{ border: '2px dashed red' }}>
+          <Text c="red" size="xs" mb="xs">LEFT COLUMN (span=4)</Text>
           <Stack gap="md">
             <Paper withBorder p="md">
               <Stack gap="sm">
@@ -247,7 +248,8 @@ export function EditorPage() {
           </Stack>
         </Grid.Col>
 
-        <Grid.Col span={8}>
+        <Grid.Col span={8} style={{ border: '2px dashed blue' }}>
+          <Text c="blue" size="xs" mb="xs">RIGHT COLUMN (span=8)</Text>
           <Paper withBorder p="md" h="100%" style={{ minHeight: 500 }}>
             {selectedVideo ? (
               <Tabs 
