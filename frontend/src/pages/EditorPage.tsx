@@ -45,7 +45,7 @@ export function EditorPage() {
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
 
-  const { settings: globalSettings, loadSettings } = useSettingsStore();
+  const { loadSettings } = useSettingsStore();
   const libraryStore = useLibraryStore();
   const { videos, loadLibrary, isLoading: isLoadingLibrary } = libraryStore;
   const {
