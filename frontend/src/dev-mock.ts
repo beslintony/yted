@@ -6,10 +6,32 @@
  */
 
 const isDev = import.meta.env.DEV;
-const isWails = typeof (window as any).go !== 'undefined';
 
-if (isDev && !isWails) {
-  console.log('[DevMock] Initializing Wails mocks for development');
+// Function to check if Wails is available
+function hasWails(): boolean {
+  return typeof (window as any).go !== 'undefined' && 
+         (window as any).go?.app?.App !== undefined;
+}
+
+// Function to initialize mocks
+function initMocks() {
+  if (!isDev) {
+    console.log('[DevMock] Not in dev mode, skipping');
+    return;
+  }
+  
+  if (hasWails()) {
+    console.log('[DevMock] Wails detected, skipping mocks');
+    return;
+  }
+  
+  console.log('[DevMock] Wails NOT detected, initializing mocks...');
+  
+  // Safety check - never overwrite existing go
+  if ((window as any).go) {
+    console.warn('[DevMock] window.go already exists but looks incomplete, skipping to avoid conflicts');
+    return;
+  }
 
   // Mock window.go
   (window as any).go = {
@@ -154,3 +176,6 @@ if (isDev && !isWails) {
 
   console.log('[DevMock] Wails mocks initialized');
 }
+
+// Initialize mocks immediately
+initMocks();
