@@ -52,18 +52,24 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
   }, [opened]);
 
   const checkFFmpegStatus = async () => {
+    console.log('[FFmpegInstallerModal] Checking FFmpeg status...');
     setIsChecking(true);
     try {
       const result = (await CheckFFmpegWithGuidance()) as FFmpegCheckResult;
+      console.log('[FFmpegInstallerModal] FFmpeg check result:', result);
       setCheckResult(result);
 
       if (!result.installed) {
+        console.log('[FFmpegInstallerModal] FFmpeg not installed, getting guide...');
         const guide = (await GetFFmpegInstallGuide()) as InstallGuide;
+        console.log('[FFmpegInstallerModal] Install guide:', guide);
         setInstallGuide(guide);
       } else {
+        console.log('[FFmpegInstallerModal] FFmpeg installed, calling onInstalled');
         onInstalled();
       }
     } catch (err) {
+      console.error('[FFmpegInstallerModal] Error checking FFmpeg:', err);
       error('Error', 'Failed to check FFmpeg status');
     } finally {
       setIsChecking(false);
@@ -94,8 +100,9 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
     }
   };
 
-  // Don't show if FFmpeg is already installed
+  // Don't render if FFmpeg is already installed
   if (checkResult?.installed) {
+    console.log('[FFmpegInstallerModal] FFmpeg installed, not rendering');
     return null;
   }
 

@@ -123,12 +123,15 @@ export function EditorPage() {
   }, [selectedVideoId]);
 
   useEffect(() => {
+    console.log('[EditorPage] FFmpeg status changed:', ffmpegStatus);
     if (ffmpegStatus) {
       setIsCheckingFfmpeg(false);
       if (!ffmpegStatus.installed) {
+        console.log('[EditorPage] FFmpeg not installed, showing modal');
         setShowFFmpegModal(true);
         setFfmpegReady(false);
       } else {
+        console.log('[EditorPage] FFmpeg installed, hiding modal');
         setFfmpegReady(true);
         setShowFFmpegModal(false);
       }
