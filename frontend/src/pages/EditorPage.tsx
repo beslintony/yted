@@ -41,9 +41,47 @@ import { EditOperation } from '../types/editor';
 
 export function EditorPage() {
   const { colorScheme } = useMantineColorScheme();
-  const isDark = colorScheme === 'dark';
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+
+  try {
+    return <EditorPageContent 
+      colorScheme={colorScheme}
+      showFFmpegModal={showFFmpegModal}
+      setShowFFmpegModal={setShowFFmpegModal}
+      ffmpegReady={ffmpegReady}
+      setFfmpegReady={setFfmpegReady}
+      setRenderError={setRenderError}
+    />;
+  } catch (err) {
+    console.error('[EditorPage] Render error:', err);
+    setRenderError(err instanceof Error ? err.message : String(err));
+    return (
+      <Stack p="xl" align="center">
+        <Title order={2} c="red">Editor Error</Title>
+        <Text>{renderError || 'Unknown error occurred'}</Text>
+      </Stack>
+    );
+  }
+}
+
+interface EditorPageContentProps {
+  colorScheme: string;
+  showFFmpegModal: boolean;
+  setShowFFmpegModal: (v: boolean) => void;
+  ffmpegReady: boolean;
+  setFfmpegReady: (v: boolean) => void;
+  setRenderError: (v: string | null) => void;
+}
+
+function EditorPageContent({
+  colorScheme,
+  showFFmpegModal,
+  setShowFFmpegModal,
+  ffmpegReady,
+  setFfmpegReady,
+}: EditorPageContentProps) {
 
   const { videos, loadLibrary, isLoading: isLoadingLibrary } = useLibraryStore();
   const {
