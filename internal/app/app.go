@@ -158,6 +158,7 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Find and configure ffmpeg for video/audio merging
 	a.ffmpeg = NewFFmpegManager()
+	a.ffmpeg.SetContext(ctx)
 
 	// Set custom path from config if available
 	if cfgManager.Get().FFmpegPath != "" {
@@ -174,6 +175,9 @@ func (a *App) Startup(ctx context.Context) {
 			"install_instructions": a.ffmpeg.InstallInstructions(),
 		})
 	}
+
+	// Initialize video editor
+	a.initEditor()
 
 	// Ensure download directory exists
 	if err := os.MkdirAll(a.fm.GetDownloadPath(), 0755); err != nil {
@@ -235,6 +239,12 @@ func (a *App) Shutdown(_ context.Context) {
 			a.logger.Error("Config", "Failed to save config", err)
 		}
 	}
+	// Stop video editor
+	if a.editor != nil {
+		a.editor.Stop()
+		a.logger.Info("Editor", "Video editor stopped")
+	}
+
 	if a.db != nil {
 		if err := a.db.Close(); err != nil {
 			a.logger.Error("Database", "Failed to close database", err)
