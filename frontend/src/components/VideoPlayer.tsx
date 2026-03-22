@@ -1,5 +1,5 @@
-import { Paper, Stack, Text, useMantineColorScheme } from '@mantine/core';
-import { IconVideo } from '@tabler/icons-react';
+import { Alert, Paper, Stack, Text, useMantineColorScheme } from '@mantine/core';
+import { IconAlertCircle, IconVideo } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import { GetVideoFile } from '../../wailsjs/go/app/App';
@@ -11,6 +11,29 @@ interface VideoPlayerProps {
   isGeneratingPreview?: boolean;
   metadata?: VideoMetadata | null;
   onPlay?: () => void;
+}
+
+// Get MIME type from file format
+function getVideoMimeType(format?: string): string {
+  if (!format) return 'video/mp4';
+  
+  const formatLower = format.toLowerCase();
+  switch (formatLower) {
+    case 'webm':
+      return 'video/webm';
+    case 'ogv':
+    case 'ogg':
+      return 'video/ogg';
+    case 'mkv':
+      return 'video/x-matroska';
+    case 'mov':
+      return 'video/quicktime';
+    case 'avi':
+      return 'video/x-msvideo';
+    case 'mp4':
+    default:
+      return 'video/mp4';
+  }
 }
 
 export function VideoPlayer({
@@ -28,6 +51,7 @@ export function VideoPlayer({
   useEffect(() => {
     if (!videoId) {
       setVideoUrl(null);
+      setError(null);
       return;
     }
 
@@ -39,8 +63,9 @@ export function VideoPlayer({
       setError(null);
       try {
         const data = await GetVideoFile(videoId);
-        // Convert byte array to blob
-        const blob = new Blob([new Uint8Array(data)], { type: 'video/mp4' });
+        // Convert byte array to blob with proper MIME type
+        const mimeType = getVideoMimeType(metadata?.codec);
+        const blob = new Blob([new Uint8Array(data)], { type: mimeType });
         objectUrl = URL.createObjectURL(blob);
         setVideoUrl(objectUrl);
       } catch (err) {
@@ -60,7 +85,7 @@ export function VideoPlayer({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [videoId]);
+  }, [videoId, metadata?.codec]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -109,10 +134,11 @@ export function VideoPlayer({
             <track kind="captions" />
           </video>
         ) : error ? (
-          <Stack align="center" gap="md">
-            <Text c="red" ta="center">
-              Error: {error}
-            </Text>
+          <Stack align="center" gap="md" p="xl">
+            <IconAlertCircle size={48} color="var(--mantine-color-red-5)" />
+            <Alert color="red" title="Failed to load video" variant="light">
+              <Text size="sm">{error}</Text>
+            </Alert>
           </Stack>
         ) : (
           <Stack align="center" gap="md">

@@ -549,21 +549,32 @@ func (a *App) GetVideoFile(videoID string) ([]byte, error) {
 	// Get video from database
 	video, err := a.db.GetVideoWithHash(videoID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("database error: %w", err)
 	}
 	if video == nil {
-		return nil, fmt.Errorf("video not found")
+		return nil, fmt.Errorf("video not found: %s", videoID)
 	}
 
-	// Check file size - limit to 500MB to prevent memory issues
+	// Verify file exists
 	info, err := os.Stat(video.FilePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to stat video file: %w", err)
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("video file does not exist: %s", video.FilePath)
+		}
+		return nil, fmt.Errorf("failed to access video file: %w", err)
 	}
-	const maxSize = 500 * 1024 * 1024 // 500MB
+
+	// Check file size - limit to 200MB for preview to prevent memory issues
+	const maxSize = 200 * 1024 * 1024 // 200MB
 	if info.Size() > maxSize {
-		return nil, fmt.Errorf("video file too large (max 500MB for preview)")
+		return nil, fmt.Errorf("video file too large (%s, max 200MB for preview)", formatFileSize(info.Size()))
 	}
+
+	logger.Info("Editor", "Loading video file", map[string]string{
+		"video_id": videoID,
+		"path":     video.FilePath,
+		"size":     formatFileSize(info.Size()),
+	})
 
 	// Read file
 	data, err := os.ReadFile(video.FilePath)
@@ -573,6 +584,11 @@ func (a *App) GetVideoFile(videoID string) ([]byte, error) {
 		})
 		return nil, fmt.Errorf("failed to read video file: %w", err)
 	}
+
+	logger.Info("Editor", "Video file loaded successfully", map[string]string{
+		"video_id": videoID,
+		"size_bytes": fmt.Sprintf("%d", len(data)),
+	})
 
 	return data, nil
 }
