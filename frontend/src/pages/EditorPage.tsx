@@ -41,54 +41,11 @@ import { EditOperation } from '../types/editor';
 
 export function EditorPage() {
   const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === 'dark';
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
 
-  try {
-    return <EditorPageContent 
-      colorScheme={colorScheme}
-      showFFmpegModal={showFFmpegModal}
-      setShowFFmpegModal={setShowFFmpegModal}
-      ffmpegReady={ffmpegReady}
-      setFfmpegReady={setFfmpegReady}
-      setRenderError={setRenderError}
-    />;
-  } catch (err) {
-    console.error('[EditorPage] Render error:', err);
-    setRenderError(err instanceof Error ? err.message : String(err));
-    return (
-      <Stack p="xl" align="center">
-        <Title order={2} c="red">Editor Error</Title>
-        <Text>{renderError || 'Unknown error occurred'}</Text>
-      </Stack>
-    );
-  }
-}
-
-interface EditorPageContentProps {
-  colorScheme: string;
-  showFFmpegModal: boolean;
-  setShowFFmpegModal: (v: boolean) => void;
-  ffmpegReady: boolean;
-  setFfmpegReady: (v: boolean) => void;
-  setRenderError: (v: string | null) => void;
-}
-
-function EditorPageContent({
-  colorScheme,
-  showFFmpegModal,
-  setShowFFmpegModal,
-  ffmpegReady,
-  setFfmpegReady,
-}: EditorPageContentProps) {
-  console.log('[EditorPage] Rendering, colorScheme:', colorScheme);
-
-  console.log('[EditorPage] Before store hooks');
-  
   const { videos, loadLibrary, isLoading: isLoadingLibrary } = useLibraryStore();
-  console.log('[EditorPage] Library store loaded, videos count:', videos.length);
-  
   const {
     ffmpegStatus,
     checkFFmpeg,
@@ -111,8 +68,6 @@ function EditorPageContent({
     loadJobs,
     loadVideoMetadata,
   } = useEditorStore();
-  
-  console.log('[EditorPage] Editor store loaded, selectedVideoId:', selectedVideoId);
 
   useEffect(() => {
     checkFFmpeg();
@@ -209,17 +164,8 @@ function EditorPageContent({
     }
   };
 
-  console.log('[EditorPage] About to render main content');
-  
   return (
     <Stack gap="lg" h="100%">
-      {/* Debug banner - remove after fixing */}
-      <Paper bg="blue" p="xs">
-        <Text c="white" ta="center" size="sm">
-          EditorPage Rendered - Videos: {videos.length}, Selected: {selectedVideoId || 'none'}
-        </Text>
-      </Paper>
-      
       <Group justify="space-between">
         <Title fw={700} size="xl">
           Video Editor
@@ -302,49 +248,56 @@ function EditorPageContent({
         </Grid.Col>
 
         <Grid.Col span={8}>
-          <Paper withBorder p="md" h="100%">
+          <Paper withBorder p="md" h="100%" style={{ minHeight: 500 }}>
             {selectedVideo ? (
-              <Stack gap="md" h="100%">
-                <Tabs value={activeTab} onChange={val => setActiveTab(val as typeof activeTab)}>
-                  <Tabs.List>
-                    <Tabs.Tab value="preview" leftSection={<IconPlayerPlay size={14} />}>
-                      Preview
-                    </Tabs.Tab>
-                    <Tabs.Tab value="history" leftSection={<IconHistory size={14} />}>
-                      History ({jobs.length})
-                    </Tabs.Tab>
-                  </Tabs.List>
+              <Tabs 
+                value={activeTab} 
+                onChange={val => setActiveTab(val as typeof activeTab)}
+                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+              >
+                <Tabs.List>
+                  <Tabs.Tab value="preview" leftSection={<IconPlayerPlay size={14} />}>
+                    Preview
+                  </Tabs.Tab>
+                  <Tabs.Tab value="history" leftSection={<IconHistory size={14} />}>
+                    History ({jobs.length})
+                  </Tabs.Tab>
+                </Tabs.List>
 
-                  <Tabs.Panel value="preview" pt="md" style={{ flex: 1, minHeight: 400 }}>
-                    {!videoMetadata && isLoadingMetadata ? (
-                      <Stack align="center" justify="center" h={400}>
-                        <Loader />
-                        <Text c="dimmed">Loading video metadata...</Text>
-                      </Stack>
-                    ) : !videoMetadata ? (
-                      <Stack align="center" justify="center" h={400}>
-                        <Text c="red" ta="center">
-                          Failed to load video metadata
-                        </Text>
-                        <Button 
-                          variant="light" 
-                          onClick={() => loadVideoMetadata(selectedVideo.id)}
-                        >
-                          Retry
-                        </Button>
-                      </Stack>
-                    ) : (
-                      <VideoPlayer
-                        videoId={selectedVideo.id}
-                        format={selectedVideo.format}
-                        previewFrame={previewFrame}
-                        isGeneratingPreview={isGeneratingPreview}
-                        metadata={videoMetadata}
-                      />
-                    )}
-                  </Tabs.Panel>
+                <Tabs.Panel 
+                  value="preview" 
+                  pt="md" 
+                  style={{ flex: 1, minHeight: 400, display: 'flex', flexDirection: 'column' }}
+                >
+                  {!videoMetadata && isLoadingMetadata ? (
+                    <Stack align="center" justify="center" h={400}>
+                      <Loader />
+                      <Text c="dimmed">Loading video metadata...</Text>
+                    </Stack>
+                  ) : !videoMetadata ? (
+                    <Stack align="center" justify="center" h={400}>
+                      <Text c="red" ta="center">
+                        Failed to load video metadata
+                      </Text>
+                      <Button 
+                        variant="light" 
+                        onClick={() => loadVideoMetadata(selectedVideo.id)}
+                      >
+                        Retry
+                      </Button>
+                    </Stack>
+                  ) : (
+                    <VideoPlayer
+                      videoId={selectedVideo.id}
+                      format={selectedVideo.format}
+                      previewFrame={previewFrame}
+                      isGeneratingPreview={isGeneratingPreview}
+                      metadata={videoMetadata}
+                    />
+                  )}
+                </Tabs.Panel>
 
-                  <Tabs.Panel value="history" pt="md">
+                <Tabs.Panel value="history" pt="md">
                     <Stack gap="sm">
                       {jobs.length === 0 ? (
                         <Text c="dimmed" ta="center" py="xl">
@@ -389,7 +342,6 @@ function EditorPageContent({
                     </Stack>
                   </Tabs.Panel>
                 </Tabs>
-              </Stack>
             ) : (
               <Stack align="center" justify="center" h="100%">
                 <IconVideo size={64} color="var(--mantine-color-gray-5)" />
