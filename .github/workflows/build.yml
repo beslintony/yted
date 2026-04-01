@@ -50,16 +50,32 @@ jobs:
           export PATH=$PATH:$(go env GOPATH)/bin
           wails build -tags webkit2_41 -platform linux/amd64 -ldflags "-s -w" -o YTed
 
+      - name: Bundle FFmpeg
+        run: |
+          curl -sL -o ffmpeg-linux.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
+          tar -xf ffmpeg-linux.tar.xz
+          cp ffmpeg-master-latest-linux64-gpl/bin/ffmpeg build/bin/ffmpeg
+          cp ffmpeg-master-latest-linux64-gpl/bin/ffprobe build/bin/ffprobe
+          chmod +x build/bin/ffmpeg build/bin/ffprobe
+          rm -rf ffmpeg-linux.tar.xz ffmpeg-master-latest-linux64-gpl
+
       - name: Package Linux binary
         run: |
           cd build/bin
-          tar czf YTed-linux-amd64.tar.gz YTed
+          tar czf YTed-linux-amd64.tar.gz YTed ffmpeg ffprobe
 
-      - name: Upload Linux artifact
+      - name: Build Linux .deb package
+        run: |
+          sudo apt-get update && sudo apt-get install -y dpkg-dev
+          build/scripts/build-deb.sh
+
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: YTed-linux-amd64
-          path: build/bin/YTed-linux-amd64.tar.gz
+          path: |
+            build/bin/YTed-linux-amd64.tar.gz
+            build/bin/*.deb
           if-no-files-found: error
 
   # Build for Windows
@@ -90,10 +106,22 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Bundle FFmpeg
+        run: |
+          curl -L -o ffmpeg-windows.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+          Expand-Archive -Path ffmpeg-windows.zip -DestinationPath ffmpeg-windows
+          $dir = Get-ChildItem -Path ffmpeg-windows -Filter "ffmpeg-*-essentials_build" | Select-Object -First 1
+          Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" -Destination "build\bin\ffmpeg.exe"
+          Copy-Item "$($dir.FullName)\bin\ffprobe.exe" -Destination "build\bin\ffprobe.exe"
+          Remove-Item -Recurse -Force ffmpeg-windows.zip, ffmpeg-windows
+
       - name: Build Windows AMD64
         run: |
-          $env:PATH += ";$(go env GOPATH)\bin"
-          wails build -platform windows/amd64 -ldflags "-s -w" -o YTed.exe
+          $env:PATH += ";$(go env GOPATH)\bin;C:\Program Files (x86)\NSIS"
+          wails build -platform windows/amd64 -ldflags "-s -w" -nsis -o YTed.exe
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
