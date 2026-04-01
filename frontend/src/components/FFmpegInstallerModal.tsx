@@ -16,13 +16,12 @@ import {
 import {
   IconCheck,
   IconCopy,
-  IconDownload,
   IconExternalLink,
   IconInfoCircle,
   IconTerminal,
   IconTool,
 } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   CheckFFmpegWithGuidance,
@@ -42,16 +41,10 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
   const [checkResult, setCheckResult] = useState<FFmpegCheckResult | null>(null);
   const [installGuide, setInstallGuide] = useState<InstallGuide | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [copied, setCopied] = useState(false);
+
   const { success, error } = useNotifications();
 
-  useEffect(() => {
-    if (opened) {
-      checkFFmpegStatus();
-    }
-  }, [opened]);
-
-  const checkFFmpegStatus = async () => {
+  const checkFFmpegStatus = useCallback(async () => {
     setIsChecking(true);
     try {
       const result = (await CheckFFmpegWithGuidance()) as FFmpegCheckResult;
@@ -63,17 +56,23 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
       } else {
         onInstalled();
       }
-    } catch (err) {
+    } catch {
       error('Error', 'Failed to check FFmpeg status');
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [error, onInstalled]);
+
+  useEffect(() => {
+    if (opened) {
+      checkFFmpegStatus();
+    }
+  }, [opened, checkFFmpegStatus]);
+
+
 
   const handleCopyCommand = () => {
     if (installGuide?.command) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
       success('Copied!', 'Command copied to clipboard');
     }
   };
@@ -81,7 +80,7 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
   const handleOpenDownloadPage = async () => {
     try {
       await OpenFFmpegDownloadPage();
-    } catch (err) {
+    } catch {
       error('Error', 'Failed to open download page');
     }
   };
@@ -102,7 +101,6 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
       size="lg"
       title={
         <Group gap="sm">
@@ -112,6 +110,7 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
           <Title order={4}>FFmpeg Required</Title>
         </Group>
       }
+      onClose={onClose}
     >
       <Stack gap="md">
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
@@ -126,11 +125,11 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
             <Paper withBorder p="md">
               <Stack gap="md">
                 <Group gap="xs">
-                  <IconInfoCircle size={18} color="#228be6" />
+                  <IconInfoCircle color="#228be6" size={18} />
                   <Text fw={600}>{installGuide.title}</Text>
                 </Group>
 
-                <Text size="sm" c="dimmed">
+                <Text c="dimmed" size="sm">
                   {installGuide.description}
                 </Text>
 
@@ -145,20 +144,20 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
                 </Timeline>
 
                 {installGuide.command && (
-                  <Paper withBorder p="sm" bg="gray.0">
+                  <Paper withBorder bg="gray.0" p="sm">
                     <Stack gap="xs">
                       <Group justify="space-between">
-                        <Text size="xs" c="dimmed">
+                        <Text c="dimmed" size="xs">
                           {installGuide.commandDescription}
                         </Text>
-                        <CopyButton value={installGuide.command} timeout={2000}>
+                        <CopyButton timeout={2000} value={installGuide.command}>
                           {({ copied: isCopied, copy }) => (
                             <Button
-                              size="xs"
-                              variant="light"
                               leftSection={
                                 isCopied ? <IconCheck size={14} /> : <IconCopy size={14} />
                               }
+                              size="xs"
+                              variant="light"
                               onClick={() => {
                                 copy();
                                 handleCopyCommand();
@@ -176,10 +175,10 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
 
                 {installGuide.tips.length > 0 && (
                   <Stack gap="xs">
-                    <Text size="sm" fw={500}>
+                    <Text fw={500} size="sm">
                       Tips:
                     </Text>
-                    <List size="sm" c="dimmed">
+                    <List c="dimmed" size="sm">
                       {installGuide.tips.map((tip, index) => (
                         <List.Item key={index}>{tip}</List.Item>
                       ))}
@@ -191,16 +190,16 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
 
             <Group grow>
               <Button
-                variant="light"
                 leftSection={<IconExternalLink size={16} />}
+                variant="light"
                 onClick={handleOpenDownloadPage}
               >
                 Download FFmpeg
               </Button>
               {checkResult?.canAutoInstall && (
                 <Button
-                  variant="light"
                   leftSection={<IconTerminal size={16} />}
+                  variant="light"
                   onClick={() => {
                     // On macOS with Homebrew, we could potentially auto-install
                     // but for security, we'll just show the command

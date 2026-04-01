@@ -1,7 +1,6 @@
 import {
   Alert,
   Group,
-  NumberInput,
   Paper,
   Select,
   Slider,
@@ -24,13 +23,17 @@ export function ConvertTool({ settings, onChange }: ConvertToolProps) {
 
   return (
     <Stack gap="md">
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder bg="gray.0" p="sm">
         <Stack gap="sm">
-          <Text size="sm" fw={500}>
+          <Text fw={500} size="sm">
             <IconFile size={14} style={{ marginRight: 6 }} />
             Output Format
           </Text>
           <Select
+            data={OUTPUT_FORMATS.map(f => ({
+              value: f.id,
+              label: `${f.name} - ${f.description}`,
+            }))}
             value={settings.outputFormat || 'mp4'}
             onChange={val => {
               onChange({ outputFormat: val as EditSettings['outputFormat'] });
@@ -40,18 +43,11 @@ export function ConvertTool({ settings, onChange }: ConvertToolProps) {
                 onChange({ outputCodec: format.codecs[0] });
               }
             }}
-            data={OUTPUT_FORMATS.map(f => ({
-              value: f.id,
-              label: `${f.name} - ${f.description}`,
-            }))}
           />
         </Stack>
       </Paper>
 
       <Select
-        label="Video Codec"
-        value={settings.outputCodec || 'h264'}
-        onChange={val => onChange({ outputCodec: val as EditSettings['outputCodec'] })}
         data={availableCodecs.map(codecId => {
           const codec = OUTPUT_CODECS.find(c => c.id === codecId);
           return {
@@ -60,51 +56,54 @@ export function ConvertTool({ settings, onChange }: ConvertToolProps) {
           };
         })}
         disabled={availableCodecs.length === 0}
+        label="Video Codec"
+        value={settings.outputCodec || 'h264'}
+        onChange={val => onChange({ outputCodec: val as EditSettings['outputCodec'] })}
       />
 
       <Select
-        label="Resolution"
-        value={settings.outputResolution || 'original'}
-        onChange={val => onChange({ outputResolution: val as EditSettings['outputResolution'] })}
         data={OUTPUT_RESOLUTIONS.map(r => ({
           value: r.id,
           label: r.name,
         }))}
+        label="Resolution"
+        value={settings.outputResolution || 'original'}
+        onChange={val => onChange({ outputResolution: val as EditSettings['outputResolution'] })}
       />
 
       <Paper withBorder p="sm">
         <Stack gap="xs">
           <Group justify="space-between">
-            <Text size="sm" fw={500}>
+            <Text fw={500} size="sm">
               <IconSettings size={14} style={{ marginRight: 6 }} />
               Quality (CRF)
             </Text>
-            <Text size="sm" c="dimmed">
+            <Text c="dimmed" size="sm">
               {settings.outputQuality ?? 23} - {getQualityLabel(settings.outputQuality ?? 23)}
             </Text>
           </Group>
           <Slider
-            value={settings.outputQuality ?? 23}
-            onChange={val => onChange({ outputQuality: val })}
-            min={18}
-            max={35}
-            step={1}
             marks={[
               { value: 18, label: 'Best' },
               { value: 23, label: 'Good' },
               { value: 28, label: 'Med' },
               { value: 35, label: 'Low' },
             ]}
+            max={35}
+            min={18}
+            step={1}
+            value={settings.outputQuality ?? 23}
+            onChange={val => onChange({ outputQuality: val })}
           />
-          <Text size="xs" c="dimmed">
+          <Text c="dimmed" size="xs">
             Lower values = better quality, larger file size
           </Text>
         </Stack>
       </Paper>
 
       <Switch
-        label="Remove Audio"
         checked={settings.removeAudio || false}
+        label="Remove Audio"
         onChange={e => onChange({ removeAudio: e.currentTarget.checked })}
       />
 

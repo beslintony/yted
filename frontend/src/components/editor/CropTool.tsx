@@ -1,4 +1,4 @@
-import { Button, Group, NumberInput, Paper, RangeSlider, Select, Stack, Text } from '@mantine/core';
+import { Group, NumberInput, Paper, RangeSlider, Select, Stack, Text } from '@mantine/core';
 import { IconAspectRatio, IconClock, IconCrop } from '@tabler/icons-react';
 
 import { CROP_PRESETS, EditSettings } from '../../types/editor';
@@ -65,42 +65,42 @@ export function CropTool({
       {videoDuration > 0 && (
         <>
           <RangeSlider
-            min={0}
-            max={videoDuration}
-            step={0.1}
-            value={[settings.cropStart ?? 0, settings.cropEnd ?? videoDuration]}
-            onChange={([start, end]) => {
-              onChange({ cropStart: start, cropEnd: end });
-            }}
             marks={[
               { value: 0, label: '0:00' },
               { value: videoDuration / 2, label: formatTime(videoDuration / 2) },
               { value: videoDuration, label: formatTime(videoDuration) },
             ]}
+            max={videoDuration}
+            min={0}
+            step={0.1}
+            value={[settings.cropStart ?? 0, settings.cropEnd ?? videoDuration]}
+            onChange={([start, end]) => {
+              onChange({ cropStart: start, cropEnd: end });
+            }}
           />
           <Group justify="space-between">
-            <Text size="sm" c="dimmed">
+            <Text c="dimmed" size="sm">
               Start: {formatTime(settings.cropStart ?? 0)}
             </Text>
-            <Text size="sm" c="dimmed">
+            <Text c="dimmed" size="sm">
               End: {formatTime(settings.cropEnd ?? videoDuration)}
             </Text>
           </Group>
         </>
       )}
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder bg="gray.0" p="sm">
         <Stack gap="xs">
-          <Text size="sm" fw={500}>
+          <Text fw={500} size="sm">
             <IconAspectRatio size={14} style={{ marginRight: 6 }} />
             Aspect Ratio Preset
           </Text>
           <Select
-            placeholder="Select crop ratio"
             data={CROP_PRESETS.map(p => ({
               value: p.id,
               label: `${p.name} (${p.ratio})`,
             }))}
+            placeholder="Select crop ratio"
             onChange={handleCropPresetChange}
           />
         </Stack>
@@ -114,40 +114,40 @@ export function CropTool({
       <Group grow>
         <NumberInput
           label="X Position"
+          max={videoWidth}
+          min={0}
           value={settings.cropX ?? 0}
           onChange={val => onChange({ cropX: Number(val) || 0 })}
-          min={0}
-          max={videoWidth}
         />
         <NumberInput
           label="Y Position"
+          max={videoHeight}
+          min={0}
           value={settings.cropY ?? 0}
           onChange={val => onChange({ cropY: Number(val) || 0 })}
-          min={0}
-          max={videoHeight}
         />
       </Group>
 
       <Group grow>
         <NumberInput
           label="Width"
+          max={videoWidth}
+          min={1}
           value={settings.cropWidth ?? videoWidth}
           onChange={val => onChange({ cropWidth: Number(val) || videoWidth })}
-          min={1}
-          max={videoWidth}
         />
         <NumberInput
           label="Height"
+          max={videoHeight}
+          min={1}
           value={settings.cropHeight ?? videoHeight}
           onChange={val => onChange({ cropHeight: Number(val) || videoHeight })}
-          min={1}
-          max={videoHeight}
         />
       </Group>
 
       {videoWidth > 0 && videoHeight > 0 && (
         <Paper withBorder p="sm">
-          <Text size="sm" c="dimmed">
+          <Text c="dimmed" size="sm">
             Output: {settings.cropWidth ?? videoWidth} x {settings.cropHeight ?? videoHeight} @{' '}
             {(settings.cropStart ?? 0).toFixed(1)}s -{' '}
             {(settings.cropEnd ?? videoDuration).toFixed(1)}s

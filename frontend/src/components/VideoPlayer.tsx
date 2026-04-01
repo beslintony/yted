@@ -45,7 +45,7 @@ export function VideoPlayer({
   metadata,
   onPlay,
 }: VideoPlayerProps) {
-  const { colorScheme } = useMantineColorScheme();
+  useMantineColorScheme();
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,17 +64,17 @@ export function VideoPlayer({
       setIsLoading(true);
       setError(null);
       try {
-        console.log('[VideoPlayer] Loading video:', videoId, 'format:', format);
+        console.warn('[VideoPlayer] Loading video:', videoId, 'format:', format);
         const data = await GetVideoFile(videoId);
-        console.log('[VideoPlayer] Video data loaded, size:', data.length);
+        console.warn('[VideoPlayer] Video data loaded, size:', data.length);
 
         // Convert byte array to blob with proper MIME type
         const mimeType = getVideoMimeType(format);
-        console.log('[VideoPlayer] Using MIME type:', mimeType);
+        console.warn('[VideoPlayer] Using MIME type:', mimeType);
 
         const blob = new Blob([new Uint8Array(data)], { type: mimeType });
         objectUrl = URL.createObjectURL(blob);
-        console.log('[VideoPlayer] Object URL created:', objectUrl);
+        console.warn('[VideoPlayer] Object URL created:', objectUrl);
 
         setVideoUrl(objectUrl);
       } catch (err) {
@@ -118,8 +118,8 @@ export function VideoPlayer({
       >
         {previewFrame ? (
           <img
-            src={previewFrame}
             alt="Preview"
+            src={previewFrame}
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
@@ -130,15 +130,15 @@ export function VideoPlayer({
           <video
             key={videoUrl}
             controls
-            onClick={onPlay}
+            controlsList="nodownload"
+            preload="metadata"
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
               width: '100%',
               height: '100%',
             }}
-            controlsList="nodownload"
-            preload="metadata"
+            onClick={onPlay}
           >
             <source src={videoUrl} type={getVideoMimeType(format)} />
             <track kind="captions" />
@@ -146,14 +146,14 @@ export function VideoPlayer({
           </video>
         ) : error ? (
           <Stack align="center" gap="md" p="xl">
-            <IconAlertCircle size={48} color="var(--mantine-color-red-5)" />
+            <IconAlertCircle color="var(--mantine-color-red-5)" size={48} />
             <Alert color="red" title="Failed to load video" variant="light">
               <Text size="sm">{error}</Text>
             </Alert>
           </Stack>
         ) : (
           <Stack align="center" gap="md">
-            <IconVideo size={64} color="var(--mantine-color-gray-5)" />
+            <IconVideo color="var(--mantine-color-gray-5)" size={64} />
             <Text c="dimmed" ta="center">
               {isLoading ? 'Loading video...' : 'No video selected'}
             </Text>
@@ -181,8 +181,8 @@ export function VideoPlayer({
       </Paper>
 
       {metadata && (
-        <Paper withBorder p="sm" bg="var(--mantine-color-body)">
-          <Text size="sm" c="dimmed">
+        <Paper withBorder bg="var(--mantine-color-body)" p="sm">
+          <Text c="dimmed" size="sm">
             {metadata.width}x{metadata.height} • {metadata.codec?.toUpperCase() || 'Unknown Codec'}
             {metadata.duration > 0 && ` • ${formatDuration(metadata.duration)}`}
             {metadata.hasAudio ? ' • With Audio' : ' • No Audio'}

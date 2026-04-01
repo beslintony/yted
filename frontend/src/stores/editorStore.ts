@@ -2,7 +2,6 @@ import { create } from 'zustand';
 
 import {
   CheckFFmpegWithGuidance,
-  GetEditJobStatus,
   GetFFmpegInstallGuide,
   GetPreviewImage,
   GetVideoMetadata,
@@ -321,7 +320,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   cancelJob: async (jobId: string) => {
     try {
       // Note: CancelEditJob needs to be added to backend
-      console.log('Cancel job:', jobId);
+      console.warn('Cancel job:', jobId);
     } catch (err) {
       console.error('Failed to cancel job:', err);
     }

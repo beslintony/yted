@@ -19,6 +19,7 @@ import {
   IconSun,
   IconVolume,
 } from '@tabler/icons-react';
+import React from 'react';
 
 import { EditSettings, EFFECT_RANGES, ROTATION_OPTIONS } from '../../types/editor';
 
@@ -52,25 +53,25 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
       <Group justify="space-between">
         <Group gap="xs">
           {icon}
-          <Text size="sm" fw={500}>
+          <Text fw={500} size="sm">
             {label}
           </Text>
         </Group>
-        <Text size="sm" c="dimmed">
+        <Text c="dimmed" size="sm">
           {formatValue ? formatValue(value) : value.toFixed(1)}
         </Text>
       </Group>
       <Slider
-        value={value}
-        onChange={onChangeValue}
-        min={range.min}
-        max={range.max}
-        step={range.step}
         marks={[
           { value: range.min, label: range.min.toString() },
           { value: range.default, label: range.default.toString() },
           { value: range.max, label: range.max.toString() },
         ]}
+        max={range.max}
+        min={range.min}
+        step={range.step}
+        value={value}
+        onChange={onChangeValue}
       />
     </Stack>
   );
@@ -80,18 +81,18 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
       <Group justify="space-between">
         <Text fw={600}>Video Effects</Text>
         <Button
-          variant="light"
-          size="xs"
           leftSection={<IconRefresh size={14} />}
+          size="xs"
+          variant="light"
           onClick={handleReset}
         >
           Reset All
         </Button>
       </Group>
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder bg="gray.0" p="sm">
         <Stack gap="md">
-          <Text size="sm" fw={500}>
+          <Text fw={500} size="sm">
             <IconBrightness size={14} style={{ marginRight: 6 }} />
             Color Adjustments
           </Text>
@@ -124,9 +125,9 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
         </Stack>
       </Paper>
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder bg="gray.0" p="sm">
         <Stack gap="md">
-          <Text size="sm" fw={500}>
+          <Text fw={500} size="sm">
             <IconRotate size={14} style={{ marginRight: 6 }} />
             Transform
           </Text>
@@ -134,12 +135,12 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
           <Stack gap="xs">
             <Text size="sm">Rotation</Text>
             <SegmentedControl
-              value={(settings.rotation ?? 0).toString()}
-              onChange={val => onChange({ rotation: Number(val) as EditSettings['rotation'] })}
               data={ROTATION_OPTIONS.map(opt => ({
                 value: opt.value.toString(),
                 label: opt.label,
               }))}
+              value={(settings.rotation ?? 0).toString()}
+              onChange={val => onChange({ rotation: Number(val) as EditSettings['rotation'] })}
             />
           </Stack>
 
@@ -154,9 +155,9 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
         </Stack>
       </Paper>
 
-      <Paper withBorder p="sm" bg="gray.0">
+      <Paper withBorder bg="gray.0" p="sm">
         <Stack gap="md">
-          <Text size="sm" fw={500}>
+          <Text fw={500} size="sm">
             <IconVolume size={14} style={{ marginRight: 6 }} />
             Audio
           </Text>
@@ -173,10 +174,10 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
           <Divider />
 
           <Switch
-            label="Remove Audio Track"
             checked={settings.removeAudio || false}
-            onChange={e => onChange({ removeAudio: e.currentTarget.checked })}
             description="Create a silent video"
+            label="Remove Audio Track"
+            onChange={e => onChange({ removeAudio: e.currentTarget.checked })}
           />
         </Stack>
       </Paper>

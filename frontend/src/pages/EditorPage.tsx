@@ -16,13 +16,11 @@ import {
 } from '@mantine/core';
 import {
   IconAlertCircle,
-  IconCrop,
   IconDownload,
   IconHistory,
   IconPhoto,
   IconPlayerPlay,
   IconScissors,
-  IconSettings,
   IconTool,
   IconVideo,
   IconWand,
@@ -30,18 +28,17 @@ import {
 import { useEffect, useState } from 'react';
 
 import { EventsOn } from '../../wailsjs/runtime';
-import { FFmpegInstallerModal } from '../components/FFmpegInstallerModal';
 import { ConvertTool } from '../components/editor/ConvertTool';
 import { CropTool } from '../components/editor/CropTool';
 import { EffectsTool } from '../components/editor/EffectsTool';
 import { WatermarkTool } from '../components/editor/WatermarkTool';
+import { FFmpegInstallerModal } from '../components/FFmpegInstallerModal';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { useEditorStore, useLibraryStore } from '../stores';
 import { EditOperation } from '../types/editor';
 
 export function EditorPage() {
-  const { colorScheme } = useMantineColorScheme();
-  const isDark = colorScheme === 'dark';
+  useMantineColorScheme();
   const [showFFmpegModal, setShowFFmpegModal] = useState(false);
   const [ffmpegReady, setFfmpegReady] = useState(false);
 
@@ -64,7 +61,6 @@ export function EditorPage() {
     activeTab,
     setActiveTab,
     submitJob,
-    reset,
     loadJobs,
   } = useEditorStore();
 
@@ -73,7 +69,7 @@ export function EditorPage() {
     // Load library videos for the dropdown
     loadLibrary();
     // Don't reset on unmount - we want to preserve state when switching tabs
-  }, []);
+  }, [checkFFmpeg, loadLibrary]);
 
   // Listen for editor events - separate effect to avoid recreating listeners unnecessarily
   useEffect(() => {
@@ -137,10 +133,10 @@ export function EditorPage() {
         return (
           <CropTool
             settings={settings}
-            onChange={updateSettings}
             videoDuration={videoMetadata?.duration || 0}
-            videoWidth={videoMetadata?.width || 0}
             videoHeight={videoMetadata?.height || 0}
+            videoWidth={videoMetadata?.width || 0}
+            onChange={updateSettings}
           />
         );
       case 'watermark':
@@ -151,9 +147,9 @@ export function EditorPage() {
         return <EffectsTool settings={settings} onChange={updateSettings} />;
       default:
         return (
-          <Paper p="xl" withBorder>
+          <Paper withBorder p="xl">
             <Stack align="center" gap="md">
-              <IconTool size={48} color="var(--mantine-color-gray-5)" />
+              <IconTool color="var(--mantine-color-gray-5)" size={48} />
               <Text c="dimmed" ta="center">
                 Select an operation from the toolbar to start editing
               </Text>
@@ -188,14 +184,14 @@ export function EditorPage() {
               <Stack gap="sm">
                 <Text fw={600}>Select Video</Text>
                 <Select
-                  placeholder="Choose a video from library"
-                  value={selectedVideoId}
-                  onChange={handleVideoSelect}
                   data={videos.map(v => ({
                     value: v.id,
                     label: v.title,
                   }))}
                   leftSection={<IconVideo size={16} />}
+                  placeholder="Choose a video from library"
+                  value={selectedVideoId}
+                  onChange={handleVideoSelect}
                 />
               </Stack>
             </Paper>
@@ -206,8 +202,7 @@ export function EditorPage() {
                   <Stack gap="sm">
                     <Text fw={600}>Operation</Text>
                     <SegmentedControl
-                      value={currentOperation || ''}
-                      onChange={val => handleOperationSelect(val as EditOperation)}
+                      fullWidth
                       data={operationTools.map(tool => ({
                         value: tool.value,
                         label: (
@@ -218,7 +213,8 @@ export function EditorPage() {
                         ),
                       }))}
                       orientation="vertical"
-                      fullWidth
+                      value={currentOperation || ''}
+                      onChange={val => handleOperationSelect(val as EditOperation)}
                     />
                   </Stack>
                 </Paper>
@@ -230,10 +226,10 @@ export function EditorPage() {
                 {currentOperation && (
                   <Button
                     fullWidth
-                    size="lg"
+                    disabled={!ffmpegReady}
                     leftSection={<IconPlayerPlay size={20} />}
                     loading={isSubmitting}
-                    disabled={!ffmpegReady}
+                    size="lg"
                     onClick={handleSubmit}
                   >
                     Process Video
@@ -245,40 +241,40 @@ export function EditorPage() {
         </Grid.Col>
 
         <Grid.Col span={8}>
-          <Paper withBorder p="md" h="100%">
+          <Paper withBorder h="100%" p="md">
             {selectedVideo ? (
               <Stack gap="md" h="100%">
                 <Tabs value={activeTab} onChange={val => setActiveTab(val as typeof activeTab)}>
                   <Tabs.List>
-                    <Tabs.Tab value="preview" leftSection={<IconPlayerPlay size={14} />}>
+                    <Tabs.Tab leftSection={<IconPlayerPlay size={14} />} value="preview">
                       Preview
                     </Tabs.Tab>
-                    <Tabs.Tab value="history" leftSection={<IconHistory size={14} />}>
+                    <Tabs.Tab leftSection={<IconHistory size={14} />} value="history">
                       History ({jobs.length})
                     </Tabs.Tab>
                   </Tabs.List>
 
-                  <Tabs.Panel value="preview" pt="md" style={{ flex: 1 }}>
+                  <Tabs.Panel pt="md" style={{ flex: 1 }} value="preview">
                     {isLoadingMetadata ? (
-                      <Stack align="center" justify="center" h={400}>
+                      <Stack align="center" h={400} justify="center">
                         <Loader />
                         <Text c="dimmed">Loading video metadata...</Text>
                       </Stack>
                     ) : (
                       <VideoPlayer
-                        videoId={selectedVideo.id}
                         format={selectedVideo.format}
-                        previewFrame={previewFrame}
                         isGeneratingPreview={isGeneratingPreview}
                         metadata={videoMetadata}
+                        previewFrame={previewFrame}
+                        videoId={selectedVideo.id}
                       />
                     )}
                   </Tabs.Panel>
 
-                  <Tabs.Panel value="history" pt="md">
+                  <Tabs.Panel pt="md" value="history">
                     <Stack gap="sm">
                       {jobs.length === 0 ? (
-                        <Text c="dimmed" ta="center" py="xl">
+                        <Text c="dimmed" py="xl" ta="center">
                           No edit jobs yet
                         </Text>
                       ) : (
@@ -286,15 +282,14 @@ export function EditorPage() {
                           <Card key={job.id} withBorder padding="sm">
                             <Group justify="space-between">
                               <Stack gap={4}>
-                                <Text size="sm" fw={500} tt="capitalize">
+                                <Text fw={500} size="sm" tt="capitalize">
                                   {job.operation}
                                 </Text>
-                                <Text size="xs" c="dimmed">
+                                <Text c="dimmed" size="xs">
                                   {new Date(job.createdAt * 1000).toLocaleString()}
                                 </Text>
                               </Stack>
                               <Text
-                                size="sm"
                                 c={
                                   job.status === 'completed'
                                     ? 'green'
@@ -304,13 +299,14 @@ export function EditorPage() {
                                         ? 'blue'
                                         : 'gray'
                                 }
+                                size="sm"
                                 tt="capitalize"
                               >
                                 {job.status}
                               </Text>
                             </Group>
                             {job.status === 'processing' && (
-                              <Text size="xs" c="dimmed" mt={4}>
+                              <Text c="dimmed" mt={4} size="xs">
                                 {Math.round(job.progress)}%
                               </Text>
                             )}
@@ -322,9 +318,9 @@ export function EditorPage() {
                 </Tabs>
               </Stack>
             ) : (
-              <Stack align="center" justify="center" h="100%">
-                <IconVideo size={64} color="var(--mantine-color-gray-5)" />
-                <Text c="dimmed" ta="center" size="lg">
+              <Stack align="center" h="100%" justify="center">
+                <IconVideo color="var(--mantine-color-gray-5)" size={64} />
+                <Text c="dimmed" size="lg" ta="center">
                   Select a video from your library to start editing
                 </Text>
               </Stack>
