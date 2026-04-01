@@ -250,7 +250,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 	}
 
 	var received atomic.Bool
-	listener := func(entry LogEntry) {
+	listener := func(_ LogEntry) {
 		received.Store(true)
 	}
 

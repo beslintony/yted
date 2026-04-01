@@ -1,20 +1,48 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
+	goRuntime "runtime"
 	"strings"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"yted/internal/log"
 )
+
+// FFmpegCheckResult provides detailed FFmpeg status for UI
+type FFmpegCheckResult struct {
+	Installed      bool   `json:"installed"`
+	Version        string `json:"version"`
+	Path           string `json:"path"`
+	CanAutoInstall bool   `json:"canAutoInstall"`
+	InstallMethod  string `json:"installMethod"`  // "package_manager", "download", "manual"
+	InstallCommand string `json:"installCommand"` // OS-specific command
+	InstallGuide   string `json:"installGuide"`   // Markdown guide text
+	DownloadURL    string `json:"downloadURL"`    // Direct download link
+	RequiresAdmin  bool   `json:"requiresAdmin"`
+}
+
+// InstallGuide provides OS-specific installation instructions
+type InstallGuide struct {
+	Title              string   `json:"title"`
+	Description        string   `json:"description"`
+	Steps              []string `json:"steps"`
+	Command            string   `json:"command"`
+	CommandDescription string   `json:"commandDescription"`
+	AlternativeURL     string   `json:"alternativeURL"`
+	Tips               []string `json:"tips"`
+}
 
 // FFmpegManager handles ffmpeg binary detection and management
 type FFmpegManager struct {
 	binPath    string
 	customPath string
 	logger     *log.Logger
+	ctx        context.Context
 }
 
 // NewFFmpegManager creates a new ffmpeg manager
@@ -105,7 +133,7 @@ func (f *FFmpegManager) Find() string {
 
 // getCommonPaths returns common ffmpeg installation paths
 func (f *FFmpegManager) getCommonPaths() []string {
-	switch runtime.GOOS {
+	switch goRuntime.GOOS {
 	case "darwin":
 		return []string{
 			"/opt/homebrew/bin/ffmpeg",
@@ -192,7 +220,7 @@ func (f *FFmpegManager) MergeVideoAudio(videoPath, audioPath, outputPath string)
 
 // InstallInstructions returns instructions for installing ffmpeg
 func (f *FFmpegManager) InstallInstructions() string {
-	switch runtime.GOOS {
+	switch goRuntime.GOOS {
 	case "darwin":
 		return "Install ffmpeg using: brew install ffmpeg"
 	case "linux":
@@ -201,5 +229,223 @@ func (f *FFmpegManager) InstallInstructions() string {
 		return "Download ffmpeg from https://ffmpeg.org/download.html and add to PATH"
 	default:
 		return "Please install ffmpeg from https://ffmpeg.org/download.html"
+	}
+}
+
+// SetContext sets the Wails context for opening URLs
+func (f *FFmpegManager) SetContext(ctx context.Context) {
+	f.ctx = ctx
+}
+
+// CheckFFmpegWithGuidance returns detailed FFmpeg status with install guidance
+func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
+	path := f.Find()
+	version := f.GetVersion()
+
+	result := FFmpegCheckResult{
+		Installed: path != "",
+		Version:   version,
+		Path:      path,
+	}
+
+	if !result.Installed {
+		guide := f.GetInstallGuide()
+		result.InstallMethod = f.getInstallMethod()
+		result.InstallCommand = guide.Command
+		result.InstallGuide = f.formatInstallGuide(guide)
+		result.DownloadURL = guide.AlternativeURL
+		result.RequiresAdmin = goRuntime.GOOS != "darwin" || !f.isHomebrewAvailable()
+		result.CanAutoInstall = goRuntime.GOOS == "darwin" && f.isHomebrewAvailable()
+	}
+
+	return result
+}
+
+// GetInstallGuide returns OS-specific installation instructions
+func (f *FFmpegManager) GetInstallGuide() InstallGuide {
+	switch goRuntime.GOOS {
+	case "darwin":
+		return f.getMacOSInstallGuide()
+	case "linux":
+		return f.getLinuxInstallGuide()
+	case "windows":
+		return f.getWindowsInstallGuide()
+	default:
+		return InstallGuide{
+			Title:              "Install FFmpeg",
+			Description:        "Please install FFmpeg for your operating system",
+			Steps:              []string{"Visit the FFmpeg download page", "Download the appropriate version", "Follow the installation instructions"},
+			Command:            "",
+			AlternativeURL:     "https://ffmpeg.org/download.html",
+			CommandDescription: "See website for instructions",
+			Tips:               []string{"Make sure to add FFmpeg to your system PATH"},
+		}
+	}
+}
+
+func (f *FFmpegManager) getMacOSInstallGuide() InstallGuide {
+	tips := []string{
+		"Installation may take 5-10 minutes depending on your connection",
+		"Homebrew will automatically add FFmpeg to your PATH",
+	}
+
+	if !f.isHomebrewAvailable() {
+		tips = append([]string{"First install Homebrew from https://brew.sh"}, tips...)
+	}
+
+	return InstallGuide{
+		Title:              "Install FFmpeg on macOS",
+		Description:        "FFmpeg can be easily installed using Homebrew package manager",
+		Steps:              []string{"Open Terminal", "Run the command below", "Wait for installation to complete", "Restart YTed"},
+		Command:            "brew install ffmpeg",
+		CommandDescription: "Copy and paste this command in Terminal",
+		AlternativeURL:     "https://ffmpeg.org/download.html#build-mac",
+		Tips:               tips,
+	}
+}
+
+func (f *FFmpegManager) getLinuxInstallGuide() InstallGuide {
+	distro := f.detectLinuxDistro()
+
+	switch distro {
+	case "ubuntu", "debian":
+		return InstallGuide{
+			Title:              "Install FFmpeg on Ubuntu/Debian",
+			Description:        "Install FFmpeg using apt package manager",
+			Steps:              []string{"Open Terminal", "Run: sudo apt update", "Run the command below", "Restart YTed"},
+			Command:            "sudo apt install ffmpeg",
+			CommandDescription: "Copy and paste this command in Terminal",
+			AlternativeURL:     "https://ffmpeg.org/download.html#build-linux",
+			Tips: []string{
+				"You may need to enter your password",
+				"For older Ubuntu versions, you may need to add a PPA",
+			},
+		}
+	case "fedora":
+		return InstallGuide{
+			Title:              "Install FFmpeg on Fedora",
+			Description:        "Install FFmpeg using dnf package manager",
+			Steps:              []string{"Open Terminal", "Run the command below", "Restart YTed"},
+			Command:            "sudo dnf install ffmpeg",
+			CommandDescription: "Copy and paste this command in Terminal",
+			AlternativeURL:     "https://ffmpeg.org/download.html#build-linux",
+			Tips: []string{
+				"You may need to enter your password",
+				"Enable RPM Fusion if ffmpeg is not found: sudo dnf install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm",
+			},
+		}
+	case "arch":
+		return InstallGuide{
+			Title:              "Install FFmpeg on Arch Linux",
+			Description:        "Install FFmpeg using pacman package manager",
+			Steps:              []string{"Open Terminal", "Run the command below", "Restart YTed"},
+			Command:            "sudo pacman -S ffmpeg",
+			CommandDescription: "Copy and paste this command in Terminal",
+			AlternativeURL:     "https://ffmpeg.org/download.html#build-linux",
+			Tips: []string{
+				"You may need to enter your password",
+			},
+		}
+	default:
+		return InstallGuide{
+			Title:              "Install FFmpeg on Linux",
+			Description:        "Install FFmpeg using your distribution's package manager",
+			Steps:              []string{"Open Terminal", "Run the appropriate command for your distro", "Restart YTed"},
+			Command:            "sudo apt install ffmpeg  # or: sudo dnf install ffmpeg  # or: sudo pacman -S ffmpeg",
+			CommandDescription: "Use the command for your distribution",
+			AlternativeURL:     "https://ffmpeg.org/download.html#build-linux",
+			Tips: []string{
+				"Ubuntu/Debian: sudo apt install ffmpeg",
+				"Fedora: sudo dnf install ffmpeg",
+				"Arch: sudo pacman -S ffmpeg",
+			},
+		}
+	}
+}
+
+func (f *FFmpegManager) getWindowsInstallGuide() InstallGuide {
+	return InstallGuide{
+		Title:       "Install FFmpeg on Windows",
+		Description: "Download and add FFmpeg to your system PATH",
+		Steps: []string{
+			"Download FFmpeg from the link below",
+			"Extract the zip file to C:\\ffmpeg",
+			"Add C:\\ffmpeg\\bin to your system PATH",
+			"Restart YTed",
+		},
+		Command:            "",
+		CommandDescription: "Download from the link and follow the included README",
+		AlternativeURL:     "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+		Tips: []string{
+			"Choose the 'essentials' build for smaller download",
+			"You can also use winget: winget install Gyan.FFmpeg",
+			"After adding to PATH, restart your command prompt",
+			"To add to PATH: Settings > System > About > Advanced system settings > Environment Variables",
+		},
+	}
+}
+
+func (f *FFmpegManager) detectLinuxDistro() string {
+	// Try to detect the Linux distribution
+	if _, err := os.Stat("/etc/debian_version"); err == nil {
+		return "debian"
+	}
+	if _, err := os.Stat("/etc/ubuntu-release"); err == nil {
+		return "ubuntu"
+	}
+	if _, err := os.Stat("/etc/fedora-release"); err == nil {
+		return "fedora"
+	}
+	if _, err := os.Stat("/etc/arch-release"); err == nil {
+		return "arch"
+	}
+	return "unknown"
+}
+
+func (f *FFmpegManager) isHomebrewAvailable() bool {
+	_, err := exec.LookPath("brew")
+	return err == nil
+}
+
+func (f *FFmpegManager) getInstallMethod() string {
+	switch goRuntime.GOOS {
+	case "darwin":
+		if f.isHomebrewAvailable() {
+			return "package_manager"
+		}
+		return "manual"
+	case "linux":
+		return "package_manager"
+	case "windows":
+		return "download"
+	default:
+		return "manual"
+	}
+}
+
+func (f *FFmpegManager) formatInstallGuide(guide InstallGuide) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "# %s\n\n", guide.Title)
+	fmt.Fprintf(&sb, "%s\n\n", guide.Description)
+	sb.WriteString("## Steps:\n")
+	for i, step := range guide.Steps {
+		fmt.Fprintf(&sb, "%d. %s\n", i+1, step)
+	}
+	if guide.Command != "" {
+		fmt.Fprintf(&sb, "\n**Command:** `%s`\n", guide.Command)
+	}
+	if len(guide.Tips) > 0 {
+		sb.WriteString("\n## Tips:\n")
+		for _, tip := range guide.Tips {
+			fmt.Fprintf(&sb, "- %s\n", tip)
+		}
+	}
+	return sb.String()
+}
+
+// OpenDownloadPage opens the FFmpeg download page in browser
+func (f *FFmpegManager) OpenDownloadPage() {
+	if f.ctx != nil {
+		runtime.BrowserOpenURL(f.ctx, "https://ffmpeg.org/download.html")
 	}
 }

@@ -101,6 +101,23 @@ func (db *DB) migrate() error {
 		`ALTER TABLE videos ADD COLUMN file_hash TEXT`,
 		`ALTER TABLE videos ADD COLUMN is_managed BOOLEAN DEFAULT 1`,
 		`ALTER TABLE downloads ADD COLUMN duration INTEGER`,
+		// Edit jobs table for video editor
+		`CREATE TABLE IF NOT EXISTS edit_jobs (
+			id TEXT PRIMARY KEY,
+			source_video_id TEXT NOT NULL,
+			output_video_id TEXT,
+			status TEXT DEFAULT 'pending',
+			operation TEXT NOT NULL,
+			settings TEXT,
+			progress REAL DEFAULT 0,
+			error_message TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			completed_at DATETIME,
+			FOREIGN KEY (source_video_id) REFERENCES videos(id),
+			FOREIGN KEY (output_video_id) REFERENCES videos(id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_edit_jobs_source_video ON edit_jobs(source_video_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_edit_jobs_status ON edit_jobs(status)`,
 	}
 
 	for _, migration := range migrations {
