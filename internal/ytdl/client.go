@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -299,13 +300,21 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		log.Printf("[YTDLP] Using specific format: %s", opts.Format)
 		dl = dl.Format(opts.Format)
 	default:
-		// Default to best quality video+audio with merge
-		log.Println("[YTDLP] Using default format: bestvideo*+bestaudio/best")
-		dl = dl.Format("bestvideo*+bestaudio/best")
+		// Prefer MP4 video + M4A audio for wide compatibility (especially Windows).
+		// Fall back to generic bestvideo+bestaudio only if those are unavailable.
+		log.Println("[YTDLP] Using default format: bestvideo*[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo*+bestaudio/best")
+		dl = dl.Format("bestvideo*[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo*+bestaudio/best")
 	}
 
-	// IMPORTANT: Set merge output format to mp4 to ensure audio+video are merged
-	dl = dl.MergeOutputFormat("mp4")
+	if opts.Quality != "audio" {
+		// Set merge/remux target to mp4 for better player support.
+		dl = dl.MergeOutputFormat("mp4").RemuxVideo("mp4")
+
+		// Windows Media Player often fails on Opus/WebM. Recode to MP4 when needed.
+		if runtime.GOOS == "windows" {
+			dl = dl.RecodeVideo("mp4")
+		}
+	}
 
 	// Note: yt-dlp will find ffmpeg automatically if it's in PATH
 	// We log whether ffmpeg is available for debugging purposes
