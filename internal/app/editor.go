@@ -354,7 +354,7 @@ func (a *App) GetEditPresets() ([]EditPresetResult, error) {
 }
 
 // PreviewEdit generates a preview frame for the given settings
-func (a *App) PreviewEdit(videoID string, operation string, settings EditSettingsInput) (string, error) {
+func (a *App) PreviewEdit(videoID string, _ string, settings EditSettingsInput) (string, error) {
 	logger := a.logger
 
 	if a.editor == nil {
@@ -586,7 +586,7 @@ func (a *App) GetVideoFile(videoID string) ([]byte, error) {
 	}
 
 	logger.Info("Editor", "Video file loaded successfully", map[string]string{
-		"video_id": videoID,
+		"video_id":   videoID,
 		"size_bytes": fmt.Sprintf("%d", len(data)),
 	})
 
@@ -600,14 +600,14 @@ func (a *App) GetPreviewImage(imagePath string) (string, error) {
 	// and the configured download path
 	isAllowed := false
 	downloadPath := a.fm.GetDownloadPath()
-	
+
 	// Check if path is in allowed locations
-	if strings.Contains(imagePath, "preview") || 
-	   strings.Contains(imagePath, "temp") ||
-	   strings.HasPrefix(imagePath, downloadPath) {
+	if strings.Contains(imagePath, "preview") ||
+		strings.Contains(imagePath, "temp") ||
+		strings.HasPrefix(imagePath, downloadPath) {
 		isAllowed = true
 	}
-	
+
 	if !isAllowed {
 		return "", fmt.Errorf("access denied: path not in allowed locations")
 	}

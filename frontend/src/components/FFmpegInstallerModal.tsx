@@ -116,8 +116,8 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
       <Stack gap="md">
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
           <Text size="sm">
-            FFmpeg is required for the video editor to work. It&apos;s used for processing
-            video operations like cropping, watermarking, and format conversion.
+            FFmpeg is required for the video editor to work. It&apos;s used for processing video
+            operations like cropping, watermarking, and format conversion.
           </Text>
         </Alert>
 
@@ -156,7 +156,9 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
                             <Button
                               size="xs"
                               variant="light"
-                              leftSection={isCopied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                              leftSection={
+                                isCopied ? <IconCheck size={14} /> : <IconCopy size={14} />
+                              }
                               onClick={() => {
                                 copy();
                                 handleCopyCommand();

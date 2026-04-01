@@ -122,13 +122,15 @@ func (e *Editor) SubmitJob(videoID, operation string, settings db.EditSettings) 
 	}
 
 	// Add to processing queue
-	e.queue.Submit(&EditTask{
+	if err := e.queue.Submit(&EditTask{
 		JobID:     jobID,
 		Video:     video,
 		Operation: operation,
 		Settings:  settings,
 		Editor:    e,
-	})
+	}); err != nil {
+		return "", fmt.Errorf("failed to submit edit job: %w", err)
+	}
 
 	e.logger.Info("Editor", "Edit job submitted", map[string]string{
 		"job_id":    jobID,
@@ -271,7 +273,7 @@ func parseFFProbeOutput(output []byte) (*VideoMetadata, error) {
 	return meta, nil
 }
 
-func parseFFmpegOutput(output, filePath string) (*VideoMetadata, error) {
+func parseFFmpegOutput(output, _ string) (*VideoMetadata, error) {
 	meta := &VideoMetadata{}
 
 	// Parse duration

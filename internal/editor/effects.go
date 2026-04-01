@@ -63,11 +63,12 @@ func (e *Editor) executeEffects(ctx context.Context, video *db.Video, settings d
 		if speed > 0.5 && speed <= 2.0 {
 			filters = append(filters, fmt.Sprintf("setpts=PTS/%f", speed))
 			// Audio tempo filter (limit to 0.5-2.0 range)
-			if speed >= 0.5 && speed <= 2.0 {
+			switch {
+			case speed >= 0.5 && speed <= 2.0:
 				atempo = fmt.Sprintf("atempo=%f", speed)
-			} else if speed < 0.5 {
+			case speed < 0.5:
 				atempo = "atempo=0.5"
-			} else {
+			default:
 				atempo = "atempo=2.0"
 			}
 		}

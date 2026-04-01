@@ -79,7 +79,12 @@ export function EffectsTool({ settings, onChange }: EffectsToolProps) {
     <Stack gap="lg">
       <Group justify="space-between">
         <Text fw={600}>Video Effects</Text>
-        <Button variant="light" size="xs" leftSection={<IconRefresh size={14} />} onClick={handleReset}>
+        <Button
+          variant="light"
+          size="xs"
+          leftSection={<IconRefresh size={14} />}
+          onClick={handleReset}
+        >
           Reset All
         </Button>
       </Group>

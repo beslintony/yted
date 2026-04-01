@@ -69,7 +69,7 @@ func (q *EditQueue) Submit(task *EditTask) error {
 }
 
 // worker processes tasks from the queue
-func (q *EditQueue) worker(id int) {
+func (q *EditQueue) worker(_ int) {
 	defer q.wg.Done()
 
 	for {
@@ -120,7 +120,7 @@ func (q *EditQueue) processTask(task *EditTask) {
 	task.Editor.mu.Unlock()
 
 	// Progress callback
-	progressFn := func(progress float64, eta string) {
+	progressFn := func(progress float64, _ string) {
 		task.Editor.mu.Lock()
 		if job, exists := task.Editor.activeJobs[task.JobID]; exists {
 			job.Progress = progress

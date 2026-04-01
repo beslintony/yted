@@ -1,8 +1,8 @@
-# golangci-lint configuration for YTed
-version: "2"
+# golangci-lint configuration for YTed (v1 format)
 
 run:
   go: "1.24"
+  timeout: 5m
 
 linters:
   enable:
@@ -20,79 +20,67 @@ linters:
     - prealloc      # Find slice declarations that could be preallocated
     - unconvert     # Remove unnecessary type conversions
     - unparam       # Report unused function parameters
-  settings:
-    revive:
-      rules:
-        - name: exported
-          arguments:
-            - checkPrivateReceivers
-            - sayRepetitiveInsteadOfStutters
-        - name: context-as-argument
-        - name: context-keys-type
-        - name: error-return
-        - name: error-strings
-        - name: var-naming
-        - name: indent-error-flow
-        - name: range
-        - name: receiver-naming
-        - name: time-naming
-        - name: unexported-return
-        - name: error-naming
-        - name: empty-block
-        - name: superfluous-else
-        - name: unused-parameter
-        - name: unreachable-code
-  exclusions:
-    generated: lax
-    paths:
-      - frontend
-      - .*_test\.go
-    rules:
-      # Exclude shadow checking for err variable (common pattern)
-      - text: 'shadow: declaration of "err" shadows'
-        linters:
-          - govet
-      # Exclude some linters from running on tests
-      - path: _test.go
-        linters:
-          - gocyclo
-          - errcheck
-          - dupl
-          - gosec
-          - lll
-      # Exclude know deprecation warnings
-      - text: "SA1019"
-        linters:
-          - staticcheck
-      # Exclude stuttering warnings for log package types
-      - text: "type name will be used as log.LogEntry"
-        linters:
-          - revive
-      - text: "type name will be used as log.LogLevel"
-        linters:
-          - revive
 
-formatters:
-  enable:
-    - gofmt         # Check if code is formatted
-    - goimports     # Check import formatting
-    - gci           # Control import ordering
-  settings:
-    gofmt:
-      simplify: true
-    goimports:
-      local-prefixes:
-        - yted
-    gci:
-      sections:
-        - standard
-        - default
-        - prefix(yted)
-  exclusions:
-    paths:
-      - frontend
-      - .*_test\.go
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        arguments:
+          - checkPrivateReceivers
+          - sayRepetitiveInsteadOfStutters
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: error-return
+      - name: error-strings
+      - name: var-naming
+      - name: indent-error-flow
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: error-naming
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: yted
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(yted)
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-use-default: false
+  exclude:
+    # Exclude shadow checking for err variable (common pattern)
+    - 'shadow: declaration of "err" shadows'
+    # Exclude know deprecation warnings
+    - "SA1019"
+    # Exclude stuttering warnings for log package types
+    - 'type name will be used as log.LogEntry'
+    - 'type name will be used as log.LogLevel'
+  exclude-rules:
+    # Exclude some linters from running on tests
+    - path: _test.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - lll
+    # Exclude SA5011 false positives in tests (nil pointer after check pattern)
+    - path: _test.go
+      linters:
+        - staticcheck
+      text: "SA5011"
+
+output:
+  formats:
+    - format: colored-line-number
+

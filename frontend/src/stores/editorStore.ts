@@ -243,7 +243,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!selectedVideoId || !currentOperation) {
       return null;
     }
-    
+
     // Prevent duplicate submissions
     if (isSubmitting) {
       return null;
@@ -290,12 +290,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // Poll every 2 seconds for updates
     const interval = setInterval(async () => {
       const { jobs } = get();
-      
+
       // Check if there are any active jobs
       const hasActiveJobs = jobs.some(
         job => job.status === 'pending' || job.status === 'processing'
       );
-      
+
       if (hasActiveJobs) {
         await get().loadJobs(videoId);
       } else {

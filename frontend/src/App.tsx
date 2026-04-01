@@ -29,7 +29,9 @@ import { useSettingsStore, useVersionStore } from './stores';
 function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [mobileOpened, setMobileOpened] = useState(false);
-  const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'editor' | 'settings'>('downloads');
+  const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'editor' | 'settings'>(
+    'downloads'
+  );
   const [loggerOpened, setLoggerOpened] = useState(false);
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
   const { version, fetchVersion } = useVersionStore();

@@ -8,6 +8,7 @@ import (
 )
 
 // setupTestApp creates a test app with an in-memory database
+// nolint:unused
 func setupTestApp(t *testing.T) *App {
 	t.Helper()
 

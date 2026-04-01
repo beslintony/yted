@@ -32,7 +32,7 @@ export interface EditSettings {
   cropY?: number;
   cropWidth?: number;
   cropHeight?: number;
-  
+
   // Watermark settings
   watermarkType?: 'text' | 'image';
   watermarkText?: string;
@@ -40,13 +40,13 @@ export interface EditSettings {
   watermarkPosition?: WatermarkPosition;
   watermarkOpacity?: number;
   watermarkSize?: number;
-  
+
   // Convert settings
   outputFormat?: OutputFormat;
   outputCodec?: OutputCodec;
   outputQuality?: number;
   outputResolution?: OutputResolution;
-  
+
   // Effects settings
   brightness?: number;
   contrast?: number;
@@ -55,16 +55,22 @@ export interface EditSettings {
   speed?: number;
   volume?: number;
   removeAudio?: boolean;
-  
+
   // Output options
   outputFilename?: string;
   replaceOriginal?: boolean;
 }
 
-export type WatermarkPosition = 
-  | 'top-left' | 'top-center' | 'top-right' 
-  | 'center-left' | 'center' | 'center-right'
-  | 'bottom-left' | 'bottom-center' | 'bottom-right';
+export type WatermarkPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
 
 export type OutputFormat = 'mp4' | 'mkv' | 'webm' | 'mov' | 'avi' | 'gif';
 
@@ -213,18 +219,48 @@ export const WATERMARK_POSITIONS: { value: WatermarkPosition; label: string }[] 
 
 // Output formats
 export const OUTPUT_FORMATS: FormatInfo[] = [
-  { id: 'mp4', name: 'MP4', extension: 'mp4', description: 'Best compatibility', codecs: ['h264', 'h265'] },
-  { id: 'mkv', name: 'MKV', extension: 'mkv', description: 'Universal container', codecs: ['h264', 'h265', 'vp9', 'av1'] },
+  {
+    id: 'mp4',
+    name: 'MP4',
+    extension: 'mp4',
+    description: 'Best compatibility',
+    codecs: ['h264', 'h265'],
+  },
+  {
+    id: 'mkv',
+    name: 'MKV',
+    extension: 'mkv',
+    description: 'Universal container',
+    codecs: ['h264', 'h265', 'vp9', 'av1'],
+  },
   { id: 'webm', name: 'WebM', extension: 'webm', description: 'Web optimized', codecs: ['vp9'] },
-  { id: 'mov', name: 'QuickTime', extension: 'mov', description: 'Apple format', codecs: ['h264', 'h265'] },
+  {
+    id: 'mov',
+    name: 'QuickTime',
+    extension: 'mov',
+    description: 'Apple format',
+    codecs: ['h264', 'h265'],
+  },
   { id: 'avi', name: 'AVI', extension: 'avi', description: 'Legacy format', codecs: ['h264'] },
   { id: 'gif', name: 'GIF', extension: 'gif', description: 'Animated image', codecs: [] },
 ];
 
 // Output codecs
 export const OUTPUT_CODECS: CodecInfo[] = [
-  { id: 'h264', name: 'H.264 (AVC)', description: 'Best compatibility', quality: 'good', speed: 'fast' },
-  { id: 'h265', name: 'H.265 (HEVC)', description: 'Better compression', quality: 'better', speed: 'medium' },
+  {
+    id: 'h264',
+    name: 'H.264 (AVC)',
+    description: 'Best compatibility',
+    quality: 'good',
+    speed: 'fast',
+  },
+  {
+    id: 'h265',
+    name: 'H.265 (HEVC)',
+    description: 'Better compression',
+    quality: 'better',
+    speed: 'medium',
+  },
   { id: 'vp9', name: 'VP9', description: 'Web streaming', quality: 'better', speed: 'slow' },
   { id: 'av1', name: 'AV1', description: 'Next generation', quality: 'best', speed: 'slow' },
 ];

@@ -17,7 +17,7 @@ interface VideoPlayerProps {
 // Get MIME type from file format (extension)
 function getVideoMimeType(format?: string): string {
   if (!format) return 'video/mp4';
-  
+
   const formatLower = format.toLowerCase().replace(/^\./, '');
   switch (formatLower) {
     case 'webm':
@@ -67,15 +67,15 @@ export function VideoPlayer({
         console.log('[VideoPlayer] Loading video:', videoId, 'format:', format);
         const data = await GetVideoFile(videoId);
         console.log('[VideoPlayer] Video data loaded, size:', data.length);
-        
+
         // Convert byte array to blob with proper MIME type
         const mimeType = getVideoMimeType(format);
         console.log('[VideoPlayer] Using MIME type:', mimeType);
-        
+
         const blob = new Blob([new Uint8Array(data)], { type: mimeType });
         objectUrl = URL.createObjectURL(blob);
         console.log('[VideoPlayer] Object URL created:', objectUrl);
-        
+
         setVideoUrl(objectUrl);
       } catch (err) {
         console.error('[VideoPlayer] Failed to load video:', err);

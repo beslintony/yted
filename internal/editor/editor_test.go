@@ -43,10 +43,10 @@ func TestNew(t *testing.T) {
 
 func TestSetFFmpegPath(t *testing.T) {
 	editor := New("/initial/path", nil, nil)
-	
+
 	newPath := "/new/ffmpeg/path"
 	editor.SetFFmpegPath(newPath)
-	
+
 	if editor.ffmpegPath != newPath {
 		t.Errorf("SetFFmpegPath() failed, got %v, want %v", editor.ffmpegPath, newPath)
 	}
@@ -108,14 +108,14 @@ func TestFormatTime(t *testing.T) {
 
 func TestCalculateCropRegion(t *testing.T) {
 	tests := []struct {
-		name         string
-		videoWidth   int
-		videoHeight  int
-		aspectRatio  string
-		wantX        int
-		wantY        int
-		wantWidth    int
-		wantHeight   int
+		name        string
+		videoWidth  int
+		videoHeight int
+		aspectRatio string
+		wantX       int
+		wantY       int
+		wantWidth   int
+		wantHeight  int
 	}{
 		{
 			name:        "16:9 crop on 4:3 video",
@@ -162,15 +162,15 @@ func TestCalculateCropRegion(t *testing.T) {
 
 func TestGetCropPresets(t *testing.T) {
 	presets := GetCropPresets()
-	
+
 	expectedPresets := []string{"16:9", "4:3", "1:1", "9:16", "21:9", "free"}
-	
+
 	for _, preset := range expectedPresets {
 		if _, exists := presets[preset]; !exists {
 			t.Errorf("GetCropPresets() missing preset: %s", preset)
 		}
 	}
-	
+
 	// Verify specific preset values
 	if preset, exists := presets["16:9"]; exists {
 		if preset.Name != "Widescreen (16:9)" {
@@ -184,19 +184,19 @@ func TestGetCropPresets(t *testing.T) {
 
 func TestGetWatermarkPositions(t *testing.T) {
 	positions := GetWatermarkPositions()
-	
+
 	expectedPositions := []string{
 		"top-left", "top-center", "top-right",
 		"center-left", "center", "center-right",
 		"bottom-left", "bottom-center", "bottom-right",
 	}
-	
+
 	for _, pos := range expectedPositions {
 		if _, exists := positions[pos]; !exists {
 			t.Errorf("GetWatermarkPositions() missing position: %s", pos)
 		}
 	}
-	
+
 	// Verify specific position labels
 	if positions["bottom-right"] != "Bottom Right" {
 		t.Errorf("bottom-right label = %v, want 'Bottom Right'", positions["bottom-right"])
@@ -205,15 +205,15 @@ func TestGetWatermarkPositions(t *testing.T) {
 
 func TestGetSupportedFormats(t *testing.T) {
 	formats := GetSupportedFormats()
-	
+
 	expectedFormats := []string{"mp4", "mkv", "webm", "mov", "avi", "gif"}
-	
+
 	for _, format := range expectedFormats {
 		if _, exists := formats[format]; !exists {
 			t.Errorf("GetSupportedFormats() missing format: %s", format)
 		}
 	}
-	
+
 	// Verify MP4 format
 	if mp4, exists := formats["mp4"]; exists {
 		if mp4.Name != "MP4" {
@@ -227,15 +227,15 @@ func TestGetSupportedFormats(t *testing.T) {
 
 func TestGetSupportedCodecs(t *testing.T) {
 	codecs := GetSupportedCodecs()
-	
+
 	expectedCodecs := []string{"h264", "h265", "vp9", "av1"}
-	
+
 	for _, codec := range expectedCodecs {
 		if _, exists := codecs[codec]; !exists {
 			t.Errorf("GetSupportedCodecs() missing codec: %s", codec)
 		}
 	}
-	
+
 	// Verify H.264 codec
 	if h264, exists := codecs["h264"]; exists {
 		if h264.Quality != "good" {
@@ -249,15 +249,15 @@ func TestGetSupportedCodecs(t *testing.T) {
 
 func TestGetEffectRanges(t *testing.T) {
 	ranges := GetEffectRanges()
-	
+
 	expectedEffects := []string{"brightness", "contrast", "saturation", "speed", "volume"}
-	
+
 	for _, effect := range expectedEffects {
 		if _, exists := ranges[effect]; !exists {
 			t.Errorf("GetEffectRanges() missing effect: %s", effect)
 		}
 	}
-	
+
 	// Verify brightness range
 	if brightness, exists := ranges["brightness"]; exists {
 		if brightness.Min != -1.0 || brightness.Max != 1.0 {

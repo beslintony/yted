@@ -1,13 +1,4 @@
-import {
-  Button,
-  Group,
-  NumberInput,
-  Paper,
-  RangeSlider,
-  Select,
-  Stack,
-  Text,
-} from '@mantine/core';
+import { Button, Group, NumberInput, Paper, RangeSlider, Select, Stack, Text } from '@mantine/core';
 import { IconAspectRatio, IconClock, IconCrop } from '@tabler/icons-react';
 
 import { CROP_PRESETS, EditSettings } from '../../types/editor';
@@ -77,10 +68,7 @@ export function CropTool({
             min={0}
             max={videoDuration}
             step={0.1}
-            value={[
-              settings.cropStart ?? 0,
-              settings.cropEnd ?? videoDuration,
-            ]}
+            value={[settings.cropStart ?? 0, settings.cropEnd ?? videoDuration]}
             onChange={([start, end]) => {
               onChange({ cropStart: start, cropEnd: end });
             }}
@@ -161,7 +149,8 @@ export function CropTool({
         <Paper withBorder p="sm">
           <Text size="sm" c="dimmed">
             Output: {settings.cropWidth ?? videoWidth} x {settings.cropHeight ?? videoHeight} @{' '}
-            {((settings.cropStart ?? 0)).toFixed(1)}s - {((settings.cropEnd ?? videoDuration)).toFixed(1)}s
+            {(settings.cropStart ?? 0).toFixed(1)}s -{' '}
+            {(settings.cropEnd ?? videoDuration).toFixed(1)}s
           </Text>
         </Paper>
       )}
