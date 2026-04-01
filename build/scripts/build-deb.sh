@@ -17,7 +17,17 @@ mkdir -p "$BUILD_DIR/usr/share/applications"
 mkdir -p "$BUILD_DIR/usr/share/pixmaps"
 
 # Copy app binary and bundled FFmpeg
-cp build/bin/yted "$BUILD_DIR/opt/yted/yted"
+APP_BINARY="build/bin/yted"
+if [ ! -f "$APP_BINARY" ] && [ -f "build/bin/YTed" ]; then
+    APP_BINARY="build/bin/YTed"
+fi
+
+if [ ! -f "$APP_BINARY" ]; then
+    echo "Error: could not find built app binary at build/bin/yted or build/bin/YTed"
+    exit 1
+fi
+
+cp "$APP_BINARY" "$BUILD_DIR/opt/yted/yted"
 chmod +x "$BUILD_DIR/opt/yted/yted"
 
 if [ -f build/bin/ffmpeg ]; then

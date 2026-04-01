@@ -48,7 +48,7 @@ jobs:
       - name: Build Linux AMD64
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          wails build -tags webkit2_41 -platform linux/amd64 -ldflags "-s -w" -o YTed
+          wails build -tags webkit2_41 -platform linux/amd64 -ldflags "-s -w" -o yted
 
       - name: Bundle FFmpeg
         run: |
@@ -62,7 +62,7 @@ jobs:
       - name: Package Linux binary
         run: |
           cd build/bin
-          tar czf YTed-linux-amd64.tar.gz YTed ffmpeg ffprobe
+          tar czf YTed-linux-amd64.tar.gz yted ffmpeg ffprobe
 
       - name: Build Linux .deb package
         run: |
@@ -109,19 +109,20 @@ jobs:
       - name: Install NSIS
         run: choco install nsis -y
 
+      - name: Build Windows AMD64
+        run: |
+          $env:PATH += ";$(go env GOPATH)\bin;C:\Program Files (x86)\NSIS"
+          wails build -platform windows/amd64 -ldflags "-s -w" -nsis -o YTed.exe
+
       - name: Bundle FFmpeg
         run: |
+          New-Item -ItemType Directory -Force -Path "build\bin" | Out-Null
           curl -L -o ffmpeg-windows.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
           Expand-Archive -Path ffmpeg-windows.zip -DestinationPath ffmpeg-windows
           $dir = Get-ChildItem -Path ffmpeg-windows -Filter "ffmpeg-*-essentials_build" | Select-Object -First 1
           Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" -Destination "build\bin\ffmpeg.exe"
           Copy-Item "$($dir.FullName)\bin\ffprobe.exe" -Destination "build\bin\ffprobe.exe"
           Remove-Item -Recurse -Force ffmpeg-windows.zip, ffmpeg-windows
-
-      - name: Build Windows AMD64
-        run: |
-          $env:PATH += ";$(go env GOPATH)\bin;C:\Program Files (x86)\NSIS"
-          wails build -platform windows/amd64 -ldflags "-s -w" -nsis -o YTed.exe
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
