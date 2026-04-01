@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	goRuntime "runtime"
 	"strings"
 
@@ -108,6 +109,15 @@ func (f *FFmpegManager) Find() string {
 		f.logger.Warn("FFmpeg", "Custom ffmpeg path not valid, falling back to auto-detect", map[string]string{"path": f.customPath})
 	}
 
+	// Try bundled ffmpeg shipped with the app package
+	for _, path := range f.getBundledPaths() {
+		if validatePath(path) {
+			f.binPath = path
+			f.logger.Info("FFmpeg", "Found bundled ffmpeg", map[string]string{"path": path})
+			return path
+		}
+	}
+
 	// Try PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
 		if validatePath(path) {
@@ -134,12 +144,6 @@ func (f *FFmpegManager) Find() string {
 // getCommonPaths returns common ffmpeg installation paths
 func (f *FFmpegManager) getCommonPaths() []string {
 	switch goRuntime.GOOS {
-	case "darwin":
-		return []string{
-			"/opt/homebrew/bin/ffmpeg",
-			"/usr/local/bin/ffmpeg",
-			"/usr/bin/ffmpeg",
-		}
 	case "linux":
 		return []string{
 			"/usr/bin/ffmpeg",
@@ -156,6 +160,29 @@ func (f *FFmpegManager) getCommonPaths() []string {
 	default:
 		return nil
 	}
+}
+
+func (f *FFmpegManager) getBundledPaths() []string {
+	executableName := "ffmpeg"
+	if goRuntime.GOOS == "windows" {
+		executableName = "ffmpeg.exe"
+	}
+
+	executablePath, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+
+	executableDir := filepath.Dir(executablePath)
+	candidates := []string{
+		filepath.Join(executableDir, executableName),
+		filepath.Join(executableDir, "ffmpeg", executableName),
+		filepath.Join(executableDir, "bin", executableName),
+		filepath.Join(executableDir, "resources", executableName),
+		filepath.Join(executableDir, "resources", "ffmpeg", executableName),
+	}
+
+	return candidates
 }
 
 // IsAvailable returns true if ffmpeg is available
@@ -221,14 +248,12 @@ func (f *FFmpegManager) MergeVideoAudio(videoPath, audioPath, outputPath string)
 // InstallInstructions returns instructions for installing ffmpeg
 func (f *FFmpegManager) InstallInstructions() string {
 	switch goRuntime.GOOS {
-	case "darwin":
-		return "Install ffmpeg using: brew install ffmpeg"
 	case "linux":
 		return "Install ffmpeg using: sudo apt install ffmpeg (Debian/Ubuntu) or sudo dnf install ffmpeg (Fedora)"
 	case "windows":
 		return "Download ffmpeg from https://ffmpeg.org/download.html and add to PATH"
 	default:
-		return "Please install ffmpeg from https://ffmpeg.org/download.html"
+		return "Unsupported OS. YTed supports Linux and Windows only."
 	}
 }
 
@@ -254,8 +279,8 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 		result.InstallCommand = guide.Command
 		result.InstallGuide = f.formatInstallGuide(guide)
 		result.DownloadURL = guide.AlternativeURL
-		result.RequiresAdmin = goRuntime.GOOS != "darwin" || !f.isHomebrewAvailable()
-		result.CanAutoInstall = goRuntime.GOOS == "darwin" && f.isHomebrewAvailable()
+		result.RequiresAdmin = goRuntime.GOOS == "linux" || goRuntime.GOOS == "windows"
+		result.CanAutoInstall = false
 	}
 
 	return result
@@ -264,43 +289,20 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 // GetInstallGuide returns OS-specific installation instructions
 func (f *FFmpegManager) GetInstallGuide() InstallGuide {
 	switch goRuntime.GOOS {
-	case "darwin":
-		return f.getMacOSInstallGuide()
 	case "linux":
 		return f.getLinuxInstallGuide()
 	case "windows":
 		return f.getWindowsInstallGuide()
 	default:
 		return InstallGuide{
-			Title:              "Install FFmpeg",
-			Description:        "Please install FFmpeg for your operating system",
-			Steps:              []string{"Visit the FFmpeg download page", "Download the appropriate version", "Follow the installation instructions"},
+			Title:              "Unsupported Operating System",
+			Description:        "YTed supports Linux and Windows only.",
+			Steps:              []string{"Use YTed on a supported Linux or Windows environment."},
 			Command:            "",
-			AlternativeURL:     "https://ffmpeg.org/download.html",
-			CommandDescription: "See website for instructions",
-			Tips:               []string{"Make sure to add FFmpeg to your system PATH"},
+			AlternativeURL:     "",
+			CommandDescription: "No install command available",
+			Tips:               []string{"FFmpeg guidance is only provided for Linux and Windows."},
 		}
-	}
-}
-
-func (f *FFmpegManager) getMacOSInstallGuide() InstallGuide {
-	tips := []string{
-		"Installation may take 5-10 minutes depending on your connection",
-		"Homebrew will automatically add FFmpeg to your PATH",
-	}
-
-	if !f.isHomebrewAvailable() {
-		tips = append([]string{"First install Homebrew from https://brew.sh"}, tips...)
-	}
-
-	return InstallGuide{
-		Title:              "Install FFmpeg on macOS",
-		Description:        "FFmpeg can be easily installed using Homebrew package manager",
-		Steps:              []string{"Open Terminal", "Run the command below", "Wait for installation to complete", "Restart YTed"},
-		Command:            "brew install ffmpeg",
-		CommandDescription: "Copy and paste this command in Terminal",
-		AlternativeURL:     "https://ffmpeg.org/download.html#build-mac",
-		Tips:               tips,
 	}
 }
 
@@ -402,24 +404,14 @@ func (f *FFmpegManager) detectLinuxDistro() string {
 	return "unknown"
 }
 
-func (f *FFmpegManager) isHomebrewAvailable() bool {
-	_, err := exec.LookPath("brew")
-	return err == nil
-}
-
 func (f *FFmpegManager) getInstallMethod() string {
 	switch goRuntime.GOOS {
-	case "darwin":
-		if f.isHomebrewAvailable() {
-			return "package_manager"
-		}
-		return "manual"
 	case "linux":
 		return "package_manager"
 	case "windows":
 		return "download"
 	default:
-		return "manual"
+		return "unsupported"
 	}
 }
 

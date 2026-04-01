@@ -15,7 +15,7 @@ vendor/
 
 # Build
 build/bin/
-build/darwin/
+build/linux/deb-pkg/
 build/windows/
 !build/appicon.png
 

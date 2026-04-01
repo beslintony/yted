@@ -287,25 +287,26 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		Continue().
 		TrimFilenames(100)
 
-	// Apply format selection with proper merging
-	switch {
-	case opts.Quality == "audio":
+	// Apply format selection with proper merging.
+	// For non-audio downloads, force compatibility-oriented selectors so outputs
+	// work in default Windows/Linux players (avoid opus/webm-only outputs).
+	switch opts.Quality {
+	case "audio":
 		log.Println("[YTDLP] Using audio-only format (mp3)")
 		dl = dl.ExtractAudio().AudioFormat("mp3")
 		// Embed metadata (title, artist) and thumbnail for MP3 files
 		dl = dl.EmbedMetadata().EmbedThumbnail()
-	case opts.Format != "" && opts.Format != "best":
-		// Use specific format if provided - these already include video+audio merging
-		log.Printf("[YTDLP] Using specific format: %s", opts.Format)
-		dl = dl.Format(opts.Format)
 	default:
-		// Default to best quality video+audio with merge
-		log.Println("[YTDLP] Using default format: bestvideo*+bestaudio/best")
-		dl = dl.Format("bestvideo*+bestaudio/best")
+		selector := c.compatibleFormatSelector(opts.Quality)
+		log.Printf("[YTDLP] Using compatibility format selector: %s (requested format: %s, quality: %s)", selector, opts.Format, opts.Quality)
+		dl = dl.Format(selector)
 	}
 
-	// IMPORTANT: Set merge output format to mp4 to ensure audio+video are merged
-	dl = dl.MergeOutputFormat("mp4")
+	if opts.Quality != "audio" {
+		// Enforce MP4 output and transcode incompatible codecs (e.g. Opus/WebM audio)
+		// so final files are broadly playable in default OS players.
+		dl = dl.MergeOutputFormat("mp4").RemuxVideo("mp4").RecodeVideo("mp4")
+	}
 
 	// Note: yt-dlp will find ffmpeg automatically if it's in PATH
 	// We log whether ffmpeg is available for debugging purposes
@@ -379,6 +380,25 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	}
 
 	return nil
+}
+
+func (c *Client) compatibleFormatSelector(quality string) string {
+	switch quality {
+	case "2160p":
+		return "bestvideo*[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4][height<=2160]/bestvideo*+bestaudio/best"
+	case "1440p":
+		return "bestvideo*[ext=mp4][height<=1440]+bestaudio[ext=m4a]/best[ext=mp4][height<=1440]/bestvideo*+bestaudio/best"
+	case "1080p":
+		return "bestvideo*[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/bestvideo*+bestaudio/best"
+	case "720p":
+		return "bestvideo*[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/bestvideo*+bestaudio/best"
+	case "480p":
+		return "bestvideo*[ext=mp4][height<=480]+bestaudio[ext=m4a]/best[ext=mp4][height<=480]/bestvideo*+bestaudio/best"
+	case "360p":
+		return "bestvideo*[ext=mp4][height<=360]+bestaudio[ext=m4a]/best[ext=mp4][height<=360]/bestvideo*+bestaudio/best"
+	default:
+		return "bestvideo*[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo*+bestaudio/best"
+	}
 }
 
 // calculateProgress calculates progress from ytdlp update

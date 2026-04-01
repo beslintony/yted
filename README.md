@@ -2,7 +2,7 @@
 
 A modern, user-friendly YouTube downloader and library manager built with Go, Wails, and React.
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/beslintony/yted/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/beslintony/yted/releases)
 [![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -13,7 +13,8 @@ A modern, user-friendly YouTube downloader and library manager built with Go, Wa
 - **Video Library**: Organized view of downloaded videos with search, filter, and sorting
 - **Watch Progress**: Automatically track and resume playback position
 - **Configurable**: Extensive user settings including download presets and speed limits
-- **Cross-Platform**: Native builds for Windows, macOS, and Linux
+- **Cross-Platform**: Native builds for Windows and Linux with official installers
+- **Bundled FFmpeg**: No extra setup needed — FFmpeg and FFprobe are included in all release packages
 - **Custom App Icon**: Branded YTed icon across all platforms
 
 ## Screenshots
@@ -40,12 +41,47 @@ A modern, user-friendly YouTube downloader and library manager built with Go, Wa
 
 ## Installation
 
-### Prerequisites
+### Pre-built Binaries
+
+Download the latest release from the [Releases](https://github.com/beslintony/yted/releases) page.
+
+#### Windows
+- **Installer** (recommended): Download `YTed-amd64-installer.exe` and run it. Creates Start Menu and Desktop shortcuts.
+- **Portable**: Download `YTed.exe` and place it anywhere. FFmpeg and FFprobe travel with the binary.
+
+#### Linux
+- **Ubuntu/Debian** (recommended): Download the `.deb` package and install it:
+  ```bash
+  sudo dpkg -i yted_x.x.x_amd64.deb
+  sudo apt-get install -f  # fix dependencies if needed
+  ```
+- **Portable**: Download `YTed-linux-amd64.tar.gz`, extract it, and run `./YTed`:
+  ```bash
+  tar xzf YTed-linux-amd64.tar.gz
+  ./YTed
+  ```
+
+### Bundled FFmpeg
+
+All pre-built release binaries for Linux and Windows include **FFmpeg** and **FFprobe** bundled automatically — no separate installation is required.
+
+YTed looks for bundled binaries in these locations relative to the app executable:
+- Same directory as the executable
+- `ffmpeg/`
+- `bin/`
+- `resources/`
+- `resources/ffmpeg/`
+
+### Build from Source
+
+#### Prerequisites
 - Go 1.25 or later
 - Node.js 20 or later
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- Linux only: `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`
+- Windows installer only: [NSIS](https://nsis.sourceforge.io/Download)
 
-### Build from Source
+#### Steps
 
 ```bash
 # Clone the repository
@@ -57,10 +93,12 @@ make deps
 make build
 
 # Or build with version info
-make build-versioned VERSION=1.2.0
+make build-versioned VERSION=1.3.0
 ```
 
-### Install (Linux)
+The `make build` command will also automatically download and bundle FFmpeg for your platform.
+
+### Install from Source (Linux)
 
 ```bash
 # Install for current user (~/.local/)
@@ -74,18 +112,20 @@ make uninstall
 make uninstall-system
 ```
 
-### Pre-built Binaries
+### Build Installers from Source
 
-Download pre-built binaries from the [Releases](https://github.com/beslintony/yted/releases) page.
+```bash
+# Linux .deb package
+make build-installer-linux
 
-Available for:
-- Linux (Ubuntu 22.04+, other distros)
-- Windows 10/11
-- macOS (Intel & Apple Silicon)
+# Windows NSIS installer (run on Windows or with NSIS installed)
+make build-installer-windows
+```
 
 ## Development
 
 ### Project Structure
+
 ```
 yted/
 ├── frontend/              # React + Vite frontend
@@ -104,22 +144,29 @@ yted/
 │   ├── log/              # Logging system
 │   ├── version/          # Version management
 │   └── ytdl/             # yt-dlp client
-├── build/                # Build assets & icons
+├── build/                # Build assets, icons, scripts & installers
+│   ├── bin/              # Build output
+│   ├── linux/            # Linux install scripts and desktop files
+│   ├── scripts/          # Helper scripts (bundle FFmpeg, build .deb)
+│   └── windows/          # Windows icons and NSIS installer files
 └── main.go              # Entry point
 ```
 
 ### Makefile Commands
 
 ```bash
-make dev              # Run in development mode
-make build            # Build for production
-make build-versioned  # Build with version injection
-make test             # Run all tests
-make lint             # Run linters
-make fmt              # Format code
-make install          # Install to ~/.local/
-make clean            # Clean build artifacts
-make help             # Show all commands
+make dev                   # Run in development mode
+make build                 # Build for production (bundles FFmpeg)
+make build-versioned       # Build with version injection (bundles FFmpeg)
+make build-installer-linux    # Build Linux .deb package
+make build-installer-windows  # Build Windows NSIS installer
+make test                  # Run all tests
+make lint                  # Run linters
+make fmt                   # Format code
+make install               # Install to ~/.local/
+make install-system        # Install system-wide
+make clean                 # Clean build artifacts
+make help                  # Show all commands
 ```
 
 ### Frontend Development
@@ -206,9 +253,8 @@ YTed uses SQLite to store:
 - **SQLite**: Fast local database for metadata and download queue
 
 ### Cross-Platform Support
-- **Linux**: Native GTK3/WebKit2GTK with `.desktop` integration
-- **Windows**: Native build with custom icon
-- **macOS**: Universal binary with app bundle and About dialog
+- **Linux**: Native GTK3/WebKit2GTK with `.desktop` integration and `.deb` package
+- **Windows**: Native build with custom icon and NSIS installer
 
 ### Sandbox Compatibility
 - File/folder opening with fallback to browser for snap/AppImage

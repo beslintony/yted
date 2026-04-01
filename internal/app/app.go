@@ -15,7 +15,6 @@ import (
 
 	"yted/internal/config"
 	"yted/internal/db"
-	"yted/internal/editor"
 	applog "yted/internal/log"
 	"yted/internal/version"
 	"yted/internal/ytdl"
@@ -36,7 +35,6 @@ type App struct {
 	logger *applog.Logger
 	fm     *FileManager
 	ffmpeg *FFmpegManager
-	editor *editor.Editor
 
 	// Mutex to prevent concurrent download processing
 	downloadMu sync.Mutex
@@ -176,9 +174,6 @@ func (a *App) Startup(ctx context.Context) {
 		})
 	}
 
-	// Initialize video editor
-	a.initEditor()
-
 	// Ensure download directory exists
 	if err := os.MkdirAll(a.fm.GetDownloadPath(), 0755); err != nil {
 		a.logger.Error("App", "Failed to create download directory", err)
@@ -239,12 +234,6 @@ func (a *App) Shutdown(_ context.Context) {
 			a.logger.Error("Config", "Failed to save config", err)
 		}
 	}
-	// Stop video editor
-	if a.editor != nil {
-		a.editor.Stop()
-		a.logger.Info("Editor", "Video editor stopped")
-	}
-
 	if a.db != nil {
 		if err := a.db.Close(); err != nil {
 			a.logger.Error("Database", "Failed to close database", err)
@@ -420,8 +409,6 @@ func (a *App) OpenFile(path string) error {
 	// Try native OS command first (using separate args to prevent injection)
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", absPath)
 	case "windows":
 		cmd = exec.Command("cmd", "/c", "start", "", absPath)
 	default: // Linux and others
@@ -487,10 +474,9 @@ func (a *App) OpenFolder(filePath string) error {
 	// Try native OS command first (using separate args to prevent injection)
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", absDir)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", absDir)
+		// Use explorer directly on Windows for reliable folder opening.
+		cmd = exec.Command("explorer.exe", absDir)
 	default: // Linux and others
 		cmd = exec.Command("xdg-open", absDir)
 	}
