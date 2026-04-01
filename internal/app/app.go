@@ -475,7 +475,8 @@ func (a *App) OpenFolder(filePath string) error {
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", absDir)
+		// Use explorer directly on Windows for reliable folder opening.
+		cmd = exec.Command("explorer.exe", absDir)
 	default: // Linux and others
 		cmd = exec.Command("xdg-open", absDir)
 	}
