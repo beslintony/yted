@@ -42,6 +42,18 @@ echo "Installing binary to $INSTALL_DIR..."
 $SUDO cp "$PROJECT_ROOT/build/bin/yted" "$INSTALL_DIR/$EXECUTABLE"
 $SUDO chmod +x "$INSTALL_DIR/$EXECUTABLE"
 
+# Install bundled FFmpeg if present
+if [ -f "$PROJECT_ROOT/build/bin/ffmpeg" ]; then
+    echo "Installing bundled FFmpeg to $INSTALL_DIR..."
+    $SUDO cp "$PROJECT_ROOT/build/bin/ffmpeg" "$INSTALL_DIR/ffmpeg"
+    $SUDO chmod +x "$INSTALL_DIR/ffmpeg"
+fi
+if [ -f "$PROJECT_ROOT/build/bin/ffprobe" ]; then
+    echo "Installing bundled ffprobe to $INSTALL_DIR..."
+    $SUDO cp "$PROJECT_ROOT/build/bin/ffprobe" "$INSTALL_DIR/ffprobe"
+    $SUDO chmod +x "$INSTALL_DIR/ffprobe"
+fi
+
 # Install icon
 echo "Installing icon to $ICON_DIR..."
 $SUDO cp "$PROJECT_ROOT/build/appicon.png" "$ICON_DIR/$ICON_NAME.png"
