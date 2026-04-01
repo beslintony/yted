@@ -425,19 +425,19 @@ func (f *FFmpegManager) getInstallMethod() string {
 
 func (f *FFmpegManager) formatInstallGuide(guide InstallGuide) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# %s\n\n", guide.Title))
-	sb.WriteString(fmt.Sprintf("%s\n\n", guide.Description))
+	fmt.Fprintf(&sb, "# %s\n\n", guide.Title)
+	fmt.Fprintf(&sb, "%s\n\n", guide.Description)
 	sb.WriteString("## Steps:\n")
 	for i, step := range guide.Steps {
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, step))
+		fmt.Fprintf(&sb, "%d. %s\n", i+1, step)
 	}
 	if guide.Command != "" {
-		sb.WriteString(fmt.Sprintf("\n**Command:** `%s`\n", guide.Command))
+		fmt.Fprintf(&sb, "\n**Command:** `%s`\n", guide.Command)
 	}
 	if len(guide.Tips) > 0 {
 		sb.WriteString("\n## Tips:\n")
 		for _, tip := range guide.Tips {
-			sb.WriteString(fmt.Sprintf("- %s\n", tip))
+			fmt.Fprintf(&sb, "- %s\n", tip)
 		}
 	}
 	return sb.String()

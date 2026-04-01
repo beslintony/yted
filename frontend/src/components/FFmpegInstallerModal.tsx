@@ -69,8 +69,6 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
     }
   }, [opened, checkFFmpegStatus]);
 
-
-
   const handleCopyCommand = () => {
     if (installGuide?.command) {
       success('Copied!', 'Command copied to clipboard');

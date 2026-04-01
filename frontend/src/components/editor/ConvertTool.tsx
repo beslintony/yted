@@ -1,13 +1,4 @@
-import {
-  Alert,
-  Group,
-  Paper,
-  Select,
-  Slider,
-  Stack,
-  Switch,
-  Text,
-} from '@mantine/core';
+import { Alert, Group, Paper, Select, Slider, Stack, Switch, Text } from '@mantine/core';
 import { IconFile, IconInfoCircle, IconSettings } from '@tabler/icons-react';
 
 import { EditSettings, OUTPUT_CODECS, OUTPUT_FORMATS } from '../../types/editor';
