@@ -290,8 +290,8 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	// Apply format selection with proper merging.
 	// For non-audio downloads, force compatibility-oriented selectors so outputs
 	// work in default Windows/Linux players (avoid opus/webm-only outputs).
-	switch {
-	case opts.Quality == "audio":
+	switch opts.Quality {
+	case "audio":
 		log.Println("[YTDLP] Using audio-only format (mp3)")
 		dl = dl.ExtractAudio().AudioFormat("mp3")
 		// Embed metadata (title, artist) and thumbnail for MP3 files
