@@ -43,10 +43,6 @@ func TestFFmpegManagerInstallInstructions(t *testing.T) {
 
 	// Check platform-specific instructions
 	switch runtime.GOOS {
-	case "darwin":
-		if !contains(t, instructions, "brew") {
-			t.Error("macOS instructions should mention brew")
-		}
 	case "linux":
 		if !contains(t, instructions, "apt") && !contains(t, instructions, "dnf") {
 			t.Error("Linux instructions should mention apt or dnf")
@@ -54,6 +50,10 @@ func TestFFmpegManagerInstallInstructions(t *testing.T) {
 	case "windows":
 		if !contains(t, instructions, "ffmpeg.org") {
 			t.Error("Windows instructions should mention ffmpeg.org")
+		}
+	default:
+		if !contains(t, instructions, "Linux and Windows only") {
+			t.Error("unsupported platform instructions should mention Linux and Windows only")
 		}
 	}
 

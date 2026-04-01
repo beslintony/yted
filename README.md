@@ -13,7 +13,7 @@ A modern, user-friendly YouTube downloader and library manager built with Go, Wa
 - **Video Library**: Organized view of downloaded videos with search, filter, and sorting
 - **Watch Progress**: Automatically track and resume playback position
 - **Configurable**: Extensive user settings including download presets and speed limits
-- **Cross-Platform**: Native builds for Windows, macOS, and Linux
+- **Cross-Platform**: Native builds for Windows and Linux
 - **Custom App Icon**: Branded YTed icon across all platforms
 
 ## Screenshots
@@ -81,7 +81,17 @@ Download pre-built binaries from the [Releases](https://github.com/beslintony/yt
 Available for:
 - Linux (Ubuntu 22.04+, other distros)
 - Windows 10/11
-- macOS (Intel & Apple Silicon)
+
+### Bundled FFmpeg in App Packages
+
+YTed can automatically use a bundled FFmpeg binary when it is shipped inside the app package.
+
+Place `ffmpeg` (or `ffmpeg.exe` on Windows) in one of these locations relative to the app executable:
+- same directory as the executable
+- `ffmpeg/`
+- `bin/`
+- `resources/`
+- `resources/ffmpeg/`
 
 ## Development
 
@@ -208,7 +218,6 @@ YTed uses SQLite to store:
 ### Cross-Platform Support
 - **Linux**: Native GTK3/WebKit2GTK with `.desktop` integration
 - **Windows**: Native build with custom icon
-- **macOS**: Universal binary with app bundle and About dialog
 
 ### Sandbox Compatibility
 - File/folder opening with fallback to browser for snap/AppImage

@@ -420,8 +420,6 @@ func (a *App) OpenFile(path string) error {
 	// Try native OS command first (using separate args to prevent injection)
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", absPath)
 	case "windows":
 		cmd = exec.Command("cmd", "/c", "start", "", absPath)
 	default: // Linux and others
@@ -487,8 +485,6 @@ func (a *App) OpenFolder(filePath string) error {
 	// Try native OS command first (using separate args to prevent injection)
 	var cmd *exec.Cmd
 	switch goRuntime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", absDir)
 	case "windows":
 		cmd = exec.Command("cmd", "/c", "start", "", absDir)
 	default: // Linux and others

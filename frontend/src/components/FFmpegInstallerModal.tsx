@@ -199,8 +199,7 @@ export function FFmpegInstallerModal({ opened, onClose, onInstalled }: FFmpegIns
                   leftSection={<IconTerminal size={16} />}
                   variant="light"
                   onClick={() => {
-                    // On macOS with Homebrew, we could potentially auto-install
-                    // but for security, we'll just show the command
+                    // For safety, only copy the command instead of running installs.
                     handleCopyCommand();
                   }}
                 >

@@ -15,7 +15,6 @@ vendor/
 
 # Build
 build/bin/
-build/darwin/
 build/windows/
 !build/appicon.png
 
