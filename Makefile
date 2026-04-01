@@ -1,6 +1,6 @@
 # YTed Makefile
 
-.PHONY: all build build-versioned dev test lint fmt clean install install-system uninstall uninstall-system help
+.PHONY: all build build-versioned build-installer-linux build-installer-windows dev test lint fmt clean install install-system uninstall uninstall-system bundle-ffmpeg deps security generate run help
 
 # Version (override with VERSION=x.y.z)
 VERSION ?= dev
@@ -17,6 +17,7 @@ all: fmt lint build
 build:
 	@echo "Building YTed..."
 	wails build -tags webkit2_41
+	@$(MAKE) bundle-ffmpeg
 
 ## Build with version info injected
 build-versioned:
@@ -24,6 +25,18 @@ build-versioned:
 	@echo "Updating version in frontend/package.json..."
 	@cd frontend && npm version $(VERSION) --no-git-tag-version --allow-same-version 2>/dev/null || true
 	wails build -tags webkit2_41 -ldflags "$(LDFLAGS)"
+	@$(MAKE) bundle-ffmpeg
+
+## Build Linux .deb installer
+build-installer-linux:
+	@echo "Building Linux .deb package..."
+	@build/scripts/build-deb.sh $(VERSION)
+
+## Build Windows NSIS installer (requires NSIS)
+build-installer-windows:
+	@echo "Building Windows installer..."
+	@$(MAKE) bundle-ffmpeg
+	wails build --platform windows/amd64 -ldflags "-s -w" -nsis -o YTed.exe
 
 ## Build with dev mode
 dev:
@@ -57,8 +70,18 @@ fmt:
 clean:
 	@echo "Cleaning..."
 	rm -rf build/bin
+	rm -rf build/linux/deb-pkg
 	rm -rf frontend/dist
 	rm -rf frontend/node_modules
+
+## Bundle FFmpeg binary for the current platform
+bundle-ffmpeg:
+	@echo "Bundling FFmpeg..."
+	@if [ "$$(uname -s)" = "Linux" ]; then \
+		build/scripts/bundle-ffmpeg.sh; \
+	else \
+		powershell -ExecutionPolicy Bypass -File build/scripts/bundle-ffmpeg.ps1; \
+	fi
 
 ## Install dependencies
 deps:
