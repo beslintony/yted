@@ -3,7 +3,14 @@ import { IconAlertCircle, IconVideo } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import { GetVideoFile } from '../../wailsjs/go/app/App';
-import { VideoMetadata } from '../types/editor';
+
+interface VideoMetadata {
+  duration: number;
+  width: number;
+  height: number;
+  codec: string;
+  hasAudio: boolean;
+}
 
 interface VideoPlayerProps {
   videoId: string;
