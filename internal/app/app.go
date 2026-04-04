@@ -361,6 +361,7 @@ func (a *App) ShowFFmpegDialog() (string, error) {
 
 // GetFFmpegLocations scans all common locations for FFmpeg binaries
 // Returns all found locations with their versions
+// Uses caching for performance - call RefreshFFmpegStatus to force rescan
 func (a *App) GetFFmpegLocations() FFmpegCheckResult {
 	if a.ffmpeg == nil {
 		return FFmpegCheckResult{
@@ -369,6 +370,21 @@ func (a *App) GetFFmpegLocations() FFmpegCheckResult {
 			SelectedIndex: -1,
 		}
 	}
+	return a.ffmpeg.CheckFFmpegWithGuidance()
+}
+
+// RefreshFFmpegStatus clears the FFmpeg cache and rescans for binaries
+// Call this after changing FFmpeg path to get updated status
+func (a *App) RefreshFFmpegStatus() FFmpegCheckResult {
+	if a.ffmpeg == nil {
+		return FFmpegCheckResult{
+			Installed:     false,
+			AllLocations:  []FFmpegLocation{},
+			SelectedIndex: -1,
+		}
+	}
+	a.logger.Info("App", "Refreshing FFmpeg status", nil)
+	a.ffmpeg.ClearCache()
 	return a.ffmpeg.CheckFFmpegWithGuidance()
 }
 

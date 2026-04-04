@@ -50,10 +50,11 @@ type InstallGuide struct {
 
 // FFmpegManager handles ffmpeg binary detection and management
 type FFmpegManager struct {
-	binPath    string
-	customPath string
-	logger     *log.Logger
-	ctx        context.Context
+	binPath     string
+	customPath  string
+	logger      *log.Logger
+	ctx         context.Context
+	cachedResult *FFmpegCheckResult
 }
 
 // NewFFmpegManager creates a new ffmpeg manager
@@ -66,10 +67,18 @@ func NewFFmpegManager() *FFmpegManager {
 // SetCustomPath sets a custom ffmpeg path from user configuration
 func (f *FFmpegManager) SetCustomPath(path string) {
 	f.customPath = path
-	f.binPath = "" // Reset cached path so Find() will check new path
+	f.binPath = ""      // Reset cached path so Find() will check new path
+	f.cachedResult = nil // Clear cached result
 	if path != "" {
 		f.logger.Info("FFmpeg", "Custom ffmpeg path set", map[string]string{"path": path})
 	}
+}
+
+// ClearCache clears the cached FFmpeg check result
+func (f *FFmpegManager) ClearCache() {
+	f.cachedResult = nil
+	f.binPath = ""
+	f.logger.Info("FFmpeg", "Cache cleared, will rescan on next check", nil)
 }
 
 // validatePath checks if a path is a valid ffmpeg binary and returns version info
@@ -401,7 +410,16 @@ func (f *FFmpegManager) SetContext(ctx context.Context) {
 
 // CheckFFmpegWithGuidance returns detailed FFmpeg status with install guidance
 // Scans all common locations and returns found binaries with version info
+// Uses caching for better performance - call ClearCache() to force refresh
 func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
+	// Return cached result if available
+	if f.cachedResult != nil {
+		f.logger.Debug("FFmpeg", "Returning cached check result", map[string]int{
+			"locations": len(f.cachedResult.AllLocations),
+		})
+		return *f.cachedResult
+	}
+
 	// First, find the currently active FFmpeg path
 	// This ensures f.binPath is populated and validated
 	selectedPath := f.Find()
@@ -463,6 +481,9 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 		AllLocations:  allLocations,
 		SelectedIndex: selectedIndex,
 	}
+
+	// Cache the result
+	f.cachedResult = &result
 
 	if !result.Installed {
 		guide := f.GetInstallGuide()

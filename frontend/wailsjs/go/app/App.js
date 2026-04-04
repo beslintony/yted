@@ -150,6 +150,10 @@ export function PauseDownload(arg1) {
   return window['go']['app']['App']['PauseDownload'](arg1);
 }
 
+export function RefreshFFmpegStatus() {
+  return window['go']['app']['App']['RefreshFFmpegStatus']();
+}
+
 export function RemoveDownloadPreset(arg1) {
   return window['go']['app']['App']['RemoveDownloadPreset'](arg1);
 }

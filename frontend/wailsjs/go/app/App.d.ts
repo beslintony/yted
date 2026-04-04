@@ -78,6 +78,8 @@ export function OpenFolder(arg1:string):Promise<void>;
 
 export function PauseDownload(arg1:string):Promise<void>;
 
+export function RefreshFFmpegStatus():Promise<app.FFmpegCheckResult>;
+
 export function RemoveDownloadPreset(arg1:string):Promise<void>;
 
 export function RepairLibrary():Promise<Record<string, any>>;

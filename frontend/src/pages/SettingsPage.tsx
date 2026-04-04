@@ -32,6 +32,7 @@ import {
   ClearDownloadCache,
   GetFFmpegLocations,
   GetSettings,
+  RefreshFFmpegStatus,
   SaveSettings,
   ShowFFmpegDialog,
   ShowOpenDirectoryDialog,
@@ -176,11 +177,23 @@ export function SettingsPage() {
       if (path) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSettings(s => (s ? ({ ...s, ffmpeg_path: path } as any) : null));
-        // Refresh FFmpeg status after selection
-        setTimeout(loadFfmpegStatus, 100);
+        // Clear cache and refresh FFmpeg status immediately
+        await refreshFfmpegStatus();
       }
     } catch (err) {
       console.error('Failed to browse for ffmpeg:', err);
+    }
+  };
+
+  const refreshFfmpegStatus = async () => {
+    setLoadingFfmpeg(true);
+    try {
+      const result = await RefreshFFmpegStatus();
+      setFfmpegStatus(result);
+    } catch (err) {
+      console.error('Failed to refresh FFmpeg status:', err);
+    } finally {
+      setLoadingFfmpeg(false);
     }
   };
 
@@ -615,24 +628,36 @@ export function SettingsPage() {
             <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
               FFmpeg Configuration
             </Text>
-            {loadingFfmpeg && (
-              <Badge color="gray" variant="light">
-                Checking...
-              </Badge>
-            )}
-            {!loadingFfmpeg && ffmpegStatus && (
-              <>
-                {ffmpegStatus.installed ? (
-                  <Badge color="green" variant="light">
-                    Detected
-                  </Badge>
-                ) : (
-                  <Badge color="red" variant="light">
-                    Not Found
-                  </Badge>
-                )}
-              </>
-            )}
+            <Group gap="xs">
+              <Button
+                color="gray"
+                leftSection={<IconRefresh size={14} />}
+                loading={loadingFfmpeg}
+                onClick={refreshFfmpegStatus}
+                size="sm"
+                variant="light"
+              >
+                Refresh
+              </Button>
+              {loadingFfmpeg && (
+                <Badge color="gray" variant="light">
+                  Checking...
+                </Badge>
+              )}
+              {!loadingFfmpeg && ffmpegStatus && (
+                <>
+                  {ffmpegStatus.installed ? (
+                    <Badge color="green" variant="light">
+                      Detected
+                    </Badge>
+                  ) : (
+                    <Badge color="red" variant="light">
+                      Not Found
+                    </Badge>
+                  )}
+                </>
+              )}
+            </Group>
           </Group>
 
           {/* Detected FFmpeg Info */}
@@ -752,9 +777,9 @@ export function SettingsPage() {
               leftSection={<IconRefresh size={16} />}
               size="sm"
               variant="light"
-              onClick={() => {
+              onClick={async () => {
                 updateSetting('ffmpeg_path', '');
-                setTimeout(loadFfmpegStatus, 100);
+                await refreshFfmpegStatus();
               }}
             >
               Reset to Auto-Detect
