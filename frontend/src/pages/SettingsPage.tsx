@@ -30,12 +30,13 @@ import {
   ClearCompletedDownloads,
   ClearCompletedDownloadsCache,
   ClearDownloadCache,
+  GetFFmpegLocations,
   GetSettings,
   SaveSettings,
   ShowFFmpegDialog,
   ShowOpenDirectoryDialog,
 } from '../../wailsjs/go/app/App';
-import { config } from '../../wailsjs/go/models';
+import { app, config } from '../../wailsjs/go/models';
 import { useNotifications, useSettingsStore } from '../stores';
 import { QualityOption, ThemeMode } from '../types';
 
@@ -50,6 +51,8 @@ export function SettingsPage() {
   const [editingPreset, setEditingPreset] = useState<config.DownloadPreset | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [ffmpegStatus, setFfmpegStatus] = useState<app.FFmpegCheckResult | null>(null);
+  const [loadingFfmpeg, setLoadingFfmpeg] = useState(false);
 
   const {
     setTheme,
@@ -66,6 +69,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     loadSettings();
+    loadFfmpegStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -172,10 +176,32 @@ export function SettingsPage() {
       if (path) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSettings(s => (s ? ({ ...s, ffmpeg_path: path } as any) : null));
+        // Refresh FFmpeg status after selection
+        setTimeout(loadFfmpegStatus, 100);
       }
     } catch (err) {
       console.error('Failed to browse for ffmpeg:', err);
     }
+  };
+
+  const loadFfmpegStatus = async () => {
+    setLoadingFfmpeg(true);
+    try {
+      const result = await GetFFmpegLocations();
+      setFfmpegStatus(result);
+    } catch (err) {
+      console.error('Failed to load FFmpeg status:', err);
+    } finally {
+      setLoadingFfmpeg(false);
+    }
+  };
+
+  const getSelectedFfmpegInfo = () => {
+    if (!ffmpegStatus || !ffmpegStatus.installed) return null;
+    if (ffmpegStatus.selectedIndex >= 0 && ffmpegStatus.allLocations) {
+      return ffmpegStatus.allLocations[ffmpegStatus.selectedIndex];
+    }
+    return null;
   };
 
   const handleReset = () => {
@@ -585,12 +611,114 @@ export function SettingsPage() {
         style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
       >
         <Stack gap="md">
-          <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
-            FFmpeg Configuration
-          </Text>
+          <Group justify="space-between">
+            <Text c={dark ? '#fff' : '#000'} fw={600} size="lg">
+              FFmpeg Configuration
+            </Text>
+            {loadingFfmpeg && (
+              <Badge color="gray" variant="light">
+                Checking...
+              </Badge>
+            )}
+            {!loadingFfmpeg && ffmpegStatus && (
+              <>
+                {ffmpegStatus.installed ? (
+                  <Badge color="green" variant="light">
+                    Detected
+                  </Badge>
+                ) : (
+                  <Badge color="red" variant="light">
+                    Not Found
+                  </Badge>
+                )}
+              </>
+            )}
+          </Group>
+
+          {/* Detected FFmpeg Info */}
+          {!loadingFfmpeg && ffmpegStatus?.installed && getSelectedFfmpegInfo() && (
+            <Paper
+              bg={dark ? '#1b2c1b' : '#f0f9f0'}
+              p="sm"
+              style={{ borderColor: dark ? '#2ac92a' : '#28a745', borderWidth: 1, borderStyle: 'solid' }}
+            >
+              <Stack gap={4}>
+                <Text c={dark ? '#2ac92a' : '#28a745'} fw={600} size="sm">
+                  FFmpeg Detected
+                </Text>
+                <Text c={dark ? '#c1c2c5' : '#495057'} size="sm">
+                  <strong>Path:</strong> {getSelectedFfmpegInfo()?.path}
+                </Text>
+                <Text c={dark ? '#c1c2c5' : '#495057'} size="sm">
+                  <strong>Version:</strong> {getSelectedFfmpegInfo()?.version}
+                </Text>
+                <Text c={dark ? '#909296' : '#6c757d'} size="xs">
+                  Source: {getSelectedFfmpegInfo()?.source}
+                </Text>
+              </Stack>
+            </Paper>
+          )}
+
+          {/* Not Found Warning */}
+          {!loadingFfmpeg && ffmpegStatus && !ffmpegStatus.installed && (
+            <Paper
+              bg={dark ? '#2c1b1b' : '#fdf2f2'}
+              p="sm"
+              style={{ borderColor: dark ? '#c92a2a' : '#dc3545', borderWidth: 1, borderStyle: 'solid' }}
+            >
+              <Stack gap="xs">
+                <Text c={dark ? '#ff6b6b' : '#dc3545'} fw={600} size="sm">
+                  FFmpeg Not Found
+                </Text>
+                <Text c={dark ? '#c1c2c5' : '#495057'} size="sm">
+                  FFmpeg is required for merging separate video and audio streams into a single file.
+                  Without FFmpeg configured:
+                </Text>
+                <ul style={{ margin: 0, paddingLeft: 20, color: dark ? '#c1c2c5' : '#495057', fontSize: '0.875rem' }}>
+                  <li>Videos may be downloaded without audio</li>
+                  <li>Separate video and audio files won't be merged</li>
+                  <li>Some formats may not work correctly</li>
+                </ul>
+                <Text c={dark ? '#c1c2c5' : '#495057'} size="sm" mt={4}>
+                  Please specify the path to your FFmpeg binary below, or install FFmpeg and restart YTed.
+                </Text>
+              </Stack>
+            </Paper>
+          )}
+
+          {/* Other Found Locations */}
+          {!loadingFfmpeg && ffmpegStatus && ffmpegStatus.allLocations && ffmpegStatus.allLocations.length > 1 && (
+            <Paper
+              bg={dark ? '#25262b' : '#f8f9fa'}
+              p="sm"
+              style={{ borderColor: dark ? '#373a40' : '#dee2e6', borderWidth: 1, borderStyle: 'solid' }}
+            >
+              <Text c={dark ? '#c1c2c5' : '#495057'} fw={600} size="sm" mb={8}>
+                Other FFmpeg Installations Found ({ffmpegStatus.allLocations.length - 1})
+              </Text>
+              <Stack gap={4}>
+                {ffmpegStatus.allLocations.map((loc, idx) => {
+                  if (idx === ffmpegStatus.selectedIndex) return null;
+                  return (
+                    <Group key={loc.path} gap="xs">
+                      <Text c={dark ? '#909296' : '#6c757d'} size="xs" style={{ flex: 1 }}>
+                        {loc.path}
+                      </Text>
+                      <Text c={dark ? '#909296' : '#6c757d'} size="xs">
+                        v{loc.version}
+                      </Text>
+                      <Badge color="gray" size="xs" variant="outline">
+                        {loc.source}
+                      </Badge>
+                    </Group>
+                  );
+                })}
+              </Stack>
+            </Paper>
+          )}
+
           <Text c={dark ? 'dimmed' : 'gray.6'} size="sm">
-            FFmpeg is required for merging separate video and audio streams into a single file.
-            Leave empty to auto-detect from system PATH.
+            You can specify a custom FFmpeg path below, or leave empty to auto-detect from system PATH.
           </Text>
 
           <Group align="flex-end" gap="sm">
@@ -617,6 +745,21 @@ export function SettingsPage() {
               Browse
             </Button>
           </Group>
+
+          {settings.ffmpeg_path && (
+            <Button
+              color="gray"
+              leftSection={<IconRefresh size={16} />}
+              size="sm"
+              variant="light"
+              onClick={() => {
+                updateSetting('ffmpeg_path', '');
+                setTimeout(loadFfmpegStatus, 100);
+              }}
+            >
+              Reset to Auto-Detect
+            </Button>
+          )}
         </Stack>
       </Paper>
 

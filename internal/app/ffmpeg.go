@@ -105,62 +105,107 @@ func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
 	var locations []FFmpegLocation
 	seen := make(map[string]bool)
 
+	f.logger.Info("FFmpeg", "Scanning for FFmpeg binaries...", nil)
+
 	// 1. Check custom path
 	if f.customPath != "" {
+		f.logger.Info("FFmpeg", "Checking custom path", map[string]string{"path": f.customPath})
 		if valid, version := f.validatePath(f.customPath); valid {
+			extractedVersion := f.extractVersion(version)
 			locations = append(locations, FFmpegLocation{
 				Path:    f.customPath,
-				Version: f.extractVersion(version),
+				Version: extractedVersion,
 				IsValid: true,
 				Source:  "custom",
 			})
 			seen[f.customPath] = true
+			f.logger.Info("FFmpeg", "Found valid FFmpeg at custom path", map[string]string{
+				"path":    f.customPath,
+				"version": extractedVersion,
+			})
+		} else {
+			f.logger.Warn("FFmpeg", "Custom path not valid", map[string]string{"path": f.customPath})
 		}
 	}
 
 	// 2. Check bundled paths
-	for _, path := range f.getBundledPaths() {
+	bundledPaths := f.getBundledPaths()
+	f.logger.Info("FFmpeg", "Checking bundled paths", map[string]int{"count": len(bundledPaths)})
+	for _, path := range bundledPaths {
 		if seen[path] {
 			continue
 		}
 		if valid, version := f.validatePath(path); valid {
+			extractedVersion := f.extractVersion(version)
 			locations = append(locations, FFmpegLocation{
 				Path:    path,
-				Version: f.extractVersion(version),
+				Version: extractedVersion,
 				IsValid: true,
 				Source:  "bundled",
 			})
 			seen[path] = true
+			f.logger.Info("FFmpeg", "Found valid bundled FFmpeg", map[string]string{
+				"path":    path,
+				"version": extractedVersion,
+			})
 		}
 	}
 
 	// 3. Check PATH
+	f.logger.Info("FFmpeg", "Checking system PATH", nil)
 	if path, err := exec.LookPath("ffmpeg"); err == nil && !seen[path] {
 		if valid, version := f.validatePath(path); valid {
+			extractedVersion := f.extractVersion(version)
 			locations = append(locations, FFmpegLocation{
 				Path:    path,
-				Version: f.extractVersion(version),
+				Version: extractedVersion,
 				IsValid: true,
 				Source:  "path",
 			})
 			seen[path] = true
+			f.logger.Info("FFmpeg", "Found valid FFmpeg in PATH", map[string]string{
+				"path":    path,
+				"version": extractedVersion,
+			})
 		}
+	} else if err != nil {
+		f.logger.Info("FFmpeg", "FFmpeg not found in PATH", map[string]string{"error": err.Error()})
 	}
 
 	// 4. Check common locations
-	for _, path := range f.getCommonPaths() {
+	commonPaths := f.getCommonPaths()
+	f.logger.Info("FFmpeg", "Checking common installation paths", map[string]int{"count": len(commonPaths)})
+	for _, path := range commonPaths {
 		if seen[path] {
 			continue
 		}
 		if valid, version := f.validatePath(path); valid {
+			extractedVersion := f.extractVersion(version)
 			locations = append(locations, FFmpegLocation{
 				Path:    path,
-				Version: f.extractVersion(version),
+				Version: extractedVersion,
 				IsValid: true,
 				Source:  "common",
 			})
 			seen[path] = true
+			f.logger.Info("FFmpeg", "Found valid FFmpeg in common location", map[string]string{
+				"path":    path,
+				"version": extractedVersion,
+			})
 		}
+	}
+
+	if len(locations) == 0 {
+		f.logger.Warn("FFmpeg", "No FFmpeg binaries found", map[string]interface{}{
+			"customPath":   f.customPath,
+			"bundledChecked": len(bundledPaths),
+			"commonChecked": len(commonPaths),
+		})
+	} else {
+		f.logger.Info("FFmpeg", "FFmpeg scan complete", map[string]interface{}{
+			"found":        len(locations),
+			"selectedPath": f.binPath,
+		})
 	}
 
 	return locations
