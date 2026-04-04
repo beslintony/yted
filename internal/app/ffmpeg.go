@@ -132,20 +132,22 @@ func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
 	bundledPaths := f.getBundledPaths()
 	f.logger.Info("FFmpeg", "Checking bundled paths", map[string]int{"count": len(bundledPaths)})
 	for _, path := range bundledPaths {
-		if seen[path] {
+		// Normalize path for comparison
+		normalizedPath := filepath.Clean(path)
+		if seen[normalizedPath] {
 			continue
 		}
 		if valid, version := f.validatePath(path); valid {
 			extractedVersion := f.extractVersion(version)
 			locations = append(locations, FFmpegLocation{
-				Path:    path,
+				Path:    normalizedPath,
 				Version: extractedVersion,
 				IsValid: true,
 				Source:  "bundled",
 			})
-			seen[path] = true
+			seen[normalizedPath] = true
 			f.logger.Info("FFmpeg", "Found valid bundled FFmpeg", map[string]string{
-				"path":    path,
+				"path":    normalizedPath,
 				"version": extractedVersion,
 			})
 		}
@@ -245,9 +247,10 @@ func (f *FFmpegManager) Find() string {
 	// Try bundled ffmpeg shipped with the app package
 	for _, path := range f.getBundledPaths() {
 		if valid, _ := f.validatePath(path); valid {
-			f.binPath = path
-			f.logger.Info("FFmpeg", "Found bundled ffmpeg", map[string]string{"path": path})
-			return path
+			// Normalize path for consistent comparison
+			f.binPath = filepath.Clean(path)
+			f.logger.Info("FFmpeg", "Found bundled ffmpeg", map[string]string{"path": f.binPath})
+			return f.binPath
 		}
 	}
 
@@ -411,6 +414,27 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 			selectedIndex = i
 			selectedVersion = loc.Version
 			break
+		}
+	}
+
+	// If we have a selected path but it's not in allLocations (path mismatch, symlink, etc.)
+	// add it to the list so the UI can display it
+	if selectedPath != "" && selectedIndex == -1 {
+		f.logger.Info("FFmpeg", "Selected path not in scanned locations, adding it", map[string]string{
+			"selectedPath": selectedPath,
+		})
+		// Get version for the selected path
+		if valid, version := f.validatePath(selectedPath); valid {
+			extractedVersion := f.extractVersion(version)
+			selectedVersion = extractedVersion
+			// Prepend to the list so it's index 0
+			allLocations = append([]FFmpegLocation{{
+				Path:    selectedPath,
+				Version: extractedVersion,
+				IsValid: true,
+				Source:  "active",
+			}}, allLocations...)
+			selectedIndex = 0
 		}
 	}
 
