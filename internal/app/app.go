@@ -359,6 +359,19 @@ func (a *App) ShowFFmpegDialog() (string, error) {
 	})
 }
 
+// GetFFmpegLocations scans all common locations for FFmpeg binaries
+// Returns all found locations with their versions
+func (a *App) GetFFmpegLocations() FFmpegCheckResult {
+	if a.ffmpeg == nil {
+		return FFmpegCheckResult{
+			Installed:     false,
+			AllLocations:  []FFmpegLocation{},
+			SelectedIndex: -1,
+		}
+	}
+	return a.ffmpeg.CheckFFmpegWithGuidance()
+}
+
 // ShowSaveDialog shows a save file dialog
 func (a *App) ShowSaveDialog(defaultFilename string) (string, error) {
 	return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
