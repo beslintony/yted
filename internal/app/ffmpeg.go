@@ -231,6 +231,7 @@ func (f *FFmpegManager) extractVersion(versionLine string) string {
 func (f *FFmpegManager) Find() string {
 	// Check if we already found and validated it
 	if f.binPath != "" {
+		f.logger.Debug("FFmpeg", "Using cached FFmpeg path", map[string]string{"path": f.binPath})
 		return f.binPath
 	}
 
@@ -401,16 +402,26 @@ func (f *FFmpegManager) SetContext(ctx context.Context) {
 // CheckFFmpegWithGuidance returns detailed FFmpeg status with install guidance
 // Scans all common locations and returns found binaries with version info
 func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
-	// Scan all locations first
+	// First, find the currently active FFmpeg path
+	// This ensures f.binPath is populated and validated
+	selectedPath := f.Find()
+
+	// Now scan all locations
 	allLocations := f.ScanAllLocations()
 
-	// Find the currently selected path
-	selectedPath := f.Find()
 	selectedIndex := -1
 	var selectedVersion string
 
+	// Normalize the selected path for comparison
+	normalizedSelectedPath := selectedPath
+	if selectedPath != "" {
+		normalizedSelectedPath = filepath.Clean(selectedPath)
+	}
+
+	// Try to find the selected path in the scanned locations
 	for i, loc := range allLocations {
-		if loc.Path == selectedPath {
+		// Compare normalized paths
+		if filepath.Clean(loc.Path) == normalizedSelectedPath {
 			selectedIndex = i
 			selectedVersion = loc.Version
 			break
@@ -435,6 +446,13 @@ func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
 				Source:  "active",
 			}}, allLocations...)
 			selectedIndex = 0
+		} else {
+			f.logger.Warn("FFmpeg", "Selected path is no longer valid", map[string]string{
+				"selectedPath": selectedPath,
+			})
+			// The cached path is invalid, clear it
+			selectedPath = ""
+			f.binPath = ""
 		}
 	}
 
