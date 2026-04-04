@@ -48,6 +48,8 @@ export function GetDownloads():Promise<Array<db.Download>>;
 
 export function GetDownloadsByStatus(arg1:string):Promise<Array<db.Download>>;
 
+export function GetFFmpegLocations():Promise<app.FFmpegCheckResult>;
+
 export function GetIncompleteDownloads():Promise<Array<db.Download>>;
 
 export function GetLibraryStats():Promise<Record<string, any>>;

@@ -90,6 +90,10 @@ export function GetDownloadsByStatus(arg1) {
   return window['go']['app']['App']['GetDownloadsByStatus'](arg1);
 }
 
+export function GetFFmpegLocations() {
+  return window['go']['app']['App']['GetFFmpegLocations']();
+}
+
 export function GetIncompleteDownloads() {
   return window['go']['app']['App']['GetIncompleteDownloads']();
 }
