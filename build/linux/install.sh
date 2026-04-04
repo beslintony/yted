@@ -19,6 +19,24 @@ if [ ! -f "$PROJECT_ROOT/build/bin/yted" ]; then
     exit 1
 fi
 
+# Check for FFmpeg
+if ! command -v ffmpeg &> /dev/null; then
+    echo ""
+    echo "WARNING: FFmpeg not found on your system."
+    echo "YTed requires FFmpeg to download videos."
+    echo ""
+    echo "To install FFmpeg:"
+    echo "  Ubuntu/Debian: sudo apt install ffmpeg"
+    echo "  Fedora:        sudo dnf install ffmpeg"
+    echo "  Arch:          sudo pacman -S ffmpeg"
+    echo ""
+    read -p "Continue with installation anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 # Determine installation type
 if [ "$1" == "--system" ]; then
     INSTALL_DIR="/usr/local/bin"
@@ -42,18 +60,6 @@ echo "Installing binary to $INSTALL_DIR..."
 $SUDO cp "$PROJECT_ROOT/build/bin/yted" "$INSTALL_DIR/$EXECUTABLE"
 $SUDO chmod +x "$INSTALL_DIR/$EXECUTABLE"
 
-# Install bundled FFmpeg if present
-if [ -f "$PROJECT_ROOT/build/bin/ffmpeg" ]; then
-    echo "Installing bundled FFmpeg to $INSTALL_DIR..."
-    $SUDO cp "$PROJECT_ROOT/build/bin/ffmpeg" "$INSTALL_DIR/ffmpeg"
-    $SUDO chmod +x "$INSTALL_DIR/ffmpeg"
-fi
-if [ -f "$PROJECT_ROOT/build/bin/ffprobe" ]; then
-    echo "Installing bundled ffprobe to $INSTALL_DIR..."
-    $SUDO cp "$PROJECT_ROOT/build/bin/ffprobe" "$INSTALL_DIR/ffprobe"
-    $SUDO chmod +x "$INSTALL_DIR/ffprobe"
-fi
-
 # Install icon
 echo "Installing icon to $ICON_DIR..."
 $SUDO cp "$PROJECT_ROOT/build/appicon.png" "$ICON_DIR/$ICON_NAME.png"
@@ -66,6 +72,18 @@ else
     # Update desktop file for user install (replace Exec and Icon paths)
     sed -e "s|Exec=yted|Exec=$INSTALL_DIR/yted|" \
         -e "s|Icon=yted|Icon=$ICON_DIR/yted.png|" "$SCRIPT_DIR/$DESKTOP_FILE" > "$DESKTOP_DIR/$DESKTOP_FILE"
+fi
+
+# Install license files
+echo "Installing license files..."
+if [ "$SUDO" == "sudo" ]; then
+    $SUDO mkdir -p "/usr/share/doc/yted"
+    $SUDO cp "$PROJECT_ROOT/LICENSE" "/usr/share/doc/yted/"
+    $SUDO cp "$PROJECT_ROOT/LICENSE-THIRD-PARTY" "/usr/share/doc/yted/"
+else
+    mkdir -p "$HOME/.local/share/doc/yted"
+    cp "$PROJECT_ROOT/LICENSE" "$HOME/.local/share/doc/yted/"
+    cp "$PROJECT_ROOT/LICENSE-THIRD-PARTY" "$HOME/.local/share/doc/yted/"
 fi
 
 # Update desktop database
@@ -82,4 +100,13 @@ if [ "$SUDO" == "sudo" ]; then
 else
     echo "Make sure ~/.local/bin is in your PATH"
     echo "You can now launch YTed from your applications menu or by running '$INSTALL_DIR/yted'"
+fi
+
+# Final FFmpeg reminder
+if ! command -v ffmpeg &> /dev/null; then
+    echo ""
+    echo "NOTE: FFmpeg is required but not installed. Please install it:"
+    echo "  Ubuntu/Debian: sudo apt install ffmpeg"
+    echo "  Fedora:        sudo dnf install ffmpeg"
+    echo "  Arch:          sudo pacman -S ffmpeg"
 fi

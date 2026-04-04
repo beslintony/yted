@@ -10,11 +10,7 @@ export function AddDownloadPreset(arg1:config.DownloadPreset):Promise<void>;
 
 export function CancelDownload(arg1:string):Promise<void>;
 
-export function CancelEditJob(arg1:string):Promise<void>;
-
 export function CheckDownloadStatus(arg1:string):Promise<Record<string, any>>;
-
-export function CheckFFmpegWithGuidance():Promise<app.FFmpegCheckResult>;
 
 export function CleanUpDuplicateVideos():Promise<void>;
 
@@ -30,8 +26,6 @@ export function ClearLogs():Promise<void>;
 
 export function ClearTempFiles():Promise<Record<string, any>>;
 
-export function DeleteEditJob(arg1:string):Promise<void>;
-
 export function DeleteVideo(arg1:string,arg2:boolean):Promise<void>;
 
 export function DeleteVideoWithConfirmation(arg1:string):Promise<Record<string, any>>;
@@ -46,8 +40,6 @@ export function GetCacheInfo():Promise<app.CacheInfo>;
 
 export function GetChannels():Promise<Array<string>>;
 
-export function GetCropPresets():Promise<Record<string, Record<string, any>>>;
-
 export function GetDownloadPresets():Promise<Array<config.DownloadPreset>>;
 
 export function GetDownloadQueue():Promise<Array<app.DownloadResult>>;
@@ -55,14 +47,6 @@ export function GetDownloadQueue():Promise<Array<app.DownloadResult>>;
 export function GetDownloads():Promise<Array<db.Download>>;
 
 export function GetDownloadsByStatus(arg1:string):Promise<Array<db.Download>>;
-
-export function GetEditJobStatus(arg1:string):Promise<app.EditJobResult>;
-
-export function GetEditPresets():Promise<Array<app.EditPresetResult>>;
-
-export function GetEffectRanges():Promise<Record<string, Record<string, any>>>;
-
-export function GetFFmpegInstallGuide():Promise<app.InstallGuide>;
 
 export function GetIncompleteDownloads():Promise<Array<db.Download>>;
 
@@ -72,15 +56,7 @@ export function GetLogExportPath():Promise<string>;
 
 export function GetLogs(arg1:number):Promise<Array<app.LogEntry>>;
 
-export function GetPreviewImage(arg1:string):Promise<string>;
-
-export function GetRotationOptions():Promise<Array<Record<string, any>>>;
-
 export function GetSettings():Promise<config.Config>;
-
-export function GetSupportedCodecs():Promise<Record<string, Record<string, any>>>;
-
-export function GetSupportedFormats():Promise<Record<string, Record<string, any>>>;
 
 export function GetVersion():Promise<string>;
 
@@ -88,29 +64,17 @@ export function GetVideo(arg1:string):Promise<app.VideoResult>;
 
 export function GetVideoByYoutubeID(arg1:string):Promise<app.VideoResult>;
 
-export function GetVideoFile(arg1:string):Promise<Array<number>>;
-
 export function GetVideoInfo(arg1:string):Promise<app.VideoInfoResult>;
-
-export function GetVideoMetadata(arg1:string):Promise<app.VideoMetadataResult>;
-
-export function GetWatermarkPositions():Promise<Record<string, string>>;
 
 export function GetYtdlpVersion():Promise<string>;
 
-export function ListEditJobs(arg1:string):Promise<Array<app.EditJobResult>>;
-
 export function ListVideos(arg1:app.ListVideosOptions):Promise<Array<app.VideoResult>>;
-
-export function OpenFFmpegDownloadPage():Promise<void>;
 
 export function OpenFile(arg1:string):Promise<void>;
 
 export function OpenFolder(arg1:string):Promise<void>;
 
 export function PauseDownload(arg1:string):Promise<void>;
-
-export function PreviewEdit(arg1:string,arg2:string,arg3:app.EditSettingsInput):Promise<string>;
 
 export function RemoveDownloadPreset(arg1:string):Promise<void>;
 
@@ -135,8 +99,6 @@ export function ShowOpenDirectoryDialog():Promise<string>;
 export function ShowSaveDialog(arg1:string):Promise<string>;
 
 export function StartProcessingDownloads():Promise<void>;
-
-export function SubmitEditJob(arg1:string,arg2:string,arg3:app.EditSettingsInput):Promise<string>;
 
 export function SyncDownloadWithFile(arg1:string):Promise<void>;
 

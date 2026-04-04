@@ -14,17 +14,27 @@ import (
 	"yted/internal/log"
 )
 
+// FFmpegLocation represents a found FFmpeg binary location
+type FFmpegLocation struct {
+	Path      string `json:"path"`
+	Version   string `json:"version"`
+	IsValid   bool   `json:"isValid"`
+	Source    string `json:"source"` // "custom", "bundled", "path", "common"
+}
+
 // FFmpegCheckResult provides detailed FFmpeg status for UI
 type FFmpegCheckResult struct {
-	Installed      bool   `json:"installed"`
-	Version        string `json:"version"`
-	Path           string `json:"path"`
-	CanAutoInstall bool   `json:"canAutoInstall"`
-	InstallMethod  string `json:"installMethod"`  // "package_manager", "download", "manual"
-	InstallCommand string `json:"installCommand"` // OS-specific command
-	InstallGuide   string `json:"installGuide"`   // Markdown guide text
-	DownloadURL    string `json:"downloadURL"`    // Direct download link
-	RequiresAdmin  bool   `json:"requiresAdmin"`
+	Installed      bool              `json:"installed"`
+	Version        string            `json:"version"`
+	Path           string            `json:"path"`
+	AllLocations   []FFmpegLocation  `json:"allLocations"`   // All found locations
+	SelectedIndex  int               `json:"selectedIndex"`  // Which location is selected (-1 if none)
+	CanAutoInstall bool              `json:"canAutoInstall"`
+	InstallMethod  string            `json:"installMethod"`  // "package_manager", "download", "manual"
+	InstallCommand string            `json:"installCommand"` // OS-specific command
+	InstallGuide   string            `json:"installGuide"`   // Markdown guide text
+	DownloadURL    string            `json:"downloadURL"`    // Direct download link
+	RequiresAdmin  bool              `json:"requiresAdmin"`
 }
 
 // InstallGuide provides OS-specific installation instructions
@@ -62,6 +72,113 @@ func (f *FFmpegManager) SetCustomPath(path string) {
 	}
 }
 
+// validatePath checks if a path is a valid ffmpeg binary and returns version info
+func (f *FFmpegManager) validatePath(path string) (bool, string) {
+	if path == "" {
+		return false, ""
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return false, ""
+	}
+	// Actually run ffmpeg -version to verify it works
+	cmd := exec.Command(path, "-version")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, ""
+	}
+	// Verify output contains "ffmpeg version"
+	outputStr := string(output)
+	if !strings.Contains(outputStr, "ffmpeg version") {
+		return false, ""
+	}
+	// Extract version from first line
+	lines := strings.Split(outputStr, "\n")
+	if len(lines) > 0 {
+		return true, lines[0]
+	}
+	return true, ""
+}
+
+// ScanAllLocations scans all possible ffmpeg locations and returns found ones with version info
+func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
+	var locations []FFmpegLocation
+	seen := make(map[string]bool)
+
+	// 1. Check custom path
+	if f.customPath != "" {
+		if valid, version := f.validatePath(f.customPath); valid {
+			locations = append(locations, FFmpegLocation{
+				Path:    f.customPath,
+				Version: f.extractVersion(version),
+				IsValid: true,
+				Source:  "custom",
+			})
+			seen[f.customPath] = true
+		}
+	}
+
+	// 2. Check bundled paths
+	for _, path := range f.getBundledPaths() {
+		if seen[path] {
+			continue
+		}
+		if valid, version := f.validatePath(path); valid {
+			locations = append(locations, FFmpegLocation{
+				Path:    path,
+				Version: f.extractVersion(version),
+				IsValid: true,
+				Source:  "bundled",
+			})
+			seen[path] = true
+		}
+	}
+
+	// 3. Check PATH
+	if path, err := exec.LookPath("ffmpeg"); err == nil && !seen[path] {
+		if valid, version := f.validatePath(path); valid {
+			locations = append(locations, FFmpegLocation{
+				Path:    path,
+				Version: f.extractVersion(version),
+				IsValid: true,
+				Source:  "path",
+			})
+			seen[path] = true
+		}
+	}
+
+	// 4. Check common locations
+	for _, path := range f.getCommonPaths() {
+		if seen[path] {
+			continue
+		}
+		if valid, version := f.validatePath(path); valid {
+			locations = append(locations, FFmpegLocation{
+				Path:    path,
+				Version: f.extractVersion(version),
+				IsValid: true,
+				Source:  "common",
+			})
+			seen[path] = true
+		}
+	}
+
+	return locations
+}
+
+// extractVersion extracts just the version number from ffmpeg -version output
+func (f *FFmpegManager) extractVersion(versionLine string) string {
+	// Input: "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023..."
+	// Output: "6.1.1-3ubuntu5"
+	if strings.HasPrefix(versionLine, "ffmpeg version ") {
+		parts := strings.SplitN(versionLine, " ", 3)
+		if len(parts) >= 3 {
+			return parts[2]
+		}
+	}
+	return versionLine
+}
+
 // Find searches for ffmpeg in custom path, PATH and common locations
 // Validates the binary by running 'ffmpeg -version' to ensure it works
 func (f *FFmpegManager) Find() string {
@@ -70,38 +187,9 @@ func (f *FFmpegManager) Find() string {
 		return f.binPath
 	}
 
-	// Helper to validate a path works by running ffmpeg -version
-	validatePath := func(path string) bool {
-		if path == "" {
-			return false
-		}
-		info, err := os.Stat(path)
-		if err != nil || info.IsDir() {
-			return false
-		}
-		// Actually run ffmpeg -version to verify it works
-		cmd := exec.Command(path, "-version")
-		output, err := cmd.Output()
-		if err != nil {
-			f.logger.Warn("FFmpeg", "Binary found but failed validation", map[string]string{
-				"path":  path,
-				"error": err.Error(),
-			})
-			return false
-		}
-		// Verify output contains "ffmpeg version"
-		if !strings.Contains(string(output), "ffmpeg version") {
-			f.logger.Warn("FFmpeg", "Binary output doesn't look like ffmpeg", map[string]string{
-				"path": path,
-			})
-			return false
-		}
-		return true
-	}
-
 	// First try custom path if set
 	if f.customPath != "" {
-		if validatePath(f.customPath) {
+		if valid, _ := f.validatePath(f.customPath); valid {
 			f.binPath = f.customPath
 			f.logger.Info("FFmpeg", "Found and validated ffmpeg at custom path", map[string]string{"path": f.customPath})
 			return f.customPath
@@ -111,7 +199,7 @@ func (f *FFmpegManager) Find() string {
 
 	// Try bundled ffmpeg shipped with the app package
 	for _, path := range f.getBundledPaths() {
-		if validatePath(path) {
+		if valid, _ := f.validatePath(path); valid {
 			f.binPath = path
 			f.logger.Info("FFmpeg", "Found bundled ffmpeg", map[string]string{"path": path})
 			return path
@@ -120,7 +208,7 @@ func (f *FFmpegManager) Find() string {
 
 	// Try PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
-		if validatePath(path) {
+		if valid, _ := f.validatePath(path); valid {
 			f.binPath = path
 			f.logger.Info("FFmpeg", "Found and validated ffmpeg in PATH", map[string]string{"path": path})
 			return path
@@ -130,7 +218,7 @@ func (f *FFmpegManager) Find() string {
 	// Check common locations
 	commonPaths := f.getCommonPaths()
 	for _, path := range commonPaths {
-		if validatePath(path) {
+		if valid, _ := f.validatePath(path); valid {
 			f.binPath = path
 			f.logger.Info("FFmpeg", "Found and validated ffmpeg in common location", map[string]string{"path": path})
 			return path
@@ -263,14 +351,30 @@ func (f *FFmpegManager) SetContext(ctx context.Context) {
 }
 
 // CheckFFmpegWithGuidance returns detailed FFmpeg status with install guidance
+// Scans all common locations and returns found binaries with version info
 func (f *FFmpegManager) CheckFFmpegWithGuidance() FFmpegCheckResult {
-	path := f.Find()
-	version := f.GetVersion()
+	// Scan all locations first
+	allLocations := f.ScanAllLocations()
+
+	// Find the currently selected path
+	selectedPath := f.Find()
+	selectedIndex := -1
+	var selectedVersion string
+
+	for i, loc := range allLocations {
+		if loc.Path == selectedPath {
+			selectedIndex = i
+			selectedVersion = loc.Version
+			break
+		}
+	}
 
 	result := FFmpegCheckResult{
-		Installed: path != "",
-		Version:   version,
-		Path:      path,
+		Installed:     selectedPath != "",
+		Version:       selectedVersion,
+		Path:          selectedPath,
+		AllLocations:  allLocations,
+		SelectedIndex: selectedIndex,
 	}
 
 	if !result.Installed {

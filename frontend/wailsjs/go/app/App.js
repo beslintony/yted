@@ -14,16 +14,8 @@ export function CancelDownload(arg1) {
   return window['go']['app']['App']['CancelDownload'](arg1);
 }
 
-export function CancelEditJob(arg1) {
-  return window['go']['app']['App']['CancelEditJob'](arg1);
-}
-
 export function CheckDownloadStatus(arg1) {
   return window['go']['app']['App']['CheckDownloadStatus'](arg1);
-}
-
-export function CheckFFmpegWithGuidance() {
-  return window['go']['app']['App']['CheckFFmpegWithGuidance']();
 }
 
 export function CleanUpDuplicateVideos() {
@@ -54,10 +46,6 @@ export function ClearTempFiles() {
   return window['go']['app']['App']['ClearTempFiles']();
 }
 
-export function DeleteEditJob(arg1) {
-  return window['go']['app']['App']['DeleteEditJob'](arg1);
-}
-
 export function DeleteVideo(arg1, arg2) {
   return window['go']['app']['App']['DeleteVideo'](arg1, arg2);
 }
@@ -86,10 +74,6 @@ export function GetChannels() {
   return window['go']['app']['App']['GetChannels']();
 }
 
-export function GetCropPresets() {
-  return window['go']['app']['App']['GetCropPresets']();
-}
-
 export function GetDownloadPresets() {
   return window['go']['app']['App']['GetDownloadPresets']();
 }
@@ -104,22 +88,6 @@ export function GetDownloads() {
 
 export function GetDownloadsByStatus(arg1) {
   return window['go']['app']['App']['GetDownloadsByStatus'](arg1);
-}
-
-export function GetEditJobStatus(arg1) {
-  return window['go']['app']['App']['GetEditJobStatus'](arg1);
-}
-
-export function GetEditPresets() {
-  return window['go']['app']['App']['GetEditPresets']();
-}
-
-export function GetEffectRanges() {
-  return window['go']['app']['App']['GetEffectRanges']();
-}
-
-export function GetFFmpegInstallGuide() {
-  return window['go']['app']['App']['GetFFmpegInstallGuide']();
 }
 
 export function GetIncompleteDownloads() {
@@ -138,24 +106,8 @@ export function GetLogs(arg1) {
   return window['go']['app']['App']['GetLogs'](arg1);
 }
 
-export function GetPreviewImage(arg1) {
-  return window['go']['app']['App']['GetPreviewImage'](arg1);
-}
-
-export function GetRotationOptions() {
-  return window['go']['app']['App']['GetRotationOptions']();
-}
-
 export function GetSettings() {
   return window['go']['app']['App']['GetSettings']();
-}
-
-export function GetSupportedCodecs() {
-  return window['go']['app']['App']['GetSupportedCodecs']();
-}
-
-export function GetSupportedFormats() {
-  return window['go']['app']['App']['GetSupportedFormats']();
 }
 
 export function GetVersion() {
@@ -170,36 +122,16 @@ export function GetVideoByYoutubeID(arg1) {
   return window['go']['app']['App']['GetVideoByYoutubeID'](arg1);
 }
 
-export function GetVideoFile(arg1) {
-  return window['go']['app']['App']['GetVideoFile'](arg1);
-}
-
 export function GetVideoInfo(arg1) {
   return window['go']['app']['App']['GetVideoInfo'](arg1);
-}
-
-export function GetVideoMetadata(arg1) {
-  return window['go']['app']['App']['GetVideoMetadata'](arg1);
-}
-
-export function GetWatermarkPositions() {
-  return window['go']['app']['App']['GetWatermarkPositions']();
 }
 
 export function GetYtdlpVersion() {
   return window['go']['app']['App']['GetYtdlpVersion']();
 }
 
-export function ListEditJobs(arg1) {
-  return window['go']['app']['App']['ListEditJobs'](arg1);
-}
-
 export function ListVideos(arg1) {
   return window['go']['app']['App']['ListVideos'](arg1);
-}
-
-export function OpenFFmpegDownloadPage() {
-  return window['go']['app']['App']['OpenFFmpegDownloadPage']();
 }
 
 export function OpenFile(arg1) {
@@ -212,10 +144,6 @@ export function OpenFolder(arg1) {
 
 export function PauseDownload(arg1) {
   return window['go']['app']['App']['PauseDownload'](arg1);
-}
-
-export function PreviewEdit(arg1, arg2, arg3) {
-  return window['go']['app']['App']['PreviewEdit'](arg1, arg2, arg3);
 }
 
 export function RemoveDownloadPreset(arg1) {
@@ -264,10 +192,6 @@ export function ShowSaveDialog(arg1) {
 
 export function StartProcessingDownloads() {
   return window['go']['app']['App']['StartProcessingDownloads']();
-}
-
-export function SubmitEditJob(arg1, arg2, arg3) {
-  return window['go']['app']['App']['SubmitEditJob'](arg1, arg2, arg3);
 }
 
 export function SyncDownloadWithFile(arg1) {

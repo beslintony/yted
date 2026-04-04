@@ -14,7 +14,7 @@ A modern, user-friendly YouTube downloader and library manager built with Go, Wa
 - **Watch Progress**: Automatically track and resume playback position
 - **Configurable**: Extensive user settings including download presets and speed limits
 - **Cross-Platform**: Native builds for Windows and Linux with official installers
-- **Bundled FFmpeg**: No extra setup needed — FFmpeg and FFprobe are included in all release packages
+- **FFmpeg Integration**: Works with your existing FFmpeg installation or helps you set it up
 - **Custom App Icon**: Branded YTed icon across all platforms
 
 ## Screenshots
@@ -47,7 +47,7 @@ Download the latest release from the [Releases](https://github.com/beslintony/yt
 
 #### Windows
 - **Installer** (recommended): Download `YTed-amd64-installer.exe` and run it. Creates Start Menu and Desktop shortcuts.
-- **Portable**: Download `YTed.exe` and place it anywhere. FFmpeg and FFprobe travel with the binary.
+- **Portable**: Download `YTed.exe` and place it anywhere. Requires FFmpeg to be installed separately.
 
 #### Linux
 - **Ubuntu/Debian** (recommended): Download the `.deb` package and install it:
@@ -60,17 +60,6 @@ Download the latest release from the [Releases](https://github.com/beslintony/yt
   tar xzf YTed-linux-amd64.tar.gz
   ./YTed
   ```
-
-### Bundled FFmpeg
-
-All pre-built release binaries for Linux and Windows include **FFmpeg** and **FFprobe** bundled automatically — no separate installation is required.
-
-YTed looks for bundled binaries in these locations relative to the app executable:
-- Same directory as the executable
-- `ffmpeg/`
-- `bin/`
-- `resources/`
-- `resources/ffmpeg/`
 
 ### Build from Source
 
@@ -96,7 +85,7 @@ make build
 make build-versioned VERSION=1.3.0
 ```
 
-The `make build` command will also automatically download and bundle FFmpeg for your platform.
+
 
 ### Install from Source (Linux)
 
@@ -147,7 +136,7 @@ yted/
 ├── build/                # Build assets, icons, scripts & installers
 │   ├── bin/              # Build output
 │   ├── linux/            # Linux install scripts and desktop files
-│   ├── scripts/          # Helper scripts (bundle FFmpeg, build .deb)
+│   ├── scripts/          # Helper scripts (build .deb, etc)
 │   └── windows/          # Windows icons and NSIS installer files
 └── main.go              # Entry point
 ```
@@ -156,8 +145,8 @@ yted/
 
 ```bash
 make dev                   # Run in development mode
-make build                 # Build for production (bundles FFmpeg)
-make build-versioned       # Build with version injection (bundles FFmpeg)
+make build                 # Build for production
+make build-versioned       # Build with version injection
 make build-installer-linux    # Build Linux .deb package
 make build-installer-windows  # Build Windows NSIS installer
 make test                  # Run all tests
@@ -290,10 +279,21 @@ make test   # Run tests
 
 MIT License - see [LICENSE](LICENSE) for details.
 
+### Third-Party Licenses
+
+This software uses [FFmpeg](https://ffmpeg.org/) as an external dependency. 
+FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
+
+See [LICENSE-THIRD-PARTY](LICENSE-THIRD-PARTY) for FFmpeg license information.
+
+Users are responsible for complying with FFmpeg's license terms when installing
+and using FFmpeg with this software.
+
 ## Acknowledgments
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) - The amazing YouTube downloader
 - [go-ytdlp](https://github.com/lrstanley/go-ytdlp) - Go bindings for yt-dlp
+- [FFmpeg](https://ffmpeg.org/) - Complete multimedia solution
 - [Wails](https://wails.io/) - Build desktop apps with Go and web technologies
 - [Mantine](https://mantine.dev/) - React components library
 - [Vite](https://vitejs.dev/) - Next generation frontend tooling

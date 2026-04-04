@@ -88,13 +88,9 @@ Section
 
     !insertmacro wails.files
 
-    # Include bundled FFmpeg if available
-    !system 'if exist "..\..\bin\ffmpeg.exe" (echo !define HAVE_FFMPEG > ffmpeg_defines.nsh) else (echo ; no ffmpeg > ffmpeg_defines.nsh)'
-    !include ffmpeg_defines.nsh
-    !ifdef HAVE_FFMPEG
-        File "..\..\bin\ffmpeg.exe"
-        File "..\..\bin\ffprobe.exe"
-    !endif
+    # Include license files
+    File "..\..\..\LICENSE"
+    File "..\..\..\LICENSE-THIRD-PARTY"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -109,6 +105,10 @@ Section "uninstall"
     !insertmacro wails.setShellContext
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+
+    # Delete license files
+    Delete "$INSTDIR\LICENSE"
+    Delete "$INSTDIR\LICENSE-THIRD-PARTY"
 
     RMDir /r $INSTDIR
 

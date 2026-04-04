@@ -15,8 +15,9 @@ mkdir -p "$BUILD_DIR/opt/yted"
 mkdir -p "$BUILD_DIR/usr/bin"
 mkdir -p "$BUILD_DIR/usr/share/applications"
 mkdir -p "$BUILD_DIR/usr/share/pixmaps"
+mkdir -p "$BUILD_DIR/usr/share/doc/yted"
 
-# Copy app binary and bundled FFmpeg
+# Copy app binary
 APP_BINARY="build/bin/yted"
 if [ ! -f "$APP_BINARY" ] && [ -f "build/bin/YTed" ]; then
     APP_BINARY="build/bin/YTed"
@@ -30,14 +31,16 @@ fi
 cp "$APP_BINARY" "$BUILD_DIR/opt/yted/yted"
 chmod +x "$BUILD_DIR/opt/yted/yted"
 
-if [ -f build/bin/ffmpeg ]; then
-    cp build/bin/ffmpeg "$BUILD_DIR/opt/yted/ffmpeg"
-    chmod +x "$BUILD_DIR/opt/yted/ffmpeg"
-fi
-if [ -f build/bin/ffprobe ]; then
-    cp build/bin/ffprobe "$BUILD_DIR/opt/yted/ffprobe"
-    chmod +x "$BUILD_DIR/opt/yted/ffprobe"
-fi
+# Copy license files
+cp LICENSE "$BUILD_DIR/usr/share/doc/yted/LICENSE"
+cp LICENSE-THIRD-PARTY "$BUILD_DIR/usr/share/doc/yted/LICENSE-THIRD-PARTY"
+gzip -9 -n -c > "$BUILD_DIR/usr/share/doc/yted/changelog.gz" <<EOF
+yted ($VERSION) unstable; urgency=medium
+
+  * Release version $VERSION
+
+ -- beslintony <beslintony@gmail.com>  $(date -R)
+EOF
 
 # Symlink main binary
 ln -s /opt/yted/yted "$BUILD_DIR/usr/bin/yted"
@@ -53,11 +56,12 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libgtk-3-0, libwebkit2gtk-4.1-0
+Depends: libgtk-3-0, libwebkit2gtk-4.1-0, ffmpeg
 Maintainer: beslintony <beslintony@gmail.com>
 Description: YTed - YouTube Downloader and Library Manager
  A modern, user-friendly YouTube downloader and library manager
  built with Go, Wails, and React.
+ This package requires FFmpeg to be installed separately.
 EOF
 
 # Post-install script

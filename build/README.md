@@ -6,25 +6,23 @@ The structure is:
 
 * **bin** - Output directory for compiled binaries
 * **linux** - Linux-specific files (install scripts, `.desktop` entry, `.deb` packaging)
-* **scripts** - Helper build scripts (FFmpeg bundling, `.deb` package creation)
+* **scripts** - Helper build scripts (`.deb` package creation)
 * **windows** - Windows-specific files (icons, manifest, NSIS installer)
 
 ## Linux
 
 The `linux` directory contains the installation script, desktop entry, and Debian packaging assets used when building and installing on Linux.
 
-- `install.sh` - Shell script that installs the binary, icon, and `.desktop` file locally or system-wide. It also copies bundled `ffmpeg` and `ffprobe` if they exist.
+- `install.sh` - Shell script that installs the binary, icon, and `.desktop` file locally or system-wide.
 - `yted.desktop` - Desktop entry for application launchers.
 
 ## Scripts
 
 The `scripts` directory contains cross-platform helper scripts used during the build process.
 
-- `bundle-ffmpeg.sh` - Downloads and bundles FFmpeg + FFprobe for Linux builds.
-- `bundle-ffmpeg.ps1` - Downloads and bundles FFmpeg + FFprobe for Windows builds.
-- `build-deb.sh` - Creates a `.deb` package from the compiled binary and bundled FFmpeg binaries.
+- `build-deb.sh` - Creates a `.deb` package from the compiled binary.
 
-These scripts are invoked automatically by the Makefile when running `make build`, `make build-installer-linux`, or `make build-installer-windows`.
+This script is invoked automatically by the Makefile when running `make build-installer-linux`.
 
 ## Windows
 
@@ -36,7 +34,16 @@ build with `wails build`.
   use a different icon, simply replace this file with your own. If it is missing, a new `icon.ico` file
   will be created using the `appicon.png` file in the build directory.
 - `installer/*` - The files used to create the Windows installer. These are used when building using `wails build --nsis`.
-  The `project.nsi` script has been updated to conditionally bundle `ffmpeg.exe` and `ffprobe.exe` when available.
 - `info.json` - Application details used for Windows builds. The data here will be used by the Windows installer,
   as well as the application itself (right click the exe -> properties -> details)
 - `wails.exe.manifest` - The main application manifest file.
+
+## FFmpeg Dependency
+
+YTed requires FFmpeg to be installed separately by the user. The application will detect FFmpeg in the following locations:
+
+1. Custom path specified in settings
+2. System PATH
+3. Common installation directories
+
+When FFmpeg is not found, the application will display installation instructions for the user's platform.
