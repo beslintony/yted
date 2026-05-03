@@ -111,7 +111,7 @@ func (f *FFmpegManager) validatePath(path string) (bool, string) {
 
 // ScanAllLocations scans all possible ffmpeg locations and returns found ones with version info
 func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
-	var locations []FFmpegLocation
+	locations := make([]FFmpegLocation, 0)
 	seen := make(map[string]bool)
 
 	f.logger.Info("FFmpeg", "Scanning for FFmpeg binaries...", nil)
