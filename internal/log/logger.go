@@ -106,11 +106,16 @@ func (l *Logger) SetMaxSessions(count int) {
 
 // cleanupOldSessions removes old session directories, keeping only maxSessions
 func (l *Logger) cleanupOldSessions() {
-	if l.logDir == "" || l.maxSessions <= 0 {
+	l.mu.RLock()
+	logDir := l.logDir
+	maxSessions := l.maxSessions
+	l.mu.RUnlock()
+
+	if logDir == "" || maxSessions <= 0 {
 		return
 	}
 
-	entries, err := os.ReadDir(l.logDir)
+	entries, err := os.ReadDir(logDir)
 	if err != nil {
 		return
 	}
@@ -124,7 +129,7 @@ func (l *Logger) cleanupOldSessions() {
 	}
 
 	// If we have more sessions than allowed, delete the oldest ones
-	if len(sessions) > l.maxSessions {
+	if len(sessions) > maxSessions {
 		// Sort by name (chronological since format is YYYY-MM-DD_HH-MM-SS)
 		for i := 0; i < len(sessions)-1; i++ {
 			for j := i + 1; j < len(sessions); j++ {

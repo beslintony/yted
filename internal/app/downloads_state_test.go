@@ -1,6 +1,7 @@
 package app
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -209,6 +210,7 @@ func TestDownloadStatusInDB(t *testing.T) {
 
 // MockDownloadStore is a mock for testing download operations
 type MockDownloadStore struct {
+	mu        sync.RWMutex
 	downloads map[string]*db.Download
 }
 
@@ -219,14 +221,20 @@ func NewMockDownloadStore() *MockDownloadStore {
 }
 
 func (m *MockDownloadStore) AddDownload(d *db.Download) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.downloads[d.ID] = d
 }
 
 func (m *MockDownloadStore) GetDownload(id string) *db.Download {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.downloads[id]
 }
 
 func (m *MockDownloadStore) UpdateStatus(id string, status string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	d, exists := m.downloads[id]
 	if !exists {
 		return false
