@@ -454,6 +454,17 @@ func (a *App) processDownloads() {
 	// Start each download - mark as started SYNCHRONOUSLY before spawning goroutine
 	// This prevents race conditions if processDownloads is called again quickly
 	for _, dl := range pending {
+		// Skip if this download already has an active worker
+		a.activeDownloadsMu.RLock()
+		_, hasActiveWorker := a.activeDownloads[dl.ID]
+		a.activeDownloadsMu.RUnlock()
+		if hasActiveWorker {
+			logger.Info("Download", "Download already has active worker, skipping", map[string]string{
+				"id": dl.ID,
+			})
+			continue
+		}
+
 		// Mark as started in DB first (synchronously)
 		if err := a.db.StartDownload(dl.ID); err != nil {
 			logger.Error("Download", "Failed to mark download as started, skipping", err, map[string]string{
@@ -1012,18 +1023,29 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 		"count": len(downloads),
 	})
 
-	// Reset downloads that were 'downloading' to 'pending' so they can be retried
+	// Reset downloads that were 'downloading' to 'pending' ONLY if no active worker exists
+	// This prevents spawning duplicate workers if the app was restarted
 	for _, dl := range downloads {
 		if dl.Status == "downloading" {
-			logger.Info("Download", "Resetting stuck download to pending", map[string]string{
-				"id": dl.ID,
-			})
-			if err := a.db.UpdateDownloadStatus(dl.ID, "pending"); err != nil {
-				logger.Error("Download", "Failed to reset download status", err, map[string]string{
+			a.activeDownloadsMu.RLock()
+			_, hasActiveWorker := a.activeDownloads[dl.ID]
+			a.activeDownloadsMu.RUnlock()
+
+			if hasActiveWorker {
+				logger.Info("Download", "Download has active worker, keeping as downloading", map[string]string{
 					"id": dl.ID,
 				})
 			} else {
-				dl.Status = "pending"
+				logger.Info("Download", "Resetting stuck download to pending (no active worker)", map[string]string{
+					"id": dl.ID,
+				})
+				if err := a.db.UpdateDownloadStatus(dl.ID, "pending"); err != nil {
+					logger.Error("Download", "Failed to reset download status", err, map[string]string{
+						"id": dl.ID,
+					})
+				} else {
+					dl.Status = "pending"
+				}
 			}
 		}
 	}
