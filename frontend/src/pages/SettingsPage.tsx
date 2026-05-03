@@ -633,9 +633,9 @@ export function SettingsPage() {
                 color="gray"
                 leftSection={<IconRefresh size={14} />}
                 loading={loadingFfmpeg}
-                onClick={refreshFfmpegStatus}
                 size="sm"
                 variant="light"
+                onClick={refreshFfmpegStatus}
               >
                 Refresh
               </Button>
@@ -665,7 +665,11 @@ export function SettingsPage() {
             <Paper
               bg={dark ? '#1b2c1b' : '#f0f9f0'}
               p="sm"
-              style={{ borderColor: dark ? '#2ac92a' : '#28a745', borderWidth: 1, borderStyle: 'solid' }}
+              style={{
+                borderColor: dark ? '#2ac92a' : '#28a745',
+                borderWidth: 1,
+                borderStyle: 'solid',
+              }}
             >
               <Stack gap={4}>
                 <Text c={dark ? '#2ac92a' : '#28a745'} fw={600} size="sm">
@@ -689,61 +693,81 @@ export function SettingsPage() {
             <Paper
               bg={dark ? '#2c1b1b' : '#fdf2f2'}
               p="sm"
-              style={{ borderColor: dark ? '#c92a2a' : '#dc3545', borderWidth: 1, borderStyle: 'solid' }}
+              style={{
+                borderColor: dark ? '#c92a2a' : '#dc3545',
+                borderWidth: 1,
+                borderStyle: 'solid',
+              }}
             >
               <Stack gap="xs">
                 <Text c={dark ? '#ff6b6b' : '#dc3545'} fw={600} size="sm">
                   FFmpeg Not Found
                 </Text>
                 <Text c={dark ? '#c1c2c5' : '#495057'} size="sm">
-                  FFmpeg is required for merging separate video and audio streams into a single file.
-                  Without FFmpeg configured:
+                  FFmpeg is required for merging separate video and audio streams into a single
+                  file. Without FFmpeg configured:
                 </Text>
-                <ul style={{ margin: 0, paddingLeft: 20, color: dark ? '#c1c2c5' : '#495057', fontSize: '0.875rem' }}>
+                <ul
+                  style={{
+                    margin: 0,
+                    paddingLeft: 20,
+                    color: dark ? '#c1c2c5' : '#495057',
+                    fontSize: '0.875rem',
+                  }}
+                >
                   <li>Videos may be downloaded without audio</li>
-                  <li>Separate video and audio files won't be merged</li>
+                  <li>Separate video and audio files will not be merged</li>
                   <li>Some formats may not work correctly</li>
                 </ul>
-                <Text c={dark ? '#c1c2c5' : '#495057'} size="sm" mt={4}>
-                  Please specify the path to your FFmpeg binary below, or install FFmpeg and restart YTed.
+                <Text c={dark ? '#c1c2c5' : '#495057'} mt={4} size="sm">
+                  Please specify the path to your FFmpeg binary below, or install FFmpeg and restart
+                  YTed.
                 </Text>
               </Stack>
             </Paper>
           )}
 
           {/* Other Found Locations */}
-          {!loadingFfmpeg && ffmpegStatus && ffmpegStatus.allLocations && ffmpegStatus.allLocations.length > 1 && (
-            <Paper
-              bg={dark ? '#25262b' : '#f8f9fa'}
-              p="sm"
-              style={{ borderColor: dark ? '#373a40' : '#dee2e6', borderWidth: 1, borderStyle: 'solid' }}
-            >
-              <Text c={dark ? '#c1c2c5' : '#495057'} fw={600} size="sm" mb={8}>
-                Other FFmpeg Installations Found ({ffmpegStatus.allLocations.length - 1})
-              </Text>
-              <Stack gap={4}>
-                {ffmpegStatus.allLocations.map((loc, idx) => {
-                  if (idx === ffmpegStatus.selectedIndex) return null;
-                  return (
-                    <Group key={loc.path} gap="xs">
-                      <Text c={dark ? '#909296' : '#6c757d'} size="xs" style={{ flex: 1 }}>
-                        {loc.path}
-                      </Text>
-                      <Text c={dark ? '#909296' : '#6c757d'} size="xs">
-                        v{loc.version}
-                      </Text>
-                      <Badge color="gray" size="xs" variant="outline">
-                        {loc.source}
-                      </Badge>
-                    </Group>
-                  );
-                })}
-              </Stack>
-            </Paper>
-          )}
+          {!loadingFfmpeg &&
+            ffmpegStatus &&
+            ffmpegStatus.allLocations &&
+            ffmpegStatus.allLocations.length > 1 && (
+              <Paper
+                bg={dark ? '#25262b' : '#f8f9fa'}
+                p="sm"
+                style={{
+                  borderColor: dark ? '#373a40' : '#dee2e6',
+                  borderWidth: 1,
+                  borderStyle: 'solid',
+                }}
+              >
+                <Text c={dark ? '#c1c2c5' : '#495057'} fw={600} mb={8} size="sm">
+                  Other FFmpeg Installations Found ({ffmpegStatus.allLocations.length - 1})
+                </Text>
+                <Stack gap={4}>
+                  {ffmpegStatus.allLocations.map((loc, idx) => {
+                    if (idx === ffmpegStatus.selectedIndex) return null;
+                    return (
+                      <Group key={loc.path} gap="xs">
+                        <Text c={dark ? '#909296' : '#6c757d'} size="xs" style={{ flex: 1 }}>
+                          {loc.path}
+                        </Text>
+                        <Text c={dark ? '#909296' : '#6c757d'} size="xs">
+                          v{loc.version}
+                        </Text>
+                        <Badge color="gray" size="xs" variant="outline">
+                          {loc.source}
+                        </Badge>
+                      </Group>
+                    );
+                  })}
+                </Stack>
+              </Paper>
+            )}
 
           <Text c={dark ? 'dimmed' : 'gray.6'} size="sm">
-            You can specify a custom FFmpeg path below, or leave empty to auto-detect from system PATH.
+            You can specify a custom FFmpeg path below, or leave empty to auto-detect from system
+            PATH.
           </Text>
 
           <Group align="flex-end" gap="sm">

@@ -16,25 +16,25 @@ import (
 
 // FFmpegLocation represents a found FFmpeg binary location
 type FFmpegLocation struct {
-	Path      string `json:"path"`
-	Version   string `json:"version"`
-	IsValid   bool   `json:"isValid"`
-	Source    string `json:"source"` // "custom", "bundled", "path", "common"
+	Path    string `json:"path"`
+	Version string `json:"version"`
+	IsValid bool   `json:"isValid"`
+	Source  string `json:"source"` // "custom", "bundled", "path", "common"
 }
 
 // FFmpegCheckResult provides detailed FFmpeg status for UI
 type FFmpegCheckResult struct {
-	Installed      bool              `json:"installed"`
-	Version        string            `json:"version"`
-	Path           string            `json:"path"`
-	AllLocations   []FFmpegLocation  `json:"allLocations"`   // All found locations
-	SelectedIndex  int               `json:"selectedIndex"`  // Which location is selected (-1 if none)
-	CanAutoInstall bool              `json:"canAutoInstall"`
-	InstallMethod  string            `json:"installMethod"`  // "package_manager", "download", "manual"
-	InstallCommand string            `json:"installCommand"` // OS-specific command
-	InstallGuide   string            `json:"installGuide"`   // Markdown guide text
-	DownloadURL    string            `json:"downloadURL"`    // Direct download link
-	RequiresAdmin  bool              `json:"requiresAdmin"`
+	Installed      bool             `json:"installed"`
+	Version        string           `json:"version"`
+	Path           string           `json:"path"`
+	AllLocations   []FFmpegLocation `json:"allLocations"`  // All found locations
+	SelectedIndex  int              `json:"selectedIndex"` // Which location is selected (-1 if none)
+	CanAutoInstall bool             `json:"canAutoInstall"`
+	InstallMethod  string           `json:"installMethod"`  // "package_manager", "download", "manual"
+	InstallCommand string           `json:"installCommand"` // OS-specific command
+	InstallGuide   string           `json:"installGuide"`   // Markdown guide text
+	DownloadURL    string           `json:"downloadURL"`    // Direct download link
+	RequiresAdmin  bool             `json:"requiresAdmin"`
 }
 
 // InstallGuide provides OS-specific installation instructions
@@ -50,10 +50,10 @@ type InstallGuide struct {
 
 // FFmpegManager handles ffmpeg binary detection and management
 type FFmpegManager struct {
-	binPath     string
-	customPath  string
-	logger      *log.Logger
-	ctx         context.Context
+	binPath      string
+	customPath   string
+	logger       *log.Logger
+	ctx          context.Context
 	cachedResult *FFmpegCheckResult
 }
 
@@ -67,7 +67,7 @@ func NewFFmpegManager() *FFmpegManager {
 // SetCustomPath sets a custom ffmpeg path from user configuration
 func (f *FFmpegManager) SetCustomPath(path string) {
 	f.customPath = path
-	f.binPath = ""      // Reset cached path so Find() will check new path
+	f.binPath = ""       // Reset cached path so Find() will check new path
 	f.cachedResult = nil // Clear cached result
 	if path != "" {
 		f.logger.Info("FFmpeg", "Custom ffmpeg path set", map[string]string{"path": path})
@@ -183,7 +183,7 @@ func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
 
 	if len(locations) == 0 {
 		f.logger.Warn("FFmpeg", "No FFmpeg binaries found", map[string]interface{}{
-			"customPath":   f.customPath,
+			"customPath":    f.customPath,
 			"commonChecked": len(commonPaths),
 		})
 	} else {
