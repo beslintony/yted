@@ -65,12 +65,21 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		return cached.info, nil
 	}
 
-	logger.Info("Download", "Fetching video info", map[string]string{"url": videoURL})
+	// Clean URL before fetching (strip playlist params, etc.)
+	cleanURL := cleanYouTubeURL(videoURL)
+	if cleanURL != videoURL {
+		logger.Debug("Download", "URL cleaned for video info fetch", map[string]string{
+			"original": videoURL,
+			"cleaned":  cleanURL,
+		})
+	}
+
+	logger.Info("Download", "Fetching video info", map[string]string{"url": cleanURL})
 
 	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 	defer cancel()
 
-	info, err := a.ytdl.GetInfo(ctx, videoURL)
+	info, err := a.ytdl.GetInfo(ctx, cleanURL)
 	if err != nil {
 		logger.Error("Download", "Failed to get video info", err, map[string]string{"url": videoURL})
 		return nil, err
@@ -104,31 +113,71 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 }
 
 // normalizeURLForCache normalizes URL for cache key comparison
-func normalizeURLForCache(url string) string {
-	// Remove common tracking parameters and normalize
-	// YouTube URLs can have various formats, we want to treat them as the same video
+func normalizeURLForCache(urlStr string) string {
+	// Clean the URL first (strip playlist params, etc.)
+	return cleanYouTubeURL(urlStr)
+}
 
+// cleanYouTubeURL strips playlist and tracking parameters from YouTube URLs
+// to ensure we always fetch single video info, not playlist info
+func cleanYouTubeURL(urlStr string) string {
 	// Trim whitespace
-	url = strings.TrimSpace(url)
+	urlStr = strings.TrimSpace(urlStr)
 
-	// Remove mobile prefix
-	if strings.Contains(url, "youtu.be/") {
-		// Short URL format: https://youtu.be/VIDEO_ID
-		return url
+	// Parse the URL
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		// If parsing fails, try manual extraction for common formats
+		return extractVideoIDManual(urlStr)
 	}
 
-	// For youtube.com URLs, extract just the video ID
-	// This handles various parameter orders
-	if idx := strings.Index(url, "v="); idx != -1 {
-		start := idx + 2
-		end := strings.IndexAny(url[start:], "&?# ")
-		if end == -1 {
-			return url[:start] + url[start:]
+	// For youtu.be short URLs, just return the base with path
+	if parsed.Host == "youtu.be" || strings.HasSuffix(parsed.Host, ".youtu.be") {
+		// Extract video ID from path
+		parts := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
+		if len(parts) > 0 && parts[0] != "" {
+			return "https://youtu.be/" + parts[0]
 		}
-		return url[:start] + url[start:start+end]
+		return urlStr
 	}
 
-	return url
+	// For youtube.com URLs, keep only the 'v' parameter
+	if strings.Contains(parsed.Host, "youtube.com") || strings.Contains(parsed.Host, "youtube") {
+		query := parsed.Query()
+		videoID := query.Get("v")
+		if videoID != "" {
+			// Rebuild URL with only video ID
+			parsed.RawQuery = "v=" + videoID
+			return parsed.String()
+		}
+	}
+
+	return urlStr
+}
+
+// extractVideoIDManual manually extracts video ID from URL when parsing fails
+func extractVideoIDManual(urlStr string) string {
+	// Try to find v= parameter
+	if idx := strings.Index(urlStr, "v="); idx != -1 {
+		start := idx + 2
+		end := strings.IndexAny(urlStr[start:], "&?# ")
+		if end == -1 {
+			return urlStr[:start] + urlStr[start:]
+		}
+		return urlStr[:start] + urlStr[start:start+end]
+	}
+
+	// Try youtu.be format
+	if idx := strings.Index(urlStr, "youtu.be/"); idx != -1 {
+		start := idx + 9
+		end := strings.IndexAny(urlStr[start:], "?# ")
+		if end == -1 {
+			return "https://youtu.be/" + urlStr[start:]
+		}
+		return "https://youtu.be/" + urlStr[start:start+end]
+	}
+
+	return urlStr
 }
 
 // AddDownload adds a new download to the queue
@@ -482,7 +531,7 @@ func (a *App) startDownload(dl db.Download) {
 	title, channel, thumbnail := extractDownloadInfo(&dl)
 
 	if title == "" {
-		info, err := a.ytdl.GetInfo(ctx, dl.URL)
+		info, err := a.ytdl.GetInfo(ctx, cleanYouTubeURL(dl.URL))
 		if err == nil {
 			title = info.Title
 			channel = info.Channel
@@ -534,6 +583,7 @@ func (a *App) startDownload(dl db.Download) {
 	// Throttle UI updates to max 2 per second (every 500ms)
 	var lastEmitTime time.Time
 	var lastProgress float64
+	var lastLogTime time.Time
 	progressCallback := func(progress ytdl.DownloadProgress) {
 		// Always update database
 		if updateErr := a.db.UpdateDownloadProgress(dl.ID, progress.Percent); updateErr != nil {
@@ -561,10 +611,14 @@ func (a *App) startDownload(dl db.Download) {
 			})
 		}
 
-		logger.Debug("Download", "Progress update", map[string]interface{}{
-			"id":       dl.ID,
-			"progress": progress.Percent,
-		})
+		// Throttle debug logging to max 1 per second to reduce log spam
+		if time.Since(lastLogTime) > time.Second {
+			lastLogTime = time.Now()
+			logger.Debug("Download", "Progress update", map[string]interface{}{
+				"id":       dl.ID,
+				"progress": progress.Percent,
+			})
+		}
 	}
 
 	// Perform download
@@ -646,7 +700,7 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 	var err error
 
 	if dl.Title == nil || *dl.Title == "" || dl.Duration == nil || *dl.Duration == 0 {
-		videoInfo, err = a.ytdl.GetInfo(ctx, dl.URL)
+		videoInfo, err = a.ytdl.GetInfo(ctx, cleanYouTubeURL(dl.URL))
 		if err != nil {
 			logger.Warn("Download", "Could not get video info for library", map[string]string{"error": err.Error()})
 		} else {
