@@ -56,7 +56,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: libgtk-3-0, libwebkit2gtk-4.1-0, ffmpeg
+Depends: libgtk-3-0, libwebkit2gtk-4.1-0
 Maintainer: beslintony <beslintony@gmail.com>
 Description: YTed - YouTube Downloader and Library Manager
  A modern, user-friendly YouTube downloader and library manager

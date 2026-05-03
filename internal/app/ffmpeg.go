@@ -137,32 +137,7 @@ func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
 		}
 	}
 
-	// 2. Check bundled paths
-	bundledPaths := f.getBundledPaths()
-	f.logger.Info("FFmpeg", "Checking bundled paths", map[string]int{"count": len(bundledPaths)})
-	for _, path := range bundledPaths {
-		// Normalize path for comparison
-		normalizedPath := filepath.Clean(path)
-		if seen[normalizedPath] {
-			continue
-		}
-		if valid, version := f.validatePath(path); valid {
-			extractedVersion := f.extractVersion(version)
-			locations = append(locations, FFmpegLocation{
-				Path:    normalizedPath,
-				Version: extractedVersion,
-				IsValid: true,
-				Source:  "bundled",
-			})
-			seen[normalizedPath] = true
-			f.logger.Info("FFmpeg", "Found valid bundled FFmpeg", map[string]string{
-				"path":    normalizedPath,
-				"version": extractedVersion,
-			})
-		}
-	}
-
-	// 3. Check PATH
+	// 2. Check PATH
 	f.logger.Info("FFmpeg", "Checking system PATH", nil)
 	if path, err := exec.LookPath("ffmpeg"); err == nil && !seen[path] {
 		if valid, version := f.validatePath(path); valid {
@@ -183,7 +158,7 @@ func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
 		f.logger.Info("FFmpeg", "FFmpeg not found in PATH", map[string]string{"error": err.Error()})
 	}
 
-	// 4. Check common locations
+	// 3. Check common locations
 	commonPaths := f.getCommonPaths()
 	f.logger.Info("FFmpeg", "Checking common installation paths", map[string]int{"count": len(commonPaths)})
 	for _, path := range commonPaths {
@@ -209,7 +184,6 @@ func (f *FFmpegManager) ScanAllLocations() []FFmpegLocation {
 	if len(locations) == 0 {
 		f.logger.Warn("FFmpeg", "No FFmpeg binaries found", map[string]interface{}{
 			"customPath":   f.customPath,
-			"bundledChecked": len(bundledPaths),
 			"commonChecked": len(commonPaths),
 		})
 	} else {
@@ -254,16 +228,6 @@ func (f *FFmpegManager) Find() string {
 		f.logger.Warn("FFmpeg", "Custom ffmpeg path not valid, falling back to auto-detect", map[string]string{"path": f.customPath})
 	}
 
-	// Try bundled ffmpeg shipped with the app package
-	for _, path := range f.getBundledPaths() {
-		if valid, _ := f.validatePath(path); valid {
-			// Normalize path for consistent comparison
-			f.binPath = filepath.Clean(path)
-			f.logger.Info("FFmpeg", "Found bundled ffmpeg", map[string]string{"path": f.binPath})
-			return f.binPath
-		}
-	}
-
 	// Try PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
 		if valid, _ := f.validatePath(path); valid {
@@ -306,29 +270,6 @@ func (f *FFmpegManager) getCommonPaths() []string {
 	default:
 		return nil
 	}
-}
-
-func (f *FFmpegManager) getBundledPaths() []string {
-	executableName := "ffmpeg"
-	if goRuntime.GOOS == "windows" {
-		executableName = "ffmpeg.exe"
-	}
-
-	executablePath, err := os.Executable()
-	if err != nil {
-		return nil
-	}
-
-	executableDir := filepath.Dir(executablePath)
-	candidates := []string{
-		filepath.Join(executableDir, executableName),
-		filepath.Join(executableDir, "ffmpeg", executableName),
-		filepath.Join(executableDir, "bin", executableName),
-		filepath.Join(executableDir, "resources", executableName),
-		filepath.Join(executableDir, "resources", "ffmpeg", executableName),
-	}
-
-	return candidates
 }
 
 // IsAvailable returns true if ffmpeg is available

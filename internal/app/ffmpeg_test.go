@@ -140,7 +140,7 @@ func TestFFmpegManagerScanAllLocations(t *testing.T) {
 		}
 		// Source should be one of the expected values
 		switch loc.Source {
-		case "custom", "bundled", "path", "common":
+		case "custom", "path", "common":
 			// valid
 		default:
 			t.Errorf("Unexpected source: %s", loc.Source)
@@ -276,31 +276,6 @@ func TestFFmpegManagerGetCommonPaths(t *testing.T) {
 	}
 
 	t.Logf("Common paths: %v", paths)
-}
-
-func TestFFmpegManagerGetBundledPaths(t *testing.T) {
-	fm := NewFFmpegManager()
-
-	paths := fm.getBundledPaths()
-
-	// Should return some paths (even if they don't exist)
-	if paths == nil {
-		t.Error("getBundledPaths should not return nil")
-	}
-
-	// Should include paths relative to executable
-	found := false
-	for _, path := range paths {
-		if strings.Contains(path, "ffmpeg") {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("Bundled paths should include ffmpeg")
-	}
-
-	t.Logf("Bundled paths: %v", paths)
 }
 
 func TestFFmpegManagerDetectLinuxDistro(t *testing.T) {
