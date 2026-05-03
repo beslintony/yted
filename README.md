@@ -2,7 +2,7 @@
 
 A modern, user-friendly YouTube downloader and library manager built with Go, Wails, and React.
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/beslintony/yted/releases)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/beslintony/yted/releases)
 [![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -82,7 +82,7 @@ make deps
 make build
 
 # Or build with version info
-make build-versioned VERSION=1.3.0
+make build-versioned VERSION=1.4.0
 ```
 
 
