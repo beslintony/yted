@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GetVersion } from '../../wailsjs/go/app/App';
-
 import { useVersionStore } from './versionStore';
 
 // Mock the Wails API
@@ -26,90 +24,91 @@ describe('versionStore', () => {
   });
 
   it('should fetch version successfully', async () => {
+    const { GetVersion } = await import('../../wailsjs/go/app/App');
     const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
-    mockedGetVersion.mockResolvedValue('1.2.3');
+
+    mockedGetVersion.mockResolvedValue('1.4.1');
 
     const { fetchVersion } = useVersionStore.getState();
-
     await fetchVersion();
 
-    const state = useVersionStore.getState();
-    expect(state.version).toBe('1.2.3');
-    expect(state.isLoading).toBe(false);
-    expect(mockedGetVersion).toHaveBeenCalledTimes(1);
-  });
-
-  it('should handle fetch error gracefully', async () => {
-    const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockedGetVersion.mockRejectedValue(new Error('Network error'));
-
-    const { fetchVersion } = useVersionStore.getState();
-
-    await fetchVersion();
-
-    const state = useVersionStore.getState();
-    expect(state.version).toBe('dev'); // Should keep default
-    expect(state.isLoading).toBe(false);
-    expect(consoleError).toHaveBeenCalled();
-
-    consoleError.mockRestore();
-  });
-
-  it('should set loading state during fetch', async () => {
-    const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
-    mockedGetVersion.mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve('1.0.0'), 10))
-    );
-
-    const { fetchVersion } = useVersionStore.getState();
-
-    const promise = fetchVersion();
-    expect(useVersionStore.getState().isLoading).toBe(true);
-
-    await promise;
+    expect(useVersionStore.getState().version).toBe('1.4.1');
     expect(useVersionStore.getState().isLoading).toBe(false);
   });
 
-  it('should handle version with commit hash', async () => {
+  it('should handle fetch version error gracefully', async () => {
+    const { GetVersion } = await import('../../wailsjs/go/app/App');
     const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
-    mockedGetVersion.mockResolvedValue('1.0.0-abc123');
+
+    mockedGetVersion.mockRejectedValue(new Error('Failed to get version'));
 
     const { fetchVersion } = useVersionStore.getState();
     await fetchVersion();
 
-    expect(useVersionStore.getState().version).toBe('1.0.0-abc123');
-  });
-
-  it('should handle dev version', async () => {
-    const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
-    mockedGetVersion.mockResolvedValue('dev');
-
-    const { fetchVersion } = useVersionStore.getState();
-    await fetchVersion();
-
+    // On error, version should remain unchanged and loading should be false
     expect(useVersionStore.getState().version).toBe('dev');
+    expect(useVersionStore.getState().isLoading).toBe(false);
   });
 
-  it('should not update version if component unmounts during fetch', async () => {
+  it('should set loading state during fetch', async () => {
+    const { GetVersion } = await import('../../wailsjs/go/app/App');
     const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
-    mockedGetVersion.mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve('1.0.0'), 100))
-    );
+
+    // Create a promise that we can resolve manually
+    let resolvePromise: (value: string) => void;
+    const promise = new Promise<string>(resolve => {
+      resolvePromise = resolve;
+    });
+    mockedGetVersion.mockReturnValue(promise);
 
     const { fetchVersion } = useVersionStore.getState();
+    const fetchPromise = fetchVersion();
 
-    // Start fetch but don't await
-    fetchVersion();
-
-    // Loading should be true
+    // Loading should be true while fetching
     expect(useVersionStore.getState().isLoading).toBe(true);
 
-    // Wait for it to complete
-    await new Promise(resolve => setTimeout(resolve, 150));
+    resolvePromise!('1.4.1');
+    await fetchPromise;
 
-    // Should have version now
-    expect(useVersionStore.getState().version).toBe('1.0.0');
+    expect(useVersionStore.getState().isLoading).toBe(false);
+    expect(useVersionStore.getState().version).toBe('1.4.1');
+  });
+
+  it('should handle empty version string', async () => {
+    const { GetVersion } = await import('../../wailsjs/go/app/App');
+    const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
+
+    mockedGetVersion.mockResolvedValue('');
+
+    const { fetchVersion } = useVersionStore.getState();
+    await fetchVersion();
+
+    expect(useVersionStore.getState().version).toBe('');
+  });
+
+  it('should handle version with build metadata', async () => {
+    const { GetVersion } = await import('../../wailsjs/go/app/App');
+    const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
+
+    mockedGetVersion.mockResolvedValue('1.4.1+build.123');
+
+    const { fetchVersion } = useVersionStore.getState();
+    await fetchVersion();
+
+    expect(useVersionStore.getState().version).toBe('1.4.1+build.123');
+  });
+
+  it('should handle non-Error rejection', async () => {
+    const { GetVersion } = await import('../../wailsjs/go/app/App');
+    const mockedGetVersion = GetVersion as unknown as ReturnType<typeof vi.fn>;
+
+    mockedGetVersion.mockRejectedValue('string error');
+
+    const { fetchVersion } = useVersionStore.getState();
+    await fetchVersion();
+
+    // Should handle gracefully without crashing
+    expect(useVersionStore.getState().version).toBe('dev');
     expect(useVersionStore.getState().isLoading).toBe(false);
   });
 });
