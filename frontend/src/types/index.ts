@@ -65,14 +65,7 @@ export interface Video {
 
 export type ThemeMode = 'dark' | 'light' | 'auto';
 export type QualityOption =
-  | 'best'
-  | '2160p'
-  | '1440p'
-  | '1080p'
-  | '720p'
-  | '480p'
-  | '360p'
-  | 'audio';
+  'best' | '2160p' | '1440p' | '1080p' | '720p' | '480p' | '360p' | 'audio';
 
 export interface DownloadPreset {
   id: string;
