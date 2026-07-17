@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [main, master, develop]
 
 env:
   GO_VERSION: "1.25"
@@ -49,11 +49,20 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
+      - name: Run Go vet
+        run: go vet -tags webkit2_41 ./...
+
       - name: Build Go
         run: go build -tags webkit2_41 -v ./...
 
-      - name: Run Go tests
-        run: go test -tags webkit2_41 -v ./...
+      - name: Run Go tests with coverage
+        run: go test -tags webkit2_41 -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: coverage.out
 
   frontend-lint:
     name: Frontend Lint & Test
@@ -114,7 +123,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev pkg-config
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
       - name: Install frontend dependencies
         run: cd frontend && pnpm install --frozen-lockfile
