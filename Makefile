@@ -45,14 +45,14 @@ test:
 	@echo "Running Go tests..."
 	go test -v ./...
 	@echo "Running frontend tests..."
-	cd frontend && npm test
+	cd frontend && pnpm test
 
 ## Run linter
 lint:
 	@echo "Running Go linter..."
 	golangci-lint run
 	@echo "Running frontend linter..."
-	cd frontend && npm run lint
+	cd frontend && pnpm lint
 
 ## Format code
 fmt:
@@ -61,7 +61,7 @@ fmt:
 	goimports -w -local yted .
 	gci write --skip-generated -s standard -s default -s "prefix(yted)" .
 	@echo "Formatting frontend code..."
-	cd frontend && npm run format
+	cd frontend && pnpm format
 
 ## Clean build artifacts
 clean:
@@ -76,7 +76,7 @@ deps:
 	@echo "Installing Go dependencies..."
 	go mod download
 	@echo "Installing frontend dependencies..."
-	cd frontend && npm install
+	cd frontend && pnpm install
 	@echo "Installing dev tools..."
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install golang.org/x/tools/cmd/goimports@latest
@@ -86,7 +86,7 @@ deps:
 security:
 	@echo "Running security checks..."
 	gosec ./...
-	cd frontend && npm audit
+	cd frontend && pnpm audit
 
 ## Generate Wails bindings
 generate:

@@ -24,12 +24,15 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -43,7 +46,7 @@ jobs:
         run: go mod download
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: cd frontend && pnpm install --frozen-lockfile
 
       - name: Set build metadata
         run: |
@@ -91,12 +94,15 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -105,7 +111,7 @@ jobs:
         run: go mod download
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: cd frontend && pnpm install --frozen-lockfile
 
       - name: Install NSIS
         run: choco install nsis -y

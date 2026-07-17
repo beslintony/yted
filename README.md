@@ -54,6 +54,7 @@ tar xzf YTed-linux-amd64.tar.gz
 
 - Go 1.25+
 - Node.js 24+
+- pnpm 11+ (via `corepack enable pnpm`)
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - Linux: `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`
 
