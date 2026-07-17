@@ -85,9 +85,6 @@ func (a *App) editorReady() error {
 
 // SubmitEditJob queues an edit job for a library video and returns the job ID
 func (a *App) SubmitEditJob(videoID, operation string, settings db.EditSettings) (string, error) {
-	if err := a.editorReady(); err != nil {
-		return "", err
-	}
 	if !editOperations[operation] {
 		return "", fmt.Errorf("unknown edit operation: %s", operation)
 	}
@@ -95,6 +92,9 @@ func (a *App) SubmitEditJob(videoID, operation string, settings db.EditSettings)
 		if problems := editor.ValidateEffectSettings(settings); len(problems) > 0 {
 			return "", fmt.Errorf("invalid effect settings: %s", problems[0])
 		}
+	}
+	if err := a.editorReady(); err != nil {
+		return "", err
 	}
 
 	jobID, err := a.editor.SubmitJob(videoID, operation, settings)
