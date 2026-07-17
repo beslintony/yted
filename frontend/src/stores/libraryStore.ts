@@ -96,7 +96,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
     // Apply sorting
     filtered = [...filtered].sort((a, b) => {
-      let comparison = 0;
+      let comparison: number;
       switch (sortBy) {
         case 'title':
           comparison = a.title.localeCompare(b.title);
