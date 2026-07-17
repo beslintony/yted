@@ -30,6 +30,13 @@ func (a *App) VerifyAndRepairDownloads() error {
 			continue
 		}
 
+		// Never auto-complete a failed download: a matching file on disk
+		// most likely belongs to a different (successful) download of the
+		// same video, and reviving the failure hides it from the user
+		if dl.Status == "error" {
+			continue
+		}
+
 		// Try to find the file for this download
 		if dl.Title != nil && a.config != nil {
 			downloadPath := a.config.Get().DownloadPath
@@ -61,8 +68,14 @@ func (a *App) VerifyAndRepairDownloads() error {
 					logger.Error("Download", "Failed to repair download status", err, map[string]string{"id": dl.ID})
 				} else {
 					repaired++
-					// Emit event to notify frontend
-					runtime.EventsEmit(a.ctx, "download:completed", dl.ID)
+					// Clear any stale error from a previous attempt
+					if err := a.db.ClearDownloadError(dl.ID); err != nil {
+						logger.Error("Download", "Failed to clear download error", err, map[string]string{"id": dl.ID})
+					}
+					// Emit event to notify frontend (skipped in tests where no app context exists)
+					if a.ctx != nil {
+						runtime.EventsEmit(a.ctx, "download:completed", dl.ID)
+					}
 				}
 			}
 		}
