@@ -279,13 +279,15 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	log.Printf("[YTDLP] Output template: %s", outputTemplate)
 
 	// Create a FRESH command for each download (don't reuse c.dl)
+	// Note: no TrimFilenames here - the template already caps the title at
+	// 60 chars, and trimming the whole filename can destroy the
+	// [id][format_id] suffix on multibyte titles, breaking file matching
 	dl := ytdlp.New().
 		Output(outputTemplate).
 		NoWarnings().
 		NoOverwrites().
 		NoPlaylist(). // Don't download playlists - single video only
-		Continue().
-		TrimFilenames(100)
+		Continue()
 
 	// Apply format selection with proper merging.
 	// For non-audio downloads, force compatibility-oriented selectors so outputs
