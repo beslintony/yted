@@ -50,6 +50,10 @@ type App struct {
 	// Video info cache to prevent duplicate fetches
 	videoInfoCache   map[string]videoInfoCacheEntry
 	videoInfoCacheMu sync.RWMutex
+
+	// Initialization failures collected during Startup, reported to the
+	// frontend once the DOM is ready
+	initErrs []string
 }
 
 // NewApp creates a new App application struct
@@ -70,6 +74,7 @@ func (a *App) Startup(ctx context.Context) {
 	appDataDir, err := config.GetAppDataDir()
 	if err != nil {
 		a.logger.Error("App", "Failed to get app data dir", err)
+		a.initErrs = append(a.initErrs, fmt.Sprintf("app data directory: %v", err))
 		return
 	}
 
@@ -77,6 +82,7 @@ func (a *App) Startup(ctx context.Context) {
 	cfgManager, err := config.NewManager(appDataDir)
 	if err != nil {
 		a.logger.Error("Config", "Failed to initialize config", err)
+		a.initErrs = append(a.initErrs, fmt.Sprintf("configuration: %v", err))
 		return
 	}
 
@@ -118,6 +124,7 @@ func (a *App) Startup(ctx context.Context) {
 	database, err := db.New(appDataDir)
 	if err != nil {
 		a.logger.Error("Database", "Failed to initialize database", err)
+		a.initErrs = append(a.initErrs, fmt.Sprintf("database: %v", err))
 		return
 	}
 	a.db = database
@@ -281,6 +288,12 @@ func (a *App) checkForYtdlpUpdate() {
 // DOMReady is called when the frontend is ready
 func (a *App) DOMReady(_ context.Context) {
 	a.logger.Info("App", "Frontend DOM ready")
+
+	// Report any startup failures now that the frontend can receive events
+	if len(a.initErrs) > 0 {
+		runtime.EventsEmit(a.ctx, "app:init-error", strings.Join(a.initErrs, "; "))
+	}
+
 	// Frontend is ready, can emit events now
 	runtime.EventsEmit(a.ctx, "app:ready", nil)
 }

@@ -18,11 +18,13 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
+import { EventsOn } from '../wailsjs/runtime';
+
 import { LoggerViewer } from './components/LoggerViewer';
 import { DownloadPage } from './pages/DownloadPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { useSettingsStore, useVersionStore } from './stores';
+import { useNotifications, useSettingsStore, useVersionStore } from './stores';
 
 function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -31,11 +33,24 @@ function App() {
   const [loggerOpened, setLoggerOpened] = useState(false);
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
   const { version, fetchVersion } = useVersionStore();
+  const notifications = useNotifications();
 
   // Fetch version on mount
   useEffect(() => {
     fetchVersion();
   }, [fetchVersion]);
+
+  // Surface backend startup failures (reported once the DOM is ready)
+  useEffect(() => {
+    const cancel = EventsOn('app:init-error', (message: string) => {
+      notifications.error(
+        'Startup problem',
+        `${message}. Some features may be unavailable — check the logs.`
+      );
+    });
+    return cancel;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const dark = colorScheme === 'dark';
 
