@@ -13,6 +13,7 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import {
+  IconEdit,
   IconFolder,
   IconGridDots,
   IconList,
@@ -34,7 +35,8 @@ import {
 } from '../../wailsjs/go/app/App';
 import { app } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
-import { useLibraryStore, useNotifications } from '../stores';
+import { EditorModal } from '../components/EditorModal';
+import { useEditorStore, useLibraryStore, useNotifications } from '../stores';
 import { Video } from '../types';
 
 // Wrapper functions with error handling
@@ -91,6 +93,27 @@ function mapVideoResultToVideo(v: app.VideoResult): Video {
   };
 }
 
+// Helper function to map a frontend Video back to backend VideoResult for the editor
+function mapVideoToVideoResult(v: Video): app.VideoResult {
+  return new app.VideoResult({
+    id: v.id,
+    youtube_id: v.youtubeId,
+    title: v.title,
+    channel: v.channel,
+    channel_id: v.channelId,
+    duration: v.duration,
+    description: v.description,
+    thumbnail_url: v.thumbnailUrl,
+    file_path: v.filePath,
+    file_size: v.fileSize,
+    format: v.format,
+    quality: v.quality,
+    downloaded_at: v.downloadedAt,
+    watch_position: v.watchPosition,
+    watch_count: v.watchCount,
+  });
+}
+
 export function LibraryPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [search, setSearch] = useState('');
@@ -98,8 +121,10 @@ export function LibraryPage() {
   const [sortDesc, setSortDesc] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [stats, setStats] = useState({ totalVideos: 0, totalSize: 0 });
+  const [editingVideo, setEditingVideo] = useState<app.VideoResult | null>(null);
 
   const { setVideos: setStoreVideos, removeVideo: removeStoreVideo } = useLibraryStore();
+  const initEditorEvents = useEditorStore(state => state.initEvents);
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
   const { success, error, confirm } = useNotifications();
@@ -143,10 +168,14 @@ export function LibraryPage() {
       loadStats();
     });
 
+    // Listen for editor job events (progress/completed/error)
+    const cancelEditorEvents = initEditorEvents();
+
     return () => {
       cancelLibraryUpdate();
+      cancelEditorEvents();
     };
-  }, [loadVideos, loadStats]);
+  }, [loadVideos, loadStats, initEditorEvents]);
 
   const handleDelete = async (video: Video) => {
     confirm({
@@ -300,6 +329,15 @@ export function LibraryPage() {
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
+                  <Tooltip label="Edit video">
+                    <ActionIcon
+                      color="green"
+                      variant="light"
+                      onClick={() => setEditingVideo(mapVideoToVideoResult(video))}
+                    >
+                      <IconEdit size={16} />
+                    </ActionIcon>
+                  </Tooltip>
                   <Tooltip label="Delete">
                     <ActionIcon color="red" variant="light" onClick={() => handleDelete(video)}>
                       <IconTrash size={16} />
@@ -380,6 +418,15 @@ export function LibraryPage() {
                       <IconFolder size={16} />
                     </ActionIcon>
                   </Tooltip>
+                  <Tooltip label="Edit video">
+                    <ActionIcon
+                      color="green"
+                      variant="light"
+                      onClick={() => setEditingVideo(mapVideoToVideoResult(video))}
+                    >
+                      <IconEdit size={16} />
+                    </ActionIcon>
+                  </Tooltip>
                   <Tooltip label="Delete">
                     <ActionIcon color="red" variant="light" onClick={() => handleDelete(video)}>
                       <IconTrash size={16} />
@@ -391,6 +438,12 @@ export function LibraryPage() {
           ))}
         </Stack>
       )}
+
+      <EditorModal
+        opened={editingVideo !== null}
+        video={editingVideo}
+        onClose={() => setEditingVideo(null)}
+      />
     </Stack>
   );
 }
