@@ -15,6 +15,7 @@ import (
 
 	"yted/internal/config"
 	"yted/internal/db"
+	"yted/internal/editor"
 	applog "yted/internal/log"
 	"yted/internal/version"
 	"yted/internal/ytdl"
@@ -35,6 +36,7 @@ type App struct {
 	logger *applog.Logger
 	fm     *FileManager
 	ffmpeg *FFmpegManager
+	editor *editor.Editor
 
 	// Mutex to prevent concurrent download processing
 	downloadMu sync.Mutex
@@ -186,6 +188,31 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Error("App", "Failed to create download directory", err)
 	}
 
+	// Initialize video editor, forwarding job events to the frontend
+	a.editor = editor.New(a.ffmpeg.Find(), a.db, a.config)
+	a.editor.SetProgressCallback(func(jobID string, progress float64) {
+		runtime.EventsEmit(a.ctx, "editor:progress", map[string]interface{}{
+			"jobId":    jobID,
+			"progress": progress,
+		})
+	})
+	a.editor.SetCompletionCallback(func(jobID, outputVideoID string, jobErr error) {
+		if jobErr != nil {
+			runtime.EventsEmit(a.ctx, "editor:error", map[string]interface{}{
+				"jobId": jobID,
+				"error": jobErr.Error(),
+			})
+		} else {
+			runtime.EventsEmit(a.ctx, "editor:completed", map[string]interface{}{
+				"jobId":         jobID,
+				"outputVideoId": outputVideoID,
+			})
+			runtime.EventsEmit(a.ctx, "library:updated", nil)
+		}
+	})
+	a.editor.Start()
+	a.logger.Info("Editor", "Video editor initialized")
+
 	// Verify and repair any downloads that have files but wrong status
 	if err := a.VerifyAndRepairDownloads(); err != nil {
 		a.logger.Error("App", "Failed to verify downloads", err)
@@ -234,6 +261,10 @@ func (a *App) Shutdown(_ context.Context) {
 		case <-time.After(5 * time.Second):
 			a.logger.Warn("App", "Timeout waiting for downloads, forcing shutdown")
 		}
+	}
+
+	if a.editor != nil {
+		a.editor.Stop()
 	}
 
 	if a.config != nil {

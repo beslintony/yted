@@ -3,6 +3,9 @@ package editor
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,9 +130,12 @@ func (q *EditQueue) processTask(task *EditTask) {
 		}
 		task.Editor.mu.Unlock()
 
-		// Update database (throttle updates)
+		// Update database and notify listeners (throttled)
 		if int(progress*100)%5 == 0 { // Every 5%
 			_ = task.Editor.db.UpdateEditJobProgress(task.JobID, progress)
+			if cb := task.Editor.onProgress; cb != nil {
+				cb(task.JobID, progress)
+			}
 		}
 	}
 
@@ -150,12 +156,25 @@ func (q *EditQueue) processTask(task *EditTask) {
 		if err := task.Editor.db.FailEditJob(task.JobID, err.Error()); err != nil {
 			logger.Error("Editor", "Failed to mark job as failed", err)
 		}
+		if cb := task.Editor.onComplete; cb != nil {
+			cb(task.JobID, "", err)
+		}
 	} else {
 		logger.Info("Editor", "Edit operation completed", map[string]string{
 			"job_id":      task.JobID,
 			"operation":   task.Operation,
 			"output_path": outputPath,
 		})
+
+		// Collect output file metadata for the library record
+		fileSize := int64(0)
+		if info, statErr := os.Stat(outputPath); statErr == nil {
+			fileSize = info.Size()
+		}
+		duration := task.Video.Duration
+		if task.Settings.CropStart != nil && task.Settings.CropEnd != nil && *task.Settings.CropEnd > *task.Settings.CropStart {
+			duration = int(*task.Settings.CropEnd - *task.Settings.CropStart)
+		}
 
 		// Create output video record
 		outputVideo := &db.Video{
@@ -164,19 +183,29 @@ func (q *EditQueue) processTask(task *EditTask) {
 			Title:        task.Video.Title + " (edited)",
 			Channel:      task.Video.Channel,
 			ChannelID:    task.Video.ChannelID,
+			Duration:     duration,
 			Description:  task.Video.Description,
 			ThumbnailURL: task.Video.ThumbnailURL,
 			FilePath:     outputPath,
+			FileSize:     fileSize,
 			FileHash:     task.Video.FileHash + "_edited_" + task.JobID,
 			IsManaged:    task.Video.IsManaged,
+			Format:       strings.TrimPrefix(filepath.Ext(outputPath), "."),
+			Quality:      task.Video.Quality,
 			DownloadedAt: time.Now(),
 		}
 
 		if err := task.Editor.db.CreateVideo(outputVideo); err != nil {
 			logger.Error("Editor", "Failed to create output video record", err)
+			if cb := task.Editor.onComplete; cb != nil {
+				cb(task.JobID, "", err)
+			}
 		} else {
 			if err := task.Editor.db.CompleteEditJob(task.JobID, outputVideo.ID); err != nil {
 				logger.Error("Editor", "Failed to mark job as completed", err)
+			}
+			if cb := task.Editor.onComplete; cb != nil {
+				cb(task.JobID, outputVideo.ID, nil)
 			}
 		}
 	}

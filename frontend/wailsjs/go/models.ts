@@ -24,6 +24,44 @@ export namespace app {
 	        this.orphaned_files_size = source["orphaned_files_size"];
 	    }
 	}
+	export class CodecOption {
+	    id: string;
+	    name: string;
+	    description: string;
+	    quality: string;
+	    speed: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CodecOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.quality = source["quality"];
+	        this.speed = source["speed"];
+	    }
+	}
+	export class CropPresetOption {
+	    id: string;
+	    name: string;
+	    width: number;
+	    height: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CropPresetOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	    }
+	}
 	export class DownloadResult {
 	    id: string;
 	    url: string;
@@ -56,6 +94,105 @@ export namespace app {
 	        this.youtube_id = source["youtube_id"];
 	    }
 	}
+	export class RotationOption {
+	    value: number;
+	    label: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RotationOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.value = source["value"];
+	        this.label = source["label"];
+	        this.description = source["description"];
+	    }
+	}
+	export class EffectRangeOption {
+	    id: string;
+	    min: number;
+	    max: number;
+	    default: number;
+	    step: number;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EffectRangeOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.min = source["min"];
+	        this.max = source["max"];
+	        this.default = source["default"];
+	        this.step = source["step"];
+	        this.description = source["description"];
+	    }
+	}
+	export class FormatOption {
+	    id: string;
+	    name: string;
+	    extension: string;
+	    description: string;
+	    codecs: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new FormatOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.extension = source["extension"];
+	        this.description = source["description"];
+	        this.codecs = source["codecs"];
+	    }
+	}
+	export class EditOptions {
+	    formats: FormatOption[];
+	    codecs: CodecOption[];
+	    crop_presets: CropPresetOption[];
+	    effect_ranges: EffectRangeOption[];
+	    rotations: RotationOption[];
+	    watermark_positions: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.formats = this.convertValues(source["formats"], FormatOption);
+	        this.codecs = this.convertValues(source["codecs"], CodecOption);
+	        this.crop_presets = this.convertValues(source["crop_presets"], CropPresetOption);
+	        this.effect_ranges = this.convertValues(source["effect_ranges"], EffectRangeOption);
+	        this.rotations = this.convertValues(source["rotations"], RotationOption);
+	        this.watermark_positions = source["watermark_positions"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class FFmpegLocation {
 	    path: string;
 	    version: string;
@@ -125,6 +262,7 @@ export namespace app {
 		}
 	}
 	
+	
 	export class ListVideosOptions {
 	    search: string;
 	    channel: string;
@@ -167,6 +305,7 @@ export namespace app {
 	        this.error = source["error"];
 	    }
 	}
+	
 	export class VideoInfoResult {
 	    id: string;
 	    title: string;
@@ -401,6 +540,149 @@ export namespace db {
 		    }
 		    return a;
 		}
+	}
+	export class EditJob {
+	    id: string;
+	    source_video_id: string;
+	    output_video_id?: string;
+	    status: string;
+	    operation: string;
+	    settings: string;
+	    progress: number;
+	    error_message?: string;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    completed_at?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditJob(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.source_video_id = source["source_video_id"];
+	        this.output_video_id = source["output_video_id"];
+	        this.status = source["status"];
+	        this.operation = source["operation"];
+	        this.settings = source["settings"];
+	        this.progress = source["progress"];
+	        this.error_message = source["error_message"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.completed_at = this.convertValues(source["completed_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class EditSettings {
+	    crop_start?: number;
+	    crop_end?: number;
+	    crop_x?: number;
+	    crop_y?: number;
+	    crop_width?: number;
+	    crop_height?: number;
+	    watermark_type?: string;
+	    watermark_text?: string;
+	    watermark_image?: string;
+	    watermark_position?: string;
+	    watermark_opacity?: number;
+	    watermark_size?: number;
+	    output_format?: string;
+	    output_codec?: string;
+	    output_quality?: number;
+	    output_resolution?: string;
+	    brightness?: number;
+	    contrast?: number;
+	    saturation?: number;
+	    rotation?: number;
+	    speed?: number;
+	    volume?: number;
+	    remove_audio?: boolean;
+	    output_filename?: string;
+	    replace_original?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.crop_start = source["crop_start"];
+	        this.crop_end = source["crop_end"];
+	        this.crop_x = source["crop_x"];
+	        this.crop_y = source["crop_y"];
+	        this.crop_width = source["crop_width"];
+	        this.crop_height = source["crop_height"];
+	        this.watermark_type = source["watermark_type"];
+	        this.watermark_text = source["watermark_text"];
+	        this.watermark_image = source["watermark_image"];
+	        this.watermark_position = source["watermark_position"];
+	        this.watermark_opacity = source["watermark_opacity"];
+	        this.watermark_size = source["watermark_size"];
+	        this.output_format = source["output_format"];
+	        this.output_codec = source["output_codec"];
+	        this.output_quality = source["output_quality"];
+	        this.output_resolution = source["output_resolution"];
+	        this.brightness = source["brightness"];
+	        this.contrast = source["contrast"];
+	        this.saturation = source["saturation"];
+	        this.rotation = source["rotation"];
+	        this.speed = source["speed"];
+	        this.volume = source["volume"];
+	        this.remove_audio = source["remove_audio"];
+	        this.output_filename = source["output_filename"];
+	        this.replace_original = source["replace_original"];
+	    }
+	}
+
+}
+
+export namespace editor {
+	
+	export class VideoMetadata {
+	    duration: number;
+	    width: number;
+	    height: number;
+	    fps: number;
+	    bitrate: number;
+	    codec: string;
+	    audio_codec?: string;
+	    audio_bitrate?: number;
+	    has_audio: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoMetadata(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.duration = source["duration"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.fps = source["fps"];
+	        this.bitrate = source["bitrate"];
+	        this.codec = source["codec"];
+	        this.audio_codec = source["audio_codec"];
+	        this.audio_bitrate = source["audio_bitrate"];
+	        this.has_audio = source["has_audio"];
+	    }
 	}
 
 }

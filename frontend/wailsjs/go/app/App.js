@@ -14,6 +14,10 @@ export function CancelDownload(arg1) {
   return window['go']['app']['App']['CancelDownload'](arg1);
 }
 
+export function CancelEditJob(arg1) {
+  return window['go']['app']['App']['CancelEditJob'](arg1);
+}
+
 export function CheckDownloadStatus(arg1) {
   return window['go']['app']['App']['CheckDownloadStatus'](arg1);
 }
@@ -58,6 +62,10 @@ export function ExportLogs(arg1) {
   return window['go']['app']['App']['ExportLogs'](arg1);
 }
 
+export function GenerateEditPreview(arg1, arg2, arg3) {
+  return window['go']['app']['App']['GenerateEditPreview'](arg1, arg2, arg3);
+}
+
 export function GetAllLogs() {
   return window['go']['app']['App']['GetAllLogs']();
 }
@@ -88,6 +96,18 @@ export function GetDownloads() {
 
 export function GetDownloadsByStatus(arg1) {
   return window['go']['app']['App']['GetDownloadsByStatus'](arg1);
+}
+
+export function GetEditJobStatus(arg1) {
+  return window['go']['app']['App']['GetEditJobStatus'](arg1);
+}
+
+export function GetEditOptions() {
+  return window['go']['app']['App']['GetEditOptions']();
+}
+
+export function GetEditVideoMetadata(arg1) {
+  return window['go']['app']['App']['GetEditVideoMetadata'](arg1);
 }
 
 export function GetFFmpegLocations() {
@@ -132,6 +152,10 @@ export function GetVideoInfo(arg1) {
 
 export function GetYtdlpVersion() {
   return window['go']['app']['App']['GetYtdlpVersion']();
+}
+
+export function ListEditJobs(arg1) {
+  return window['go']['app']['App']['ListEditJobs'](arg1);
 }
 
 export function ListVideos(arg1) {
@@ -200,6 +224,10 @@ export function ShowSaveDialog(arg1) {
 
 export function StartProcessingDownloads() {
   return window['go']['app']['App']['StartProcessingDownloads']();
+}
+
+export function SubmitEditJob(arg1, arg2, arg3) {
+  return window['go']['app']['App']['SubmitEditJob'](arg1, arg2, arg3);
 }
 
 export function SyncDownloadWithFile(arg1) {

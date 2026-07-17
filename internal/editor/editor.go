@@ -34,6 +34,10 @@ type Editor struct {
 	mu         sync.RWMutex
 	ctx        context.Context
 	cancel     context.CancelFunc
+
+	// Event hooks, wired by the app layer before Start is called
+	onProgress func(jobID string, progress float64)
+	onComplete func(jobID string, outputVideoID string, jobErr error)
 }
 
 // EditJob represents an active editing job
@@ -85,6 +89,19 @@ func (e *Editor) Stop() {
 // SetFFmpegPath updates the FFmpeg binary path
 func (e *Editor) SetFFmpegPath(path string) {
 	e.ffmpegPath = path
+}
+
+// SetProgressCallback registers a hook called with job progress (0.0-1.0).
+// Must be set before Start; the hook runs on queue worker goroutines.
+func (e *Editor) SetProgressCallback(cb func(jobID string, progress float64)) {
+	e.onProgress = cb
+}
+
+// SetCompletionCallback registers a hook called when a job finishes, with the
+// output video ID on success or the error on failure.
+// Must be set before Start; the hook runs on queue worker goroutines.
+func (e *Editor) SetCompletionCallback(cb func(jobID string, outputVideoID string, jobErr error)) {
+	e.onComplete = cb
 }
 
 // SubmitJob submits a new edit job to the queue
