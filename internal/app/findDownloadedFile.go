@@ -26,12 +26,38 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 
 	log.Printf("[findDownloadedFile] Found %d entries in directory", len(entries))
 
-	// Determine expected media type based on quality/format
+	// Determine expected media type based on quality/format.
+	// Only a format that is exclusively audio counts as audio: combined
+	// selectors like "bestvideo+bestaudio" still produce a video file.
 	isAudioFormat := ext == "mp3" || ext == "m4a" || ext == "ogg" ||
-		strings.Contains(formatID, "audio")
+		(strings.Contains(formatID, "audio") && !strings.Contains(formatID, "video"))
+
+	// yt-dlp writes unmerged download fragments as ".fNNN.ext"
+	// (e.g. ".f140.m4a", ".f399.mp4"). These are never valid final outputs.
+	isFragmentFile := func(filename string) bool {
+		base := strings.ToLower(filepath.Base(filename))
+		extStart := strings.LastIndex(base, ".")
+		if extStart <= 0 {
+			return false
+		}
+		stem := base[:extStart]
+		fragStart := strings.LastIndex(stem, ".f")
+		if fragStart == -1 || fragStart+2 >= len(stem) {
+			return false
+		}
+		for _, r := range stem[fragStart+2:] {
+			if r < '0' || r > '9' {
+				return false
+			}
+		}
+		return true
+	}
 
 	// Helper to check if file is expected media type
 	isExpectedType := func(filename string) bool {
+		if isFragmentFile(filename) {
+			return false
+		}
 		lower := strings.ToLower(filename)
 		if isAudioFormat {
 			// For audio downloads, prioritize audio extensions
@@ -49,6 +75,9 @@ func findDownloadedFile(outputDir, youtubeID, formatID, ext string) string {
 
 	// Helper to check if file is any media type
 	isMediaFile := func(filename string) bool {
+		if isFragmentFile(filename) {
+			return false
+		}
 		lower := strings.ToLower(filename)
 		return strings.HasSuffix(lower, ".mp4") ||
 			strings.HasSuffix(lower, ".webm") ||

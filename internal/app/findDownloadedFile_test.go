@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"yted/internal/db"
 )
 
 func TestFindDownloadedFile(t *testing.T) {
@@ -50,6 +52,65 @@ func TestFindDownloadedFile(t *testing.T) {
 			t.Errorf("findDownloadedFile() = %q, want empty string", result)
 		}
 	})
+}
+
+// TestFindDownloadedFileRejectsFragments ensures yt-dlp fragment files
+// (unmerged .fNNN.ext parts) are never matched as the final video
+func TestFindDownloadedFileRejectsFragments(t *testing.T) {
+	tempDir := t.TempDir()
+	youtubeID := "TVXWJROgUv8"
+	formatID := "bestvideo+bestaudio/best"
+
+	// Simulate an unmerged download: audio fragment + video fragment
+	audioFrag := filepath.Join(tempDir, "Some Video ["+youtubeID+"][399+140].f140.m4a")
+	videoFrag := filepath.Join(tempDir, "Some Video ["+youtubeID+"][399+140].f399.mp4")
+	for _, f := range []string{audioFrag, videoFrag} {
+		if err := os.WriteFile(f, []byte("test"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+	}
+
+	result := findDownloadedFile(tempDir, youtubeID, formatID, "mp4")
+	if result != "" {
+		t.Errorf("findDownloadedFile() matched fragment %q, want empty string", result)
+	}
+}
+
+// TestFindDownloadedFileCombinedFormatIsVideo ensures combined selectors
+// like "bestvideo+bestaudio" are treated as video, not audio
+func TestFindDownloadedFileCombinedFormatIsVideo(t *testing.T) {
+	tempDir := t.TempDir()
+	youtubeID := "abc123xyz00"
+	formatID := "bestvideo+bestaudio/best"
+
+	// Merged output exists alongside a stray audio file
+	merged := filepath.Join(tempDir, "Video ["+youtubeID+"][399+140].mp4")
+	strayAudio := filepath.Join(tempDir, "Video ["+youtubeID+"][399+140].m4a")
+	for _, f := range []string{merged, strayAudio} {
+		if err := os.WriteFile(f, []byte("test"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+	}
+
+	result := findDownloadedFile(tempDir, youtubeID, formatID, "mp4")
+	if result != merged {
+		t.Errorf("findDownloadedFile() = %q, want %q", result, merged)
+	}
+}
+
+func TestGetDownloadExtensionCombinedFormat(t *testing.T) {
+	formatID := "bestvideo+bestaudio/best"
+	quality := "best"
+	dl := &db.Download{FormatID: &formatID, Quality: &quality}
+	if ext := getDownloadExtension(dl); ext != "mp4" {
+		t.Errorf("getDownloadExtension() = %q, want mp4 for combined format", ext)
+	}
+
+	audioFormatID := "bestaudio"
+	dl = &db.Download{FormatID: &audioFormatID}
+	if ext := getDownloadExtension(dl); ext != "mp3" {
+		t.Errorf("getDownloadExtension() = %q, want mp3 for audio-only format", ext)
+	}
 }
 
 func TestFindDownloadedFileTypeMatching(t *testing.T) {

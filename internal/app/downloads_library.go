@@ -212,7 +212,9 @@ func getDownloadExtension(dl *db.Download) string {
 	if dl.Quality != nil && *dl.Quality == "audio" {
 		return "mp3"
 	}
-	if dl.FormatID != nil && strings.Contains(*dl.FormatID, "audio") {
+	// Only an exclusively-audio format is mp3; combined selectors like
+	// "bestvideo+bestaudio" produce a video file
+	if dl.FormatID != nil && strings.Contains(*dl.FormatID, "audio") && !strings.Contains(*dl.FormatID, "video") {
 		return "mp3"
 	}
 	return "mp4"

@@ -100,9 +100,9 @@ func TestSubmitEditJob_InvalidEffectSettings(t *testing.T) {
 
 func TestSubmitEditJob_NoFFmpeg(t *testing.T) {
 	a := setupEditorTestApp(t)
-	// No ffmpeg path configured and no FFmpegManager -> editorReady must fail
-	a.ffmpeg = NewFFmpegManager()
-	a.ffmpeg.SetCustomPath("/nonexistent/ffmpeg")
+	// No FFmpegManager at all -> editorReady must fail regardless of
+	// whether ffmpeg happens to be installed on the host
+	a.ffmpeg = nil
 
 	_, err := a.SubmitEditJob("vid-1", "crop", db.EditSettings{})
 	if err == nil {

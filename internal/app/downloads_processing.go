@@ -184,6 +184,22 @@ func (a *App) startDownload(dl db.Download) {
 	// Emit started event
 	runtime.EventsEmit(a.ctx, "download:started", dl)
 
+	// FFmpeg is required for every output path (merging, remuxing, MP3
+	// extraction). Without it yt-dlp leaves unmerged fragment files which
+	// would get registered in the library as if they were the video.
+	if a.ffmpeg == nil || !a.ffmpeg.IsAvailable() {
+		err := fmt.Errorf("ffmpeg is not available - install ffmpeg to download videos")
+		logger.Error("Download", "Download failed - ffmpeg unavailable", err, map[string]string{"id": dl.ID})
+		if failErr := a.db.FailDownload(dl.ID, err.Error()); failErr != nil {
+			logger.Error("Download", "Failed to mark download as failed", failErr, map[string]string{"id": dl.ID})
+		}
+		runtime.EventsEmit(a.ctx, "download:error", map[string]interface{}{
+			"id":    dl.ID,
+			"error": err.Error(),
+		})
+		return
+	}
+
 	// Download options
 	format := ""
 	if dl.FormatID != nil {
