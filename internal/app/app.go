@@ -455,7 +455,7 @@ func (a *App) OpenFile(path string) error {
 	path = filepath.Clean(path)
 
 	// Security: Check for path traversal attempts
-	if strings.Contains(path, "..") {
+	if hasPathTraversal(path) {
 		return fmt.Errorf("invalid path: path traversal detected")
 	}
 
@@ -517,7 +517,7 @@ func (a *App) OpenFolder(filePath string) error {
 	filePath = filepath.Clean(filePath)
 
 	// Security: Check for path traversal attempts
-	if strings.Contains(filePath, "..") {
+	if hasPathTraversal(filePath) {
 		return fmt.Errorf("invalid path: path traversal detected")
 	}
 
@@ -569,4 +569,18 @@ func (a *App) OpenFolder(filePath string) error {
 	}
 
 	return nil
+}
+
+// hasPathTraversal reports whether a cleaned path contains a real ".."
+// path segment. After filepath.Clean, interior ".." segments are already
+// resolved, so a remaining one escapes the root (e.g. "../../etc").
+// A substring check would false-positive on filenames containing "..."
+// (e.g. "Title... With Ellipsis.mp4").
+func hasPathTraversal(path string) bool {
+	for _, seg := range strings.FieldsFunc(path, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if seg == ".." {
+			return true
+		}
+	}
+	return false
 }
