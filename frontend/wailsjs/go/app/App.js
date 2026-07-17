@@ -10,6 +10,10 @@ export function AddDownloadPreset(arg1) {
   return window['go']['app']['App']['AddDownloadPreset'](arg1);
 }
 
+export function AddPlaylistDownload(arg1, arg2, arg3) {
+  return window['go']['app']['App']['AddPlaylistDownload'](arg1, arg2, arg3);
+}
+
 export function CancelDownload(arg1) {
   return window['go']['app']['App']['CancelDownload'](arg1);
 }
@@ -130,6 +134,10 @@ export function GetLogs(arg1) {
   return window['go']['app']['App']['GetLogs'](arg1);
 }
 
+export function GetPlaylistInfo(arg1) {
+  return window['go']['app']['App']['GetPlaylistInfo'](arg1);
+}
+
 export function GetSettings() {
   return window['go']['app']['App']['GetSettings']();
 }
@@ -152,6 +160,10 @@ export function GetVideoInfo(arg1) {
 
 export function GetYtdlpVersion() {
   return window['go']['app']['App']['GetYtdlpVersion']();
+}
+
+export function IsPlaylistURL(arg1) {
+  return window['go']['app']['App']['IsPlaylistURL'](arg1);
 }
 
 export function ListEditJobs(arg1) {

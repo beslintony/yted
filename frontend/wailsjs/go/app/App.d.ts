@@ -9,6 +9,8 @@ export function AddDownload(arg1:string,arg2:string,arg3:string):Promise<string>
 
 export function AddDownloadPreset(arg1:config.DownloadPreset):Promise<void>;
 
+export function AddPlaylistDownload(arg1:string,arg2:string,arg3:string):Promise<number>;
+
 export function CancelDownload(arg1:string):Promise<void>;
 
 export function CancelEditJob(arg1:string):Promise<void>;
@@ -69,6 +71,8 @@ export function GetLogExportPath():Promise<string>;
 
 export function GetLogs(arg1:number):Promise<Array<app.LogEntry>>;
 
+export function GetPlaylistInfo(arg1:string):Promise<app.PlaylistInfoResult>;
+
 export function GetSettings():Promise<config.Config>;
 
 export function GetVersion():Promise<string>;
@@ -80,6 +84,8 @@ export function GetVideoByYoutubeID(arg1:string):Promise<app.VideoResult>;
 export function GetVideoInfo(arg1:string):Promise<app.VideoInfoResult>;
 
 export function GetYtdlpVersion():Promise<string>;
+
+export function IsPlaylistURL(arg1:string):Promise<boolean>;
 
 export function ListEditJobs(arg1:string):Promise<Array<db.EditJob>>;
 
