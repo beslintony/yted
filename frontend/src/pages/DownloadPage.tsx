@@ -33,6 +33,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   AddDownload,
+  CheckDownloadStatus,
   GetDownloadQueue,
   GetSettings,
   GetVideoInfo,
@@ -168,10 +169,36 @@ export function DownloadPage() {
               completeDownload(data.id);
             } else if (backendStatus === 'error') {
               failDownload(data.id, data.error_message || 'Unknown error');
+            } else if (backendStatus === 'paused') {
+              pauseDownload(data.id);
             }
           }
           // Tell backend to start processing pending downloads
           await StartProcessingDownloads();
+        }
+
+        // Reconcile store items stuck in an active state that the backend
+        // no longer reports as incomplete - e.g. their completion event
+        // fired while this page was unmounted and was missed.
+        // Read the store imperatively: depending on reactive `downloads`
+        // here would re-trigger this effect on every restore-time update
+        const incompleteIds = new Set((queue ?? []).map(d => d?.id));
+        const stale = useDownloadStore
+          .getState()
+          .downloads.filter(
+            d => (d.status === 'downloading' || d.status === 'pending') && !incompleteIds.has(d.id)
+          );
+        for (const d of stale) {
+          try {
+            const check = await CheckDownloadStatus(d.id);
+            if (check?.status === 'completed') {
+              completeDownload(d.id);
+            } else if (check?.status === 'error') {
+              failDownload(d.id, 'Download failed');
+            }
+          } catch {
+            // Keep the item as-is if the status check fails
+          }
         }
         setQueueRestored(true);
       } catch (err) {
@@ -188,6 +215,7 @@ export function DownloadPage() {
     completeDownload,
     failDownload,
     hasDownload,
+    pauseDownload,
   ]);
 
   // Listen for download progress events from backend
