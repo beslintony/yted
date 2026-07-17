@@ -53,16 +53,21 @@ func (q *EditQueue) Start() {
 	q.logger.Info("Editor", "Edit queue started", map[string]int{"workers": q.workers})
 }
 
-// Stop stops the queue and waits for workers to finish
+// Stop stops the queue and waits for workers to finish.
+// The tasks channel is intentionally not closed: a Submit racing with
+// Stop would otherwise panic on a send to a closed channel. Cancelling
+// the context makes workers exit and Submit fail instead.
 func (q *EditQueue) Stop() {
 	q.cancel()
-	close(q.tasks)
 	q.wg.Wait()
 	q.logger.Info("Editor", "Edit queue stopped")
 }
 
 // Submit adds a task to the queue
 func (q *EditQueue) Submit(task *EditTask) error {
+	if err := q.ctx.Err(); err != nil {
+		return err
+	}
 	select {
 	case q.tasks <- task:
 		return nil
