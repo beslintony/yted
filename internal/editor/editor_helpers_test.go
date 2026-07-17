@@ -431,7 +431,7 @@ func TestBuildImageWatermarkArgs(t *testing.T) {
 	// Test with non-existent image
 	t.Run("non-existent image", func(t *testing.T) {
 		settings := db.EditSettings{
-			WatermarkType: ptrString("image"),
+			WatermarkType:  ptrString("image"),
 			WatermarkImage: ptrString("/nonexistent/image.png"),
 		}
 		args := e.buildImageWatermarkArgs("/path/to/video.mp4", settings, "/path/to/output.mp4")
