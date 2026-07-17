@@ -53,6 +53,9 @@ type App struct {
 	videoInfoCache   map[string]videoInfoCacheEntry
 	videoInfoCacheMu sync.RWMutex
 
+	// Mutex to serialize library record updates from completed downloads
+	libraryMu sync.Mutex
+
 	// Initialization failures collected during Startup, reported to the
 	// frontend once the DOM is ready
 	initErrs []string
