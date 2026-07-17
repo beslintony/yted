@@ -9,6 +9,7 @@ A modern, user-friendly YouTube downloader and library manager built with Go, Wa
 ## Features
 
 - **Download Queue** - Manage multiple downloads with pause/resume/retry
+- **Playlist Downloads** - Queue entire YouTube playlists in one click
 - **Video Library** - Browse, search, and organize downloaded videos
 - **Video Editor** - Trim, convert, watermark, and adjust downloaded videos
 - **Watch Progress** - Automatically track and resume playback position

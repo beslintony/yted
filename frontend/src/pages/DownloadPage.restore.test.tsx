@@ -13,8 +13,10 @@ import { DownloadPage } from './DownloadPage';
 // Mock the Wails API (includes everything imported via the stores barrel)
 vi.mock('../../wailsjs/go/app/App', () => ({
   AddDownload: vi.fn(),
+  AddPlaylistDownload: vi.fn(),
   CheckDownloadStatus: vi.fn(),
   GetDownloadQueue: vi.fn(),
+  GetPlaylistInfo: vi.fn(),
   GetSettings: vi.fn(),
   GetVideoInfo: vi.fn(),
   PauseDownload: vi.fn(),

@@ -23,6 +23,7 @@ import {
   IconLink,
   IconPlayerPause,
   IconPlayerPlay,
+  IconPlaylist,
   IconRefresh,
   IconSearch,
   IconTrash,
@@ -33,8 +34,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   AddDownload,
+  AddPlaylistDownload,
   CheckDownloadStatus,
   GetDownloadQueue,
+  GetPlaylistInfo,
   GetSettings,
   GetVideoInfo,
   PauseDownload,
@@ -43,7 +46,7 @@ import {
   StartProcessingDownloads,
   ValidateURL,
 } from '../../wailsjs/go/app/App';
-import { app, config } from '../../wailsjs/go/models';
+import { app, config, db } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 import { useDownloadStore, useNotifications, useSettingsStore } from '../stores';
 import { VideoFormat } from '../types';
@@ -58,6 +61,7 @@ export function DownloadPage() {
   const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [queueRestored, setQueueRestored] = useState(false);
+  const [playlistInfo, setPlaylistInfo] = useState<app.PlaylistInfoResult | null>(null);
 
   const {
     downloads,
@@ -275,6 +279,35 @@ export function DownloadPage() {
       }
     });
 
+    // Sync downloads added on the backend (e.g. playlist entries) into the store
+    const cancelAdded = EventsOn('download:added', (data: db.Download) => {
+      if (!data?.id || !data?.url || hasDownload(data.id)) return;
+      addDownload(
+        data.url,
+        {
+          id: data.id,
+          title: data.title || '',
+          channel: data.channel || '',
+          channelId: '',
+          duration: data.duration || 0,
+          description: '',
+          thumbnail: data.thumbnail_url || '',
+          formats: [],
+        },
+        {
+          formatId: data.format_id || 'best',
+          ext: 'mp4',
+          resolution: '',
+          fps: 0,
+          vcodec: '',
+          acodec: '',
+          filesize: 0,
+          quality: data.quality || 'best',
+        },
+        data.id
+      );
+    });
+
     const cancelRetried = EventsOn('download:retried', (retryId: string) => {
       if (retryId) {
         // Clear processed events for this download so new events can be handled
@@ -296,6 +329,7 @@ export function DownloadPage() {
       cancelCompleted();
       cancelError();
       cancelStarted();
+      cancelAdded();
       cancelRetried();
       clearInterval(cleanupInterval);
     };
@@ -309,6 +343,8 @@ export function DownloadPage() {
     success,
     showError,
     updateDownloadInfo,
+    addDownload,
+    hasDownload,
   ]);
 
   const handleFetchInfo = async () => {
@@ -321,12 +357,28 @@ export function DownloadPage() {
     setLoading(true);
     setError(null);
     setVideoInfo(null);
+    setPlaylistInfo(null);
 
     try {
       const isValid = await ValidateURL(url);
       if (!isValid) {
         setError('Invalid YouTube URL. Please enter a valid YouTube video URL.');
         showError('Invalid URL', 'Please enter a valid YouTube video URL');
+        return;
+      }
+
+      // Playlist URLs take the playlist path
+      if (/[?&]list=/.test(url)) {
+        const info = await GetPlaylistInfo(url);
+        if (!info || !info.id) {
+          setError('Could not fetch playlist information. Please check the URL and try again.');
+          showError(
+            'Fetch Failed',
+            'Could not fetch playlist information. Please check the URL and try again.'
+          );
+          return;
+        }
+        setPlaylistInfo(info);
         return;
       }
 
@@ -405,9 +457,44 @@ export function DownloadPage() {
     }
   };
 
+  const handlePlaylistDownload = async () => {
+    if (!playlistInfo || !url) {
+      setError('No playlist info available');
+      showError('No Playlist Info', 'Please fetch playlist information first');
+      return;
+    }
+
+    setAdding(true);
+    setError(null);
+
+    try {
+      const preset = presets.find(p => p.id === selectedPreset);
+      const formatId = preset?.format || 'best';
+      const quality = preset?.quality || 'best';
+
+      const added = await AddPlaylistDownload(url, formatId, quality);
+
+      if (added > 0) {
+        success(
+          'Playlist Added',
+          `${added} videos from "${playlistInfo.title}" have been added to the queue`
+        );
+        setUrl('');
+        setPlaylistInfo(null);
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add playlist';
+      setError(errorMessage);
+      showError('Playlist Download Failed', errorMessage);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const handleClear = () => {
     setUrl('');
     setVideoInfo(null);
+    setPlaylistInfo(null);
     setError(null);
   };
 
@@ -571,6 +658,77 @@ export function DownloadPage() {
                         onClick={handleDownload}
                       >
                         Download
+                      </Button>
+                    </Tooltip>
+                  </Group>
+                </Stack>
+              </Group>
+            </Paper>
+          )}
+          {playlistInfo && (
+            <Paper
+              withBorder
+              bg={dark ? '#1a1b1e' : '#f8f9fa'}
+              p="md"
+              style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
+            >
+              <Group align="flex-start" wrap="nowrap">
+                <Paper
+                  bg={dark ? '#2c2e33' : '#e9ecef'}
+                  h={90}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 8,
+                  }}
+                  w={160}
+                >
+                  <IconPlaylist color={dark ? '#5c5f66' : '#adb5bd'} size={32} />
+                </Paper>
+                <Stack gap="xs" style={{ flex: 1 }}>
+                  <Text c={dark ? '#fff' : '#000'} fw={600} lineClamp={2}>
+                    {playlistInfo.title || 'Unknown Playlist'}
+                  </Text>
+                  <Text c={dark ? 'dimmed' : 'gray.7'} size="sm">
+                    {playlistInfo.channel || 'Unknown Channel'}
+                  </Text>
+                  <Text c={dark ? 'dimmed' : 'gray.7'} size="sm">
+                    {playlistInfo.entries.length} videos
+                  </Text>
+
+                  {settingsLoaded && presets.length > 0 && (
+                    <Select
+                      data={presets.map(p => ({
+                        value: p.id,
+                        label: `${p.name} (${p.quality}, .${p.extension})`,
+                      }))}
+                      description="Choose quality and format for all videos"
+                      label="Download Preset"
+                      size="sm"
+                      styles={{
+                        input: {
+                          background: dark ? '#141517' : '#f8f9fa',
+                          color: dark ? '#c1c2c5' : '#212529',
+                        },
+                      }}
+                      value={selectedPreset}
+                      w={250}
+                      onChange={value => value && setSelectedPreset(value)}
+                    />
+                  )}
+
+                  <Group justify="flex-end" mt="xs">
+                    <Tooltip label="Add all playlist videos to the download queue">
+                      <Button
+                        color="yted"
+                        disabled={!selectedPreset && presets.length > 0}
+                        leftSection={<IconDownload size={16} />}
+                        loading={adding}
+                        size="sm"
+                        onClick={handlePlaylistDownload}
+                      >
+                        Download {playlistInfo.entries.length} videos
                       </Button>
                     </Tooltip>
                   </Group>
