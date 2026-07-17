@@ -2,8 +2,8 @@
 
 .PHONY: all build build-versioned build-installer-linux build-installer-windows dev test lint fmt clean install install-system uninstall uninstall-system deps security generate run help
 
-# Version (override with VERSION=x.y.z)
-VERSION ?= dev
+# Version (override with VERSION=x.y.z; defaults to wails.json productVersion)
+VERSION ?= $(shell grep '"productVersion"' wails.json | head -1 | sed -E 's/.*"productVersion": "([^"]+)".*/\1/')
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -15,8 +15,8 @@ all: fmt lint build
 
 ## Build the application for production
 build:
-	@echo "Building YTed..."
-	wails build -tags webkit2_41
+	@echo "Building YTed $(VERSION)..."
+	wails build -tags webkit2_41 -ldflags "$(LDFLAGS)"
 
 ## Build with version info injected
 build-versioned:
