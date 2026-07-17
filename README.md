@@ -53,7 +53,7 @@ tar xzf YTed-linux-amd64.tar.gz
 ### Prerequisites
 
 - Go 1.25+
-- Node.js 20+
+- Node.js 24+
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - Linux: `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`
 
@@ -88,7 +88,9 @@ yted/
 │   ├── app/        # App logic & downloads
 │   ├── config/     # Settings management
 │   ├── db/         # SQLite database
+│   ├── editor/     # Video editing (crop, convert, watermark, effects)
 │   ├── log/        # Structured logging
+│   ├── version/    # Build version info
 │   └── ytdl/       # yt-dlp client
 ├── build/          # Build assets & installers
 └── main.go         # Entry point
