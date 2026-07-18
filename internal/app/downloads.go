@@ -290,6 +290,8 @@ func (a *App) RetryDownload(id string) error {
 }
 
 // CancelDownload cancels and removes a download
+// CancelDownload removes a download from the queue, stopping its worker
+// if one is running
 func (a *App) CancelDownload(id string) error {
 	logger := applog.GetLogger()
 
@@ -297,13 +299,23 @@ func (a *App) CancelDownload(id string) error {
 		return fmt.Errorf("database not initialized")
 	}
 
+	// Stop the worker first if it's running
+	a.activeDownloadsMu.Lock()
+	if cancel, ok := a.activeDownloads[id]; ok {
+		cancel()
+		delete(a.activeDownloads, id)
+	}
+	a.activeDownloadsMu.Unlock()
+
 	if err := a.db.DeleteDownload(id); err != nil {
 		logger.Error("Download", "Failed to cancel download", err, map[string]string{"id": id})
 		return err
 	}
 
 	logger.Info("Download", "Download cancelled", map[string]string{"id": id})
-	runtime.EventsEmit(a.ctx, "download:cancelled", id)
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "download:cancelled", id)
+	}
 	return nil
 }
 
@@ -467,13 +479,22 @@ func (a *App) RestoreDownloadQueue() error {
 	return nil
 }
 
-// ClearDownloadCache removes all download records from the database
+// ClearDownloadCache removes all download records from the database and
+// stops any running workers
 func (a *App) ClearDownloadCache() error {
 	logger := applog.GetLogger()
 
 	if a.db == nil {
 		return fmt.Errorf("database not initialized")
 	}
+
+	// Stop all running workers first
+	a.activeDownloadsMu.Lock()
+	for id, cancel := range a.activeDownloads {
+		cancel()
+		delete(a.activeDownloads, id)
+	}
+	a.activeDownloadsMu.Unlock()
 
 	if err := a.db.ClearAllDownloads(); err != nil {
 		logger.Error("Download", "Failed to clear download cache", err)
