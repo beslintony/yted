@@ -230,6 +230,10 @@ func (a *App) PauseDownload(id string) error {
 
 	logger.Info("Download", "Download paused", map[string]string{"id": id})
 	runtime.EventsEmit(a.ctx, "download:paused", id)
+
+	// Fill the slot freed by pausing
+	go a.processDownloads()
+
 	return nil
 }
 

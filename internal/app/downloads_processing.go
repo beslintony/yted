@@ -281,6 +281,10 @@ func (a *App) startDownload(dl db.Download) {
 			"id":    dl.ID,
 			"error": err.Error(),
 		})
+
+		// Free the slot for the next download - without this a wave of
+		// failures stalls the queue with everything stuck in pending
+		go a.processDownloads()
 		return
 	}
 
