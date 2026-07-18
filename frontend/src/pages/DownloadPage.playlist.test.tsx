@@ -157,6 +157,44 @@ describe('DownloadPage playlist flow', () => {
     });
   });
 
+  it('does not drop a pending batch when a store update re-runs the events effect', async () => {
+    renderPage();
+
+    const addedHandler = mockedEventsOn.mock.calls.find(
+      call => call[0] === 'download:added'
+    )?.[1] as ((data: unknown) => void) | undefined;
+    expect(addedHandler).toBeDefined();
+
+    // Two playlist entries arrive within the 250ms batch window
+    addedHandler!({
+      id: 'dl-a',
+      url: 'https://www.youtube.com/watch?v=video00000a',
+      status: 'pending',
+      progress: 0,
+      title: 'Batch Video A',
+    });
+    addedHandler!({
+      id: 'dl-b',
+      url: 'https://www.youtube.com/watch?v=video00000b',
+      status: 'pending',
+      progress: 0,
+      title: 'Batch Video B',
+    });
+
+    // A progress update mutates the store before the flush timer fires,
+    // re-running the events effect (this used to cancel the flush)
+    useDownloadStore.getState().updateProgress('unrelated', 5);
+
+    await waitFor(
+      () => {
+        const ids = useDownloadStore.getState().downloads.map(d => d.id);
+        expect(ids).toContain('dl-a');
+        expect(ids).toContain('dl-b');
+      },
+      { timeout: 2000 }
+    );
+  });
+
   it('syncs backend-added downloads into the store via download:added', async () => {
     renderPage();
 

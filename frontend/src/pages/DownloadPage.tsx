@@ -104,6 +104,33 @@ export function DownloadPage() {
     [removeDownload]
   );
 
+  // Buffer for download:added bursts (e.g. playlists). Kept in refs so a
+  // pending flush survives effect re-runs - clearing it on cleanup would
+  // silently drop a whole playlist batch
+  const addedBufferRef = useRef<db.Download[]>([]);
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushAddedDownloads = useCallback(() => {
+    addedTimerRef.current = null;
+    if (addedBufferRef.current.length === 0) return;
+    const items = addedBufferRef.current;
+    addedBufferRef.current = [];
+    addDownloads(
+      items.map(data => ({
+        id: data.id,
+        url: data.url,
+        status: (data.status as DownloadStatus) || 'pending',
+        progress: data.progress || 0,
+        title: data.title || undefined,
+        channel: data.channel || undefined,
+        thumbnail: data.thumbnail_url || undefined,
+        formatId: data.format_id || 'best',
+        quality: data.quality || 'best',
+        createdAt: Date.now(),
+      }))
+    );
+  }, [addDownloads]);
+
   // Load presets from settings
   useEffect(() => {
     const loadPresets = async () => {
@@ -292,33 +319,11 @@ export function DownloadPage() {
 
     // Buffer rapid download:added bursts (e.g. playlists) and apply them
     // in a single store update to avoid one re-render per item
-    let addedBuffer: db.Download[] = [];
-    let addedTimer: ReturnType<typeof setTimeout> | null = null;
-    const flushAdded = () => {
-      addedTimer = null;
-      if (addedBuffer.length === 0) return;
-      const items = addedBuffer;
-      addedBuffer = [];
-      addDownloads(
-        items.map(data => ({
-          id: data.id,
-          url: data.url,
-          status: (data.status as DownloadStatus) || 'pending',
-          progress: data.progress || 0,
-          title: data.title || undefined,
-          channel: data.channel || undefined,
-          thumbnail: data.thumbnail_url || undefined,
-          formatId: data.format_id || 'best',
-          quality: data.quality || 'best',
-          createdAt: Date.now(),
-        }))
-      );
-    };
     const cancelAdded = EventsOn('download:added', (data: db.Download) => {
       if (!data?.id || !data?.url) return;
-      addedBuffer.push(data);
-      if (!addedTimer) {
-        addedTimer = setTimeout(flushAdded, 250);
+      addedBufferRef.current.push(data);
+      if (!addedTimerRef.current) {
+        addedTimerRef.current = setTimeout(flushAddedDownloads, 250);
       }
     });
 
@@ -353,8 +358,11 @@ export function DownloadPage() {
       cancelAdded();
       cancelCancelled();
       cancelRetried();
-      if (addedTimer) {
-        clearTimeout(addedTimer);
+      // Flush instead of dropping a pending batch (e.g. unmounting right
+      // after a playlist was added)
+      if (addedTimerRef.current) {
+        clearTimeout(addedTimerRef.current);
+        flushAddedDownloads();
       }
       clearInterval(cleanupInterval);
     };
@@ -368,8 +376,8 @@ export function DownloadPage() {
     success,
     showError,
     updateDownloadInfo,
-    addDownloads,
     removeDownload,
+    flushAddedDownloads,
   ]);
 
   const handleFetchInfo = async () => {
