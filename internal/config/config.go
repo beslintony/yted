@@ -30,6 +30,10 @@ type Config struct {
 	SpeedLimitKbps *int    `json:"speed_limit_kbps"`
 	ProxyURL       *string `json:"proxy_url"`
 
+	// Cookies (for YouTube bot-check / age-restricted content)
+	CookiesBrowser string `json:"cookies_browser"` // firefox, chrome, chromium, brave, edge (empty = off)
+	CookiesFile    string `json:"cookies_file"`    // Path to a Netscape cookies file (takes precedence)
+
 	// Logging
 	LogPath        string `json:"log_path"`         // Internal log storage path
 	LogExportPath  string `json:"log_export_path"`  // Export destination

@@ -59,7 +59,7 @@ func (c *Client) GetPlaylistInfo(ctx context.Context, url string) (*PlaylistInfo
 	// Fresh command (like Download) so FlatPlaylist doesn't leak into the
 	// shared c.dl builder used by GetInfo. PlaylistEnd bounds the fetch -
 	// auto-generated playlists (YouTube Mix/Radio) are effectively endless
-	result, err := ytdlp.New().
+	result, err := c.applyCookies(ytdlp.New()).
 		NoWarnings().
 		Quiet().
 		FlatPlaylist().

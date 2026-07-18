@@ -482,6 +482,8 @@ export namespace config {
 	    remember_position: boolean;
 	    speed_limit_kbps?: number;
 	    proxy_url?: string;
+	    cookies_browser: string;
+	    cookies_file: string;
 	    log_path: string;
 	    log_export_path: string;
 	    max_log_sessions: number;
@@ -506,6 +508,8 @@ export namespace config {
 	        this.remember_position = source["remember_position"];
 	        this.speed_limit_kbps = source["speed_limit_kbps"];
 	        this.proxy_url = source["proxy_url"];
+	        this.cookies_browser = source["cookies_browser"];
+	        this.cookies_file = source["cookies_file"];
 	        this.log_path = source["log_path"];
 	        this.log_export_path = source["log_export_path"];
 	        this.max_log_sessions = source["max_log_sessions"];

@@ -18,6 +18,9 @@ type Client struct {
 	dl         *ytdlp.Command
 	config     *ClientConfig
 	ffmpegPath string
+
+	cookiesBrowser string
+	cookiesFile    string
 }
 
 // ClientConfig contains configuration for the ytdl client
@@ -26,6 +29,8 @@ type ClientConfig struct {
 	FilenameTemplate string
 	ProxyURL         *string
 	SpeedLimitKbps   *int
+	CookiesBrowser   string
+	CookiesFile      string
 }
 
 // NewClient creates a new ytdl client
@@ -40,6 +45,31 @@ func NewClient(config *ClientConfig) *Client {
 func (c *Client) SetFFmpegPath(path string) {
 	c.ffmpegPath = path
 	log.Printf("[YTDLP] FFmpeg path set to: %s", path)
+}
+
+// SetCookies configures cookie authentication for yt-dlp (helps with
+// bot-checks and age-restricted videos). A cookies file takes precedence
+// over browser extraction; empty values disable cookies.
+func (c *Client) SetCookies(browser, file string) {
+	c.cookiesBrowser = browser
+	c.cookiesFile = file
+	switch {
+	case file != "":
+		log.Printf("[YTDLP] Using cookies file: %s", file)
+	case browser != "":
+		log.Printf("[YTDLP] Using cookies from browser: %s", browser)
+	}
+}
+
+// applyCookies adds the configured cookie options to a command
+func (c *Client) applyCookies(dl *ytdlp.Command) *ytdlp.Command {
+	if c.cookiesFile != "" {
+		return dl.Cookies(c.cookiesFile)
+	}
+	if c.cookiesBrowser != "" {
+		return dl.CookiesFromBrowser(c.cookiesBrowser)
+	}
+	return dl
 }
 
 // Install ensures yt-dlp is installed via go-ytdlp auto-install
@@ -174,7 +204,7 @@ type rawFormatInfo struct {
 // GetInfo extracts video information from URL
 func (c *Client) GetInfo(ctx context.Context, url string) (*VideoInfo, error) {
 	// Create command with context
-	result, err := c.dl.
+	result, err := c.applyCookies(c.dl).
 		NoWarnings().
 		Quiet().
 		DumpSingleJSON().
@@ -282,7 +312,7 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 	// Note: no TrimFilenames here - the template already caps the title at
 	// 60 chars, and trimming the whole filename can destroy the
 	// [id][format_id] suffix on multibyte titles, breaking file matching
-	dl := ytdlp.New().
+	dl := c.applyCookies(ytdlp.New()).
 		Output(outputTemplate).
 		NoWarnings().
 		NoOverwrites().

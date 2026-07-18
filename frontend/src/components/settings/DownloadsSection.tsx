@@ -103,6 +103,43 @@ export function DownloadsSection({
           value={settings.filename_template}
           onChange={e => updateSetting('filename_template', e.currentTarget.value)}
         />
+
+        <Select
+          clearable
+          data={[
+            { value: 'firefox', label: 'Firefox' },
+            { value: 'chrome', label: 'Chrome' },
+            { value: 'chromium', label: 'Chromium' },
+            { value: 'brave', label: 'Brave' },
+            { value: 'edge', label: 'Edge' },
+          ]}
+          description="Use your browser's YouTube login to bypass bot checks (sign in to YouTube in that browser first)"
+          label="Cookies from Browser"
+          placeholder="Disabled"
+          styles={{
+            input: {
+              background: dark ? '#1a1b1e' : '#f8f9fa',
+              color: dark ? '#c1c2c5' : '#212529',
+            },
+          }}
+          value={settings.cookies_browser || null}
+          w={250}
+          onChange={v => updateSetting('cookies_browser', v || '')}
+        />
+
+        <TextInput
+          description="Path to a Netscape cookies.txt file (takes precedence over browser cookies)"
+          label="Cookies File (optional)"
+          placeholder="/path/to/cookies.txt"
+          styles={{
+            input: {
+              background: dark ? '#1a1b1e' : '#f8f9fa',
+              color: dark ? '#c1c2c5' : '#212529',
+            },
+          }}
+          value={settings.cookies_file}
+          onChange={e => updateSetting('cookies_file', e.currentTarget.value)}
+        />
       </Stack>
     </Paper>
   );

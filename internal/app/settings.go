@@ -21,8 +21,17 @@ func (a *App) SaveSettings(settings *config.Config) error {
 	a.config.Update(func(cfg *config.Config) {
 		*cfg = *settings
 	})
+	a.applyCookies()
 
 	return a.config.Save()
+}
+
+// applyCookies pushes the configured cookie settings into the ytdl client
+func (a *App) applyCookies() {
+	if a.ytdl != nil {
+		cfg := a.config.Get()
+		a.ytdl.SetCookies(cfg.CookiesBrowser, cfg.CookiesFile)
+	}
 }
 
 // UpdateSetting updates a single setting
@@ -82,6 +91,14 @@ func (a *App) UpdateSetting(key string, value interface{}) error {
 			} else if v, ok := value.(string); ok {
 				cfg.ProxyURL = &v
 			}
+		case "cookies_browser":
+			if v, ok := value.(string); ok {
+				cfg.CookiesBrowser = v
+			}
+		case "cookies_file":
+			if v, ok := value.(string); ok {
+				cfg.CookiesFile = v
+			}
 		case "log_export_path":
 			if v, ok := value.(string); ok {
 				cfg.LogExportPath = v
@@ -112,6 +129,12 @@ func (a *App) UpdateSetting(key string, value interface{}) error {
 			}
 		}
 	})
+
+	// Side effects run after the config lock is released (applyCookies
+	// reads the config, which would deadlock inside Update)
+	if key == "cookies_browser" || key == "cookies_file" {
+		a.applyCookies()
+	}
 
 	return a.config.Save()
 }

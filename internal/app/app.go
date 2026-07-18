@@ -153,6 +153,7 @@ func (a *App) Startup(ctx context.Context) {
 		SpeedLimitKbps:   cfgManager.Get().SpeedLimitKbps,
 	}
 	a.ytdl = ytdl.NewClient(ytdlConfig)
+	a.applyCookies()
 	a.logger.Info("YTDLP", "yt-dlp client initialized")
 
 	// Install yt-dlp binary
