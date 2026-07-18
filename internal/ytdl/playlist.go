@@ -57,11 +57,13 @@ type rawPlaylistInfo struct {
 // requests) without downloading anything
 func (c *Client) GetPlaylistInfo(ctx context.Context, url string) (*PlaylistInfo, error) {
 	// Fresh command (like Download) so FlatPlaylist doesn't leak into the
-	// shared c.dl builder used by GetInfo
+	// shared c.dl builder used by GetInfo. PlaylistEnd bounds the fetch -
+	// auto-generated playlists (YouTube Mix/Radio) are effectively endless
 	result, err := ytdlp.New().
 		NoWarnings().
 		Quiet().
 		FlatPlaylist().
+		PlaylistEnd(200).
 		DumpSingleJSON().
 		Run(ctx, url)
 	if err != nil {

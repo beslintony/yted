@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"yted/internal/db"
 	applog "yted/internal/log"
 	"yted/internal/ytdl"
 )
@@ -23,6 +27,8 @@ type PlaylistInfoResult struct {
 	Channel string                `json:"channel"`
 	Count   int                   `json:"count"`
 	Entries []PlaylistEntryResult `json:"entries"`
+	// MaxDownload is how many entries AddPlaylistDownload will queue at most
+	MaxDownload int `json:"max_download"`
 }
 
 // IsPlaylistURL reports whether the URL points at a YouTube playlist
@@ -73,22 +79,32 @@ func (a *App) GetPlaylistInfo(videoURL string) (*PlaylistInfoResult, error) {
 	})
 
 	return &PlaylistInfoResult{
-		ID:      info.ID,
-		Title:   info.Title,
-		Channel: info.Channel,
-		Count:   info.Count,
-		Entries: entries,
+		ID:          info.ID,
+		Title:       info.Title,
+		Channel:     info.Channel,
+		Count:       info.Count,
+		Entries:     entries,
+		MaxDownload: maxPlaylistItems,
 	}, nil
 }
 
-// AddPlaylistDownload queues every video of a playlist as an individual
-// download and returns how many were added. Duplicates already in the
-// queue are skipped by AddDownload's existing check
+// maxPlaylistItems caps how many playlist entries are queued at once.
+// Auto-generated playlists (YouTube Mix/Radio, RD*) are effectively
+// endless - without a cap a single click queues hundreds of downloads
+const maxPlaylistItems = 50
+
+// AddPlaylistDownload queues the videos of a playlist as individual
+// downloads (at most maxPlaylistItems) and returns how many were added.
+// Entries carry their titles, duplicates already in the queue are skipped,
+// and the scheduler is started once for the whole batch
 func (a *App) AddPlaylistDownload(videoURL string, formatID string, quality string) (int, error) {
 	logger := applog.GetLogger()
 
 	if a.ytdl == nil {
 		return 0, fmt.Errorf("ytdl client not initialized")
+	}
+	if a.db == nil {
+		return 0, fmt.Errorf("database not initialized")
 	}
 	if !ytdl.IsPlaylistURL(videoURL) {
 		return 0, fmt.Errorf("not a playlist URL")
@@ -106,35 +122,73 @@ func (a *App) AddPlaylistDownload(videoURL string, formatID string, quality stri
 		return 0, fmt.Errorf("playlist has no videos")
 	}
 
+	entries := info.Entries
+	if len(entries) > maxPlaylistItems {
+		logger.Info("Download", "Playlist truncated to first entries", map[string]interface{}{
+			"total": len(entries),
+			"cap":   maxPlaylistItems,
+		})
+		entries = entries[:maxPlaylistItems]
+	}
+
 	logger.Info("Download", "Adding playlist download", map[string]interface{}{
 		"url":      videoURL,
 		"title":    info.Title,
-		"entries":  len(info.Entries),
+		"entries":  len(entries),
 		"formatID": formatID,
 		"quality":  quality,
 	})
 
-	added := 0
-	for _, entry := range info.Entries {
-		watchURL := "https://www.youtube.com/watch?v=" + entry.ID
-		if _, err := a.AddDownload(watchURL, formatID, quality); err != nil {
-			logger.Warn("Download", "Failed to add playlist entry", map[string]string{
-				"entry": entry.ID,
-				"error": err.Error(),
-			})
-			continue
-		}
-		added++
-	}
-
+	added := a.queuePlaylistEntries(entries, formatID, quality)
 	if added == 0 {
 		return 0, fmt.Errorf("no videos could be added from this playlist")
 	}
 
-	logger.Info("Download", "Playlist download added", map[string]interface{}{
-		"added":   added,
-		"skipped": len(info.Entries) - added,
-	})
+	// Start the scheduler once for the whole batch
+	go a.processDownloads()
 
+	logger.Info("Download", "Playlist download added", map[string]int{"added": added})
 	return added, nil
+}
+
+// queuePlaylistEntries creates pending download records for playlist entries
+// (with titles), skipping entries already in the queue, and emits a
+// download:added event per new record
+func (a *App) queuePlaylistEntries(entries []ytdl.PlaylistEntry, formatID, quality string) int {
+	logger := applog.GetLogger()
+
+	added := 0
+	for _, entry := range entries {
+		watchURL := "https://www.youtube.com/watch?v=" + entry.ID
+
+		existing, err := a.db.GetActiveDownloadByURL(watchURL)
+		if err != nil {
+			logger.Error("Download", "Failed to check for existing download", err)
+			continue
+		}
+		if existing != nil {
+			continue // already queued
+		}
+
+		title := entry.Title
+		download := &db.Download{
+			ID:       uuid.New().String(),
+			URL:      watchURL,
+			Status:   "pending",
+			Progress: 0,
+			Title:    &title,
+			FormatID: &formatID,
+			Quality:  &quality,
+		}
+		if err := a.db.CreateDownload(download); err != nil {
+			logger.Error("Download", "Failed to create playlist download record", err)
+			continue
+		}
+		added++
+		if a.ctx != nil {
+			runtime.EventsEmit(a.ctx, "download:added", download)
+		}
+	}
+
+	return added
 }
