@@ -27,8 +27,6 @@ type PlaylistInfoResult struct {
 	Channel string                `json:"channel"`
 	Count   int                   `json:"count"`
 	Entries []PlaylistEntryResult `json:"entries"`
-	// MaxDownload is how many entries AddPlaylistDownload will queue at most
-	MaxDownload int `json:"max_download"`
 }
 
 // IsPlaylistURL reports whether the URL points at a YouTube playlist
@@ -79,25 +77,21 @@ func (a *App) GetPlaylistInfo(videoURL string) (*PlaylistInfoResult, error) {
 	})
 
 	return &PlaylistInfoResult{
-		ID:          info.ID,
-		Title:       info.Title,
-		Channel:     info.Channel,
-		Count:       info.Count,
-		Entries:     entries,
-		MaxDownload: maxPlaylistItems,
+		ID:      info.ID,
+		Title:   info.Title,
+		Channel: info.Channel,
+		Count:   info.Count,
+		Entries: entries,
 	}, nil
 }
 
-// maxPlaylistItems caps how many playlist entries are queued at once.
-// Auto-generated playlists (YouTube Mix/Radio, RD*) are effectively
-// endless - without a cap a single click queues hundreds of downloads
-const maxPlaylistItems = 50
-
 // AddPlaylistDownload queues the videos of a playlist as individual
-// downloads (at most maxPlaylistItems) and returns how many were added.
-// Entries carry their titles, duplicates already in the queue are skipped,
-// and the scheduler is started once for the whole batch
-func (a *App) AddPlaylistDownload(videoURL string, formatID string, quality string) (int, error) {
+// downloads and returns how many were added. maxItems limits how many
+// entries are queued (from the start of the playlist); maxItems <= 0
+// queues the whole playlist. Entries carry their titles, duplicates
+// already in the queue are skipped, and the scheduler is started once
+// for the whole batch
+func (a *App) AddPlaylistDownload(videoURL string, formatID string, quality string, maxItems int) (int, error) {
 	logger := applog.GetLogger()
 
 	if a.ytdl == nil {
@@ -123,12 +117,12 @@ func (a *App) AddPlaylistDownload(videoURL string, formatID string, quality stri
 	}
 
 	entries := info.Entries
-	if len(entries) > maxPlaylistItems {
+	if maxItems > 0 && len(entries) > maxItems {
 		logger.Info("Download", "Playlist truncated to first entries", map[string]interface{}{
 			"total": len(entries),
-			"cap":   maxPlaylistItems,
+			"cap":   maxItems,
 		})
-		entries = entries[:maxPlaylistItems]
+		entries = entries[:maxItems]
 	}
 
 	logger.Info("Download", "Adding playlist download", map[string]interface{}{

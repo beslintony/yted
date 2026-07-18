@@ -9,7 +9,7 @@ export function AddDownload(arg1:string,arg2:string,arg3:string):Promise<string>
 
 export function AddDownloadPreset(arg1:config.DownloadPreset):Promise<void>;
 
-export function AddPlaylistDownload(arg1:string,arg2:string,arg3:string):Promise<number>;
+export function AddPlaylistDownload(arg1:string,arg2:string,arg3:string,arg4:number):Promise<number>;
 
 export function CancelDownload(arg1:string):Promise<void>;
 

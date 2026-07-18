@@ -327,7 +327,6 @@ export namespace app {
 	    channel: string;
 	    count: number;
 	    entries: PlaylistEntryResult[];
-	    max_download: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new PlaylistInfoResult(source);
@@ -340,7 +339,6 @@ export namespace app {
 	        this.channel = source["channel"];
 	        this.count = source["count"];
 	        this.entries = this.convertValues(source["entries"], PlaylistEntryResult);
-	        this.max_download = source["max_download"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

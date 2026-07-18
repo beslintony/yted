@@ -108,7 +108,6 @@ describe('DownloadPage playlist flow', () => {
         { id: 'v1', title: 'Video One', duration: 60 },
         { id: 'v2', title: 'Video Two', duration: 120 },
       ],
-      max_download: 50,
     });
     mockedAddPlaylistDownload.mockResolvedValue(2);
   });
@@ -130,7 +129,31 @@ describe('DownloadPage playlist flow', () => {
     fireEvent.click(getByText('Download 2 videos'));
 
     await waitFor(() => {
-      expect(mockedAddPlaylistDownload).toHaveBeenCalledWith(PLAYLIST_URL, 'best', 'best');
+      expect(mockedAddPlaylistDownload).toHaveBeenCalledWith(PLAYLIST_URL, 'best', 'best', 2);
+    });
+  });
+
+  it('lets the user choose how many playlist videos to queue', async () => {
+    const { getByLabelText, getByPlaceholderText, getByText } = renderPage();
+
+    fireEvent.change(getByPlaceholderText('Paste YouTube URL here...'), {
+      target: { value: PLAYLIST_URL },
+    });
+    fireEvent.click(getByText('Get Info'));
+
+    await waitFor(() => {
+      expect(getByText('Test Playlist')).toBeTruthy();
+    });
+
+    // Default is the whole playlist; user can lower it
+    const input = getByLabelText('Videos to download');
+    expect((input as HTMLInputElement).value).toBe('2');
+
+    fireEvent.change(input, { target: { value: '1' } });
+    fireEvent.click(getByText('Download 1 video'));
+
+    await waitFor(() => {
+      expect(mockedAddPlaylistDownload).toHaveBeenCalledWith(PLAYLIST_URL, 'best', 'best', 1);
     });
   });
 

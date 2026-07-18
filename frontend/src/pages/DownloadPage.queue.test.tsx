@@ -119,6 +119,12 @@ describe('DownloadPage queue display', () => {
 
     const { getByText, queryByText } = renderPage();
 
+    // Live per-status count badges in the header
+    expect(getByText('1 downloading')).toBeTruthy();
+    expect(getByText('1 pending')).toBeTruthy();
+    expect(getByText('1 failed')).toBeTruthy();
+    expect(getByText('2 completed')).toBeTruthy();
+
     // Section headers with counts
     expect(getByText('Downloading (1)')).toBeTruthy();
     expect(getByText('Pending (1)')).toBeTruthy();

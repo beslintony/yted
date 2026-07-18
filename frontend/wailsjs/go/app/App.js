@@ -10,8 +10,8 @@ export function AddDownloadPreset(arg1) {
   return window['go']['app']['App']['AddDownloadPreset'](arg1);
 }
 
-export function AddPlaylistDownload(arg1, arg2, arg3) {
-  return window['go']['app']['App']['AddPlaylistDownload'](arg1, arg2, arg3);
+export function AddPlaylistDownload(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['AddPlaylistDownload'](arg1, arg2, arg3, arg4);
 }
 
 export function CancelDownload(arg1) {
