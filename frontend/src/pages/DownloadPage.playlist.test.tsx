@@ -20,7 +20,9 @@ import { DownloadPage } from './DownloadPage';
 vi.mock('../../wailsjs/go/app/App', () => ({
   AddDownload: vi.fn(),
   AddPlaylistDownload: vi.fn(),
+  CancelDownload: vi.fn(),
   CheckDownloadStatus: vi.fn(),
+  ClearDownloadCache: vi.fn(),
   GetDownloadQueue: vi.fn(),
   GetPlaylistInfo: vi.fn(),
   GetSettings: vi.fn(),
@@ -106,6 +108,7 @@ describe('DownloadPage playlist flow', () => {
         { id: 'v1', title: 'Video One', duration: 60 },
         { id: 'v2', title: 'Video Two', duration: 120 },
       ],
+      max_download: 50,
     });
     mockedAddPlaylistDownload.mockResolvedValue(2);
   });

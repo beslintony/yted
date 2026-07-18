@@ -14,6 +14,7 @@ interface DownloadState {
     format?: VideoFormat,
     existingId?: string
   ) => string | null;
+  addDownloads: (items: Download[]) => void;
   removeDownload: (id: string) => void;
   startDownload: (id: string) => void;
   pauseDownload: (id: string) => void;
@@ -72,6 +73,19 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       downloads: [newDownload, ...state.downloads],
     }));
     return id;
+  },
+
+  // Batch-add downloads (e.g. playlist entries) in a single state update
+  // to avoid one re-render per item
+  addDownloads: items => {
+    set(state => {
+      const existing = new Set(state.downloads.map(d => d.id));
+      const fresh = items.filter(d => !existing.has(d.id));
+      if (fresh.length === 0) {
+        return state;
+      }
+      return { downloads: [...fresh.reverse(), ...state.downloads] };
+    });
   },
 
   removeDownload: id => {

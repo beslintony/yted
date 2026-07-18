@@ -35,7 +35,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AddDownload,
   AddPlaylistDownload,
+  CancelDownload,
   CheckDownloadStatus,
+  ClearDownloadCache,
   GetDownloadQueue,
   GetPlaylistInfo,
   GetSettings,
@@ -49,7 +51,7 @@ import {
 import { app, config, db } from '../../wailsjs/go/models';
 import { EventsOn } from '../../wailsjs/runtime';
 import { useDownloadStore, useNotifications, useSettingsStore } from '../stores';
-import { VideoFormat } from '../types';
+import { DownloadStatus, VideoFormat } from '../types';
 
 export function DownloadPage() {
   const [url, setUrl] = useState('');
@@ -62,10 +64,12 @@ export function DownloadPage() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [queueRestored, setQueueRestored] = useState(false);
   const [playlistInfo, setPlaylistInfo] = useState<app.PlaylistInfoResult | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const {
     downloads,
     addDownload,
+    addDownloads,
     removeDownload,
     pauseDownload,
     resumeDownload,
@@ -75,6 +79,7 @@ export function DownloadPage() {
     startDownload,
     completeDownload,
     failDownload,
+    clearAll,
     hasDownload,
   } = useDownloadStore();
 
@@ -257,7 +262,10 @@ export function DownloadPage() {
         completeDownload(completedId);
         const completedDownload = downloads.find(d => d.id === completedId);
         if (completedDownload) {
-          success('Download Complete', `"${completedDownload.title}" has finished downloading`);
+          success(
+            'Download Complete',
+            `"${completedDownload.title || 'Video'}" has finished downloading`
+          );
         }
       }
     });
@@ -279,33 +287,43 @@ export function DownloadPage() {
       }
     });
 
-    // Sync downloads added on the backend (e.g. playlist entries) into the store
-    const cancelAdded = EventsOn('download:added', (data: db.Download) => {
-      if (!data?.id || !data?.url || hasDownload(data.id)) return;
-      addDownload(
-        data.url,
-        {
+    // Buffer rapid download:added bursts (e.g. playlists) and apply them
+    // in a single store update to avoid one re-render per item
+    let addedBuffer: db.Download[] = [];
+    let addedTimer: ReturnType<typeof setTimeout> | null = null;
+    const flushAdded = () => {
+      addedTimer = null;
+      if (addedBuffer.length === 0) return;
+      const items = addedBuffer;
+      addedBuffer = [];
+      addDownloads(
+        items.map(data => ({
           id: data.id,
-          title: data.title || '',
-          channel: data.channel || '',
-          channelId: '',
-          duration: data.duration || 0,
-          description: '',
-          thumbnail: data.thumbnail_url || '',
-          formats: [],
-        },
-        {
+          url: data.url,
+          status: (data.status as DownloadStatus) || 'pending',
+          progress: data.progress || 0,
+          title: data.title || undefined,
+          channel: data.channel || undefined,
+          thumbnail: data.thumbnail_url || undefined,
           formatId: data.format_id || 'best',
-          ext: 'mp4',
-          resolution: '',
-          fps: 0,
-          vcodec: '',
-          acodec: '',
-          filesize: 0,
           quality: data.quality || 'best',
-        },
-        data.id
+          createdAt: Date.now(),
+        }))
       );
+    };
+    const cancelAdded = EventsOn('download:added', (data: db.Download) => {
+      if (!data?.id || !data?.url) return;
+      addedBuffer.push(data);
+      if (!addedTimer) {
+        addedTimer = setTimeout(flushAdded, 250);
+      }
+    });
+
+    // Remove downloads cancelled on the backend (trash icon, Clear All)
+    const cancelCancelled = EventsOn('download:cancelled', (id: string) => {
+      if (id) {
+        removeDownload(id);
+      }
     });
 
     const cancelRetried = EventsOn('download:retried', (retryId: string) => {
@@ -330,7 +348,11 @@ export function DownloadPage() {
       cancelError();
       cancelStarted();
       cancelAdded();
+      cancelCancelled();
       cancelRetried();
+      if (addedTimer) {
+        clearTimeout(addedTimer);
+      }
       clearInterval(cleanupInterval);
     };
   }, [
@@ -343,8 +365,8 @@ export function DownloadPage() {
     success,
     showError,
     updateDownloadInfo,
-    addDownload,
-    hasDownload,
+    addDownloads,
+    removeDownload,
   ]);
 
   const handleFetchInfo = async () => {
@@ -512,6 +534,16 @@ export function DownloadPage() {
         return 'gray';
     }
   };
+
+  // Queue sections keep large queues readable: group by status, completed
+  // collapsed by default
+  const statusSections: { label: string; statuses: DownloadStatus[] }[] = [
+    { label: 'Downloading', statuses: ['downloading'] },
+    { label: 'Pending', statuses: ['pending'] },
+    { label: 'Paused', statuses: ['paused'] },
+    { label: 'Failed', statuses: ['error'] },
+    { label: 'Completed', statuses: ['completed'] },
+  ];
 
   const formatDuration = (seconds: number) => {
     if (!seconds) return 'Unknown';
@@ -696,6 +728,12 @@ export function DownloadPage() {
                   <Text c={dark ? 'dimmed' : 'gray.7'} size="sm">
                     {playlistInfo.entries.length} videos
                   </Text>
+                  {playlistInfo.entries.length > playlistInfo.max_download && (
+                    <Text c="yellow" size="sm">
+                      Large playlist — only the first {playlistInfo.max_download} videos will be
+                      queued
+                    </Text>
+                  )}
 
                   {settingsLoaded && presets.length > 0 && (
                     <Select
@@ -719,7 +757,7 @@ export function DownloadPage() {
                   )}
 
                   <Group justify="flex-end" mt="xs">
-                    <Tooltip label="Add all playlist videos to the download queue">
+                    <Tooltip label="Add playlist videos to the download queue">
                       <Button
                         color="yted"
                         disabled={!selectedPreset && presets.length > 0}
@@ -728,7 +766,8 @@ export function DownloadPage() {
                         size="sm"
                         onClick={handlePlaylistDownload}
                       >
-                        Download {playlistInfo.entries.length} videos
+                        Download {Math.min(playlistInfo.entries.length, playlistInfo.max_download)}{' '}
+                        videos
                       </Button>
                     </Tooltip>
                   </Group>
@@ -745,12 +784,20 @@ export function DownloadPage() {
           Queue ({downloads.length})
         </Text>
         {downloads.length > 0 && (
-          <Tooltip label="Clear all downloads">
+          <Tooltip label="Clear all downloads (also clears them on the backend)">
             <Button
               color="gray"
               size="xs"
               variant="subtle"
-              onClick={() => downloads.forEach(d => removeDownloadWithCleanup(d.id))}
+              onClick={async () => {
+                try {
+                  await ClearDownloadCache();
+                } catch (err) {
+                  console.error('Failed to clear download cache:', err);
+                  showError('Clear Failed', 'Failed to clear downloads on the backend');
+                }
+                clearAll();
+              }}
             >
               Clear All
             </Button>
@@ -772,205 +819,237 @@ export function DownloadPage() {
               </Text>
             </Paper>
           ) : (
-            downloads.map(download => (
-              <Paper
-                key={download.id}
-                withBorder
-                bg={dark ? '#25262b' : '#fff'}
-                p="sm"
-                style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
-              >
-                <Group align="flex-start" justify="space-between">
-                  <Group align="flex-start" gap="sm" wrap="nowrap">
-                    {download.thumbnail ? (
-                      <img
-                        alt={download.title || 'Video'}
-                        src={download.thumbnail}
-                        style={{
-                          width: 80,
-                          height: 45,
-                          objectFit: 'cover',
-                          borderRadius: 4,
-                        }}
-                      />
-                    ) : (
-                      <Paper
-                        bg={dark ? '#2c2e33' : '#e9ecef'}
-                        h={45}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 4,
-                        }}
-                        w={80}
+            statusSections.map(section => {
+              const items = downloads.filter(d => section.statuses.includes(d.status));
+              if (items.length === 0) return null;
+              const isCompleted = section.label === 'Completed';
+              return (
+                <Stack key={section.label} gap="sm">
+                  <Group gap="xs">
+                    <Text c={dark ? 'dimmed' : 'gray.7'} fw={600} size="sm">
+                      {section.label} ({items.length})
+                    </Text>
+                    {isCompleted && (
+                      <Button
+                        color="gray"
+                        size="compact-xs"
+                        variant="subtle"
+                        onClick={() => setShowCompleted(v => !v)}
                       >
-                        <IconVideo color={dark ? '#5c5f66' : '#adb5bd'} size={20} />
-                      </Paper>
+                        {showCompleted ? 'Hide' : 'Show'}
+                      </Button>
                     )}
-                    <Stack gap={4}>
-                      <Text
-                        c={dark ? '#fff' : '#000'}
-                        fw={500}
-                        lineClamp={1}
-                        size="sm"
-                        style={{ maxWidth: 300 }}
-                      >
-                        {download.title || 'Loading...'}
-                      </Text>
-                      <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
-                        {download.channel || download.url}
-                      </Text>
-                      <Group gap="xs">
-                        <Badge
-                          color={getStatusColor(download.status)}
-                          leftSection={
-                            download.status === 'completed' ? (
-                              <IconCheck size={12} />
-                            ) : download.status === 'downloading' ? (
-                              <Loader size={12} />
-                            ) : download.status === 'error' ? (
-                              <IconAlertCircle size={12} />
-                            ) : download.status === 'paused' ? (
-                              <IconPlayerPause size={12} />
-                            ) : (
-                              <IconDownload size={12} />
-                            )
-                          }
-                          size="sm"
-                        >
-                          {download.status}
-                        </Badge>
-                        {download.quality && (
-                          <Badge color={dark ? 'gray' : 'dark'} size="sm" variant="outline">
-                            {download.quality}
-                          </Badge>
-                        )}
-                      </Group>
-                    </Stack>
                   </Group>
-
-                  <Stack align="flex-end" gap="xs">
-                    <Group gap={4}>
-                      {download.status === 'downloading' && (
-                        <Tooltip label="Pause download">
-                          <ActionIcon
-                            color="yellow"
-                            size="sm"
-                            variant="light"
-                            onClick={async () => {
-                              try {
-                                await PauseDownload(download.id);
-                                pauseDownload(download.id);
-                              } catch (err) {
-                                console.error('Failed to pause download:', err);
-                                showError('Pause Failed', 'Failed to pause download');
-                              }
-                            }}
-                          >
-                            <IconPlayerPause size={14} />
-                          </ActionIcon>
-                        </Tooltip>
-                      )}
-                      {download.status === 'paused' && (
-                        <Tooltip label="Resume download">
-                          <ActionIcon
-                            color="green"
-                            size="sm"
-                            variant="light"
-                            onClick={async () => {
-                              try {
-                                await ResumeDownload(download.id);
-                                resumeDownload(download.id);
-                              } catch (err) {
-                                console.error('Failed to resume download:', err);
-                                showError('Resume Failed', 'Failed to resume download');
-                              }
-                            }}
-                          >
-                            <IconPlayerPlay size={14} />
-                          </ActionIcon>
-                        </Tooltip>
-                      )}
-                      {download.status === 'error' && (
-                        <Tooltip label="Retry download">
-                          <ActionIcon
-                            color="blue"
-                            size="sm"
-                            variant="light"
-                            onClick={async () => {
-                              try {
-                                await RetryDownload(download.id);
-                                retryDownload(download.id);
-                              } catch (err) {
-                                console.error('Failed to retry download:', err);
-                                showError('Retry Failed', 'Failed to restart download');
-                              }
-                            }}
-                          >
-                            <IconRefresh size={14} />
-                          </ActionIcon>
-                        </Tooltip>
-                      )}
-                      <Tooltip label="Remove from queue">
-                        <ActionIcon
-                          color="red"
-                          size="sm"
-                          variant="light"
-                          onClick={() => removeDownloadWithCleanup(download.id)}
-                        >
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Tooltip>
-                    </Group>
-
-                    {download.status === 'downloading' && (
-                      <Tooltip
-                        label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ${formatETA(download.eta)} left` : ''}`}
+                  {(!isCompleted || showCompleted) &&
+                    items.map(download => (
+                      <Paper
+                        key={download.id}
+                        withBorder
+                        bg={dark ? '#25262b' : '#fff'}
+                        p="sm"
+                        style={{ borderColor: dark ? '#373a40' : '#dee2e6' }}
                       >
-                        <Progress
-                          color="yted"
-                          radius="xs"
-                          size="sm"
-                          value={download.progress}
-                          w={100}
-                        />
-                      </Tooltip>
-                    )}
-                    <Group gap={8}>
-                      <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
-                        {Math.round(download.progress)}%
-                      </Text>
-                      {download.status === 'downloading' && download.speed && (
-                        <Group gap={4}>
-                          <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
-                            {download.speed}
-                          </Text>
-                          {download.isThrottled && download.speedLimit && (
-                            <Tooltip label={`Speed limited to ${download.speedLimit}`}>
-                              <IconGauge color={dark ? '#909296' : '#868e96'} size={14} />
-                            </Tooltip>
-                          )}
-                        </Group>
-                      )}
-                      {download.status === 'downloading' &&
-                        download.eta &&
-                        formatETA(download.eta) && (
-                          <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
-                            {formatETA(download.eta)} left
-                          </Text>
-                        )}
-                    </Group>
-                  </Stack>
-                </Group>
+                        <Group align="flex-start" justify="space-between">
+                          <Group align="flex-start" gap="sm" wrap="nowrap">
+                            {download.thumbnail ? (
+                              <img
+                                alt={download.title || 'Video'}
+                                src={download.thumbnail}
+                                style={{
+                                  width: 80,
+                                  height: 45,
+                                  objectFit: 'cover',
+                                  borderRadius: 4,
+                                }}
+                              />
+                            ) : (
+                              <Paper
+                                bg={dark ? '#2c2e33' : '#e9ecef'}
+                                h={45}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: 4,
+                                }}
+                                w={80}
+                              >
+                                <IconVideo color={dark ? '#5c5f66' : '#adb5bd'} size={20} />
+                              </Paper>
+                            )}
+                            <Stack gap={4}>
+                              <Text
+                                c={dark ? '#fff' : '#000'}
+                                fw={500}
+                                lineClamp={1}
+                                size="sm"
+                                style={{ maxWidth: 300 }}
+                              >
+                                {download.title || 'Loading...'}
+                              </Text>
+                              <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
+                                {download.channel || download.url}
+                              </Text>
+                              <Group gap="xs">
+                                <Badge
+                                  color={getStatusColor(download.status)}
+                                  leftSection={
+                                    download.status === 'completed' ? (
+                                      <IconCheck size={12} />
+                                    ) : download.status === 'downloading' ? (
+                                      <Loader size={12} />
+                                    ) : download.status === 'error' ? (
+                                      <IconAlertCircle size={12} />
+                                    ) : download.status === 'paused' ? (
+                                      <IconPlayerPause size={12} />
+                                    ) : (
+                                      <IconDownload size={12} />
+                                    )
+                                  }
+                                  size="sm"
+                                >
+                                  {download.status}
+                                </Badge>
+                                {download.quality && (
+                                  <Badge color={dark ? 'gray' : 'dark'} size="sm" variant="outline">
+                                    {download.quality}
+                                  </Badge>
+                                )}
+                              </Group>
+                            </Stack>
+                          </Group>
 
-                {download.errorMessage && (
-                  <Alert bg={dark ? '#2c1b1b' : '#fff5f5'} color="red" mt="sm" p="xs">
-                    <Text size="xs">{download.errorMessage}</Text>
-                  </Alert>
-                )}
-              </Paper>
-            ))
+                          <Stack align="flex-end" gap="xs">
+                            <Group gap={4}>
+                              {download.status === 'downloading' && (
+                                <Tooltip label="Pause download">
+                                  <ActionIcon
+                                    color="yellow"
+                                    size="sm"
+                                    variant="light"
+                                    onClick={async () => {
+                                      try {
+                                        await PauseDownload(download.id);
+                                        pauseDownload(download.id);
+                                      } catch (err) {
+                                        console.error('Failed to pause download:', err);
+                                        showError('Pause Failed', 'Failed to pause download');
+                                      }
+                                    }}
+                                  >
+                                    <IconPlayerPause size={14} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                              {download.status === 'paused' && (
+                                <Tooltip label="Resume download">
+                                  <ActionIcon
+                                    color="green"
+                                    size="sm"
+                                    variant="light"
+                                    onClick={async () => {
+                                      try {
+                                        await ResumeDownload(download.id);
+                                        resumeDownload(download.id);
+                                      } catch (err) {
+                                        console.error('Failed to resume download:', err);
+                                        showError('Resume Failed', 'Failed to resume download');
+                                      }
+                                    }}
+                                  >
+                                    <IconPlayerPlay size={14} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                              {download.status === 'error' && (
+                                <Tooltip label="Retry download">
+                                  <ActionIcon
+                                    color="blue"
+                                    size="sm"
+                                    variant="light"
+                                    onClick={async () => {
+                                      try {
+                                        await RetryDownload(download.id);
+                                        retryDownload(download.id);
+                                      } catch (err) {
+                                        console.error('Failed to retry download:', err);
+                                        showError('Retry Failed', 'Failed to restart download');
+                                      }
+                                    }}
+                                  >
+                                    <IconRefresh size={14} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                              <Tooltip label="Remove from queue">
+                                <ActionIcon
+                                  color="red"
+                                  size="sm"
+                                  variant="light"
+                                  onClick={async () => {
+                                    try {
+                                      await CancelDownload(download.id);
+                                    } catch (err) {
+                                      console.error('Failed to cancel download:', err);
+                                    }
+                                    removeDownloadWithCleanup(download.id);
+                                  }}
+                                >
+                                  <IconTrash size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
+
+                            {download.status === 'downloading' && (
+                              <Tooltip
+                                label={`${Math.round(download.progress)}% complete${download.speed ? ` • ${download.speed}` : ''}${download.eta ? ` • ${formatETA(download.eta)} left` : ''}`}
+                              >
+                                <Progress
+                                  color="yted"
+                                  radius="xs"
+                                  size="sm"
+                                  value={download.progress}
+                                  w={100}
+                                />
+                              </Tooltip>
+                            )}
+                            <Group gap={8}>
+                              <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
+                                {Math.round(download.progress)}%
+                              </Text>
+                              {download.status === 'downloading' && download.speed && (
+                                <Group gap={4}>
+                                  <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
+                                    {download.speed}
+                                  </Text>
+                                  {download.isThrottled && download.speedLimit && (
+                                    <Tooltip label={`Speed limited to ${download.speedLimit}`}>
+                                      <IconGauge color={dark ? '#909296' : '#868e96'} size={14} />
+                                    </Tooltip>
+                                  )}
+                                </Group>
+                              )}
+                              {download.status === 'downloading' &&
+                                download.eta &&
+                                formatETA(download.eta) && (
+                                  <Text c={dark ? 'dimmed' : 'gray.6'} size="xs">
+                                    {formatETA(download.eta)} left
+                                  </Text>
+                                )}
+                            </Group>
+                          </Stack>
+                        </Group>
+
+                        {download.errorMessage && (
+                          <Alert bg={dark ? '#2c1b1b' : '#fff5f5'} color="red" mt="sm" p="xs">
+                            <Text size="xs">{download.errorMessage}</Text>
+                          </Alert>
+                        )}
+                      </Paper>
+                    ))}
+                </Stack>
+              );
+            })
           )}
         </Stack>
       </ScrollArea>
