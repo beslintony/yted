@@ -90,7 +90,7 @@ func TestPruneVideoInfoCacheDropsExpired(t *testing.T) {
 		"expired": {info: &VideoInfoResult{Title: "old"}, expiresAt: now.Add(-time.Minute)},
 	}
 
-	pruneVideoInfoCache(cache, now, videoInfoCacheMaxEntries)
+	pruneVideoInfoCache(cache, now)
 
 	if len(cache) != 1 {
 		t.Fatalf("pruneVideoInfoCache() kept %d entries, want 1", len(cache))
@@ -112,7 +112,7 @@ func TestPruneVideoInfoCacheCapsSize(t *testing.T) {
 	}
 	newestExpiry := now.Add(time.Duration(videoInfoCacheMaxEntries+49) * time.Second)
 
-	pruneVideoInfoCache(cache, now, videoInfoCacheMaxEntries)
+	pruneVideoInfoCache(cache, now)
 
 	if len(cache) != videoInfoCacheMaxEntries {
 		t.Fatalf("pruneVideoInfoCache() size = %d, want %d", len(cache), videoInfoCacheMaxEntries)
@@ -136,7 +136,7 @@ func TestPruneVideoInfoCacheKeepsTTL(t *testing.T) {
 		"a": {info: &VideoInfoResult{Title: "a"}, expiresAt: now.Add(videoInfoCacheTTL)},
 	}
 
-	pruneVideoInfoCache(cache, now, videoInfoCacheMaxEntries)
+	pruneVideoInfoCache(cache, now)
 
 	entry, ok := cache["a"]
 	if !ok {

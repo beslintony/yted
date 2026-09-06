@@ -26,15 +26,15 @@ type VideoInfoResult struct {
 }
 
 // pruneVideoInfoCache drops expired entries and, if the cache still exceeds
-// maxEntries, evicts the oldest entries (by expiry) first. TTL semantics are
-// unchanged: only entries with expiresAt after now survive.
-func pruneVideoInfoCache(cache map[string]videoInfoCacheEntry, now time.Time, maxEntries int) {
+// videoInfoCacheMaxEntries, evicts the oldest entries (by expiry) first.
+// TTL semantics are unchanged: only entries with expiresAt after now survive.
+func pruneVideoInfoCache(cache map[string]videoInfoCacheEntry, now time.Time) {
 	for key, entry := range cache {
 		if !now.Before(entry.expiresAt) {
 			delete(cache, key)
 		}
 	}
-	for len(cache) > maxEntries {
+	for len(cache) > videoInfoCacheMaxEntries {
 		oldestKey := ""
 		var oldest time.Time
 		first := true
@@ -81,7 +81,7 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		})
 		return cached.info, nil
 	}
-	pruneVideoInfoCache(a.videoInfoCache, time.Now(), videoInfoCacheMaxEntries)
+	pruneVideoInfoCache(a.videoInfoCache, time.Now())
 	a.videoInfoCacheMu.Unlock()
 
 	// Clean URL before fetching (strip playlist params, etc.)
@@ -121,7 +121,7 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		info:      result,
 		expiresAt: time.Now().Add(videoInfoCacheTTL),
 	}
-	pruneVideoInfoCache(a.videoInfoCache, time.Now(), videoInfoCacheMaxEntries)
+	pruneVideoInfoCache(a.videoInfoCache, time.Now())
 	a.videoInfoCacheMu.Unlock()
 
 	logger.Info("Download", "Video info fetched and cached", map[string]string{
