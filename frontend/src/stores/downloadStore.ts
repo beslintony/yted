@@ -31,6 +31,18 @@ interface DownloadState {
       speedLimit?: string;
     }
   ) => void;
+  // Coalesced progress + info update in a single set() (perf: one notify per tick)
+  updateProgressInfo: (
+    id: string,
+    info: {
+      progress?: number;
+      speed?: string;
+      eta?: string;
+      size?: string;
+      isThrottled?: boolean;
+      speedLimit?: string;
+    }
+  ) => void;
   completeDownload: (id: string) => void;
   failDownload: (id: string, error: string) => void;
   clearCompleted: () => void;
@@ -89,82 +101,213 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
   },
 
   removeDownload: id => {
-    set(state => ({
-      downloads: state.downloads.filter(d => d.id !== id),
-    }));
+    set(state => {
+      if (!state.downloads.some(d => d.id === id)) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.filter(d => d.id !== id),
+      };
+    });
   },
 
   startDownload: id => {
-    set(state => ({
-      downloads: state.downloads.map(d =>
-        d.id === id ? { ...d, status: 'downloading' as DownloadStatus, startedAt: Date.now() } : d
-      ),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || target.status === 'downloading') {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id ? { ...d, status: 'downloading' as DownloadStatus, startedAt: Date.now() } : d
+        ),
+      };
+    });
   },
 
   pauseDownload: id => {
-    set(state => ({
-      downloads: state.downloads.map(d =>
-        d.id === id ? { ...d, status: 'paused' as DownloadStatus } : d
-      ),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || target.status === 'paused') {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id ? { ...d, status: 'paused' as DownloadStatus } : d
+        ),
+      };
+    });
   },
 
   resumeDownload: id => {
-    set(state => ({
-      downloads: state.downloads.map(d =>
-        d.id === id ? { ...d, status: 'downloading' as DownloadStatus } : d
-      ),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || target.status === 'downloading') {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id ? { ...d, status: 'downloading' as DownloadStatus } : d
+        ),
+      };
+    });
   },
 
   retryDownload: id => {
-    set(state => ({
-      downloads: state.downloads.map(d =>
-        d.id === id ? { ...d, status: 'pending' as DownloadStatus, errorMessage: undefined } : d
-      ),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || (target.status === 'pending' && target.errorMessage === undefined)) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id ? { ...d, status: 'pending' as DownloadStatus, errorMessage: undefined } : d
+        ),
+      };
+    });
   },
 
   updateProgress: (id, progress) => {
     const clampedProgress = Math.min(100, Math.max(0, progress));
-    set(state => ({
-      downloads: state.downloads.map(d => (d.id === id ? { ...d, progress: clampedProgress } : d)),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || target.progress === clampedProgress) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id ? { ...d, progress: clampedProgress } : d
+        ),
+      };
+    });
   },
 
-  updateDownloadInfo: (id: string, info: { speed?: string; eta?: string; size?: string }) => {
-    set(state => ({
-      downloads: state.downloads.map(d => (d.id === id ? { ...d, ...info } : d)),
-    }));
+  updateDownloadInfo: (
+    id: string,
+    info: {
+      speed?: string;
+      eta?: string;
+      size?: string;
+      isThrottled?: boolean;
+      speedLimit?: string;
+    }
+  ) => {
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target) {
+        return state;
+      }
+      if (
+        (info.speed === undefined || target.speed === info.speed) &&
+        (info.eta === undefined || target.eta === info.eta) &&
+        (info.size === undefined || target.size === info.size) &&
+        (info.isThrottled === undefined || target.isThrottled === info.isThrottled) &&
+        (info.speedLimit === undefined || target.speedLimit === info.speedLimit)
+      ) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d => (d.id === id ? { ...d, ...info } : d)),
+      };
+    });
+  },
+
+  // Single-set coalesced progress + info update for the high-frequency
+  // download:progress event. Bails out (same state ref) when nothing changes.
+  updateProgressInfo: (
+    id: string,
+    info: {
+      progress?: number;
+      speed?: string;
+      eta?: string;
+      size?: string;
+      isThrottled?: boolean;
+      speedLimit?: string;
+    }
+  ) => {
+    const clampedProgress =
+      info.progress === undefined ? undefined : Math.min(100, Math.max(0, info.progress));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target) {
+        return state;
+      }
+      if (
+        (clampedProgress === undefined || target.progress === clampedProgress) &&
+        (info.speed === undefined || target.speed === info.speed) &&
+        (info.eta === undefined || target.eta === info.eta) &&
+        (info.size === undefined || target.size === info.size) &&
+        (info.isThrottled === undefined || target.isThrottled === info.isThrottled) &&
+        (info.speedLimit === undefined || target.speedLimit === info.speedLimit)
+      ) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id
+            ? {
+                ...d,
+                ...(clampedProgress !== undefined ? { progress: clampedProgress } : null),
+                ...(info.speed !== undefined ? { speed: info.speed } : null),
+                ...(info.eta !== undefined ? { eta: info.eta } : null),
+                ...(info.size !== undefined ? { size: info.size } : null),
+                ...(info.isThrottled !== undefined ? { isThrottled: info.isThrottled } : null),
+                ...(info.speedLimit !== undefined ? { speedLimit: info.speedLimit } : null),
+              }
+            : d
+        ),
+      };
+    });
   },
 
   completeDownload: id => {
-    set(state => ({
-      downloads: state.downloads.map(d =>
-        d.id === id
-          ? { ...d, status: 'completed' as DownloadStatus, progress: 100, completedAt: Date.now() }
-          : d
-      ),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || (target.status === 'completed' && target.progress === 100)) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id
+            ? { ...d, status: 'completed' as DownloadStatus, progress: 100, completedAt: Date.now() }
+            : d
+        ),
+      };
+    });
   },
 
   failDownload: (id, error) => {
-    set(state => ({
-      downloads: state.downloads.map(d =>
-        d.id === id ? { ...d, status: 'error' as DownloadStatus, errorMessage: error } : d
-      ),
-    }));
+    set(state => {
+      const target = state.downloads.find(d => d.id === id);
+      if (!target || (target.status === 'error' && target.errorMessage === error)) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.map(d =>
+          d.id === id ? { ...d, status: 'error' as DownloadStatus, errorMessage: error } : d
+        ),
+      };
+    });
   },
 
   clearCompleted: () => {
-    set(state => ({
-      downloads: state.downloads.filter(d => d.status !== 'completed'),
-    }));
+    set(state => {
+      if (!state.downloads.some(d => d.status === 'completed')) {
+        return state;
+      }
+      return {
+        downloads: state.downloads.filter(d => d.status !== 'completed'),
+      };
+    });
   },
 
   clearAll: () => {
-    set({ downloads: [] });
+    set(state => {
+      if (state.downloads.length === 0) {
+        return state;
+      }
+      return { downloads: [] };
+    });
   },
 
   setDownloads: downloads => {

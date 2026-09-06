@@ -31,7 +31,7 @@ import {
   IconVideo,
   IconX,
 } from '@tabler/icons-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   AddDownload,
@@ -69,27 +69,31 @@ export function DownloadPage() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [sectionLimits, setSectionLimits] = useState<Record<string, number>>({});
 
-  const {
-    downloads,
-    addDownload,
-    addDownloads,
-    removeDownload,
-    pauseDownload,
-    resumeDownload,
-    retryDownload,
-    updateProgress,
-    updateDownloadInfo,
-    startDownload,
-    completeDownload,
-    failDownload,
-    clearAll,
-    hasDownload,
-  } = useDownloadStore();
+  // Narrow selectors so progress ticks only re-render for the downloads
+  // slice instead of every store key
+  const downloads = useDownloadStore(s => s.downloads);
+  const addDownload = useDownloadStore(s => s.addDownload);
+  const removeDownload = useDownloadStore(s => s.removeDownload);
+  const pauseDownload = useDownloadStore(s => s.pauseDownload);
+  const resumeDownload = useDownloadStore(s => s.resumeDownload);
+  const retryDownload = useDownloadStore(s => s.retryDownload);
+  const updateProgress = useDownloadStore(s => s.updateProgress);
+  const startDownload = useDownloadStore(s => s.startDownload);
+  const completeDownload = useDownloadStore(s => s.completeDownload);
+  const failDownload = useDownloadStore(s => s.failDownload);
+  const clearAll = useDownloadStore(s => s.clearAll);
+  const hasDownload = useDownloadStore(s => s.hasDownload);
 
-  const { defaultQuality } = useSettingsStore();
+  const defaultQuality = useSettingsStore(s => s.defaultQuality);
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
   const { success, error: showError, warning } = useNotifications();
+
+  // Stable notify callbacks for the backend-event effect below. Assigning
+  // here keeps the effect deps stable while always calling the latest
+  // notification handlers (avoids re-subscribing EventsOn every render).
+  const notifyRef = useRef({ success, showError });
+  notifyRef.current = { success, showError };
 
   // Use refs to track processed events to prevent duplicates
   const processedEvents = useRef<Set<string>>(new Set());
@@ -115,7 +119,9 @@ export function DownloadPage() {
     if (addedBufferRef.current.length === 0) return;
     const items = addedBufferRef.current;
     addedBufferRef.current = [];
-    addDownloads(
+    // Read the action imperatively so this callback (and the event effect
+    // below) stays referentially stable and never re-subscribes EventsOn
+    useDownloadStore.getState().addDownloads(
       items.map(data => ({
         id: data.id,
         url: data.url,
@@ -129,7 +135,7 @@ export function DownloadPage() {
         createdAt: Date.now(),
       }))
     );
-  }, [addDownloads]);
+  }, []);
 
   // Load presets from settings
   useEffect(() => {
@@ -257,7 +263,10 @@ export function DownloadPage() {
     pauseDownload,
   ]);
 
-  // Listen for download progress events from backend
+  // Listen for download progress events from backend.
+  // NOTE: store state and notifications are read imperatively (getState /
+  // notifyRef) so this effect subscribes exactly once — progress ticks must
+  // not re-subscribe the 7 backend events below.
   useEffect(() => {
     const cancelProgress = EventsOn(
       'download:progress',
@@ -271,16 +280,16 @@ export function DownloadPage() {
         speed_limit?: string;
       }) => {
         if (data?.id && typeof data.progress === 'number') {
-          updateProgress(data.id, data.progress);
-          if (data.speed || data.eta || data.size || data.is_throttled !== undefined) {
-            updateDownloadInfo(data.id, {
-              speed: data.speed,
-              eta: data.eta,
-              size: data.size,
-              isThrottled: data.is_throttled,
-              speedLimit: data.speed_limit,
-            });
-          }
+          // One coalesced store update per tick (was two: updateProgress +
+          // updateDownloadInfo)
+          useDownloadStore.getState().updateProgressInfo(data.id, {
+            progress: data.progress,
+            speed: data.speed,
+            eta: data.eta,
+            size: data.size,
+            isThrottled: data.is_throttled,
+            speedLimit: data.speed_limit,
+          });
         }
       }
     );
@@ -289,10 +298,12 @@ export function DownloadPage() {
       const completedId = typeof data === 'string' ? data : (data as { id?: string })?.id;
       if (completedId && !processedEvents.current.has(`completed_${completedId}`)) {
         processedEvents.current.add(`completed_${completedId}`);
-        completeDownload(completedId);
-        const completedDownload = downloads.find(d => d.id === completedId);
+        useDownloadStore.getState().completeDownload(completedId);
+        const completedDownload = useDownloadStore
+          .getState()
+          .downloads.find(d => d.id === completedId);
         if (completedDownload) {
-          success(
+          notifyRef.current.success(
             'Download Complete',
             `"${completedDownload.title || 'Video'}" has finished downloading`
           );
@@ -303,17 +314,20 @@ export function DownloadPage() {
     const cancelError = EventsOn('download:error', (data: { id?: string; error?: string }) => {
       if (data?.id && data?.error && !processedEvents.current.has(`error_${data.id}`)) {
         processedEvents.current.add(`error_${data.id}`);
-        failDownload(data.id, data.error);
-        const failedDownload = downloads.find(d => d.id === data.id);
+        useDownloadStore.getState().failDownload(data.id, data.error);
+        const failedDownload = useDownloadStore.getState().downloads.find(d => d.id === data.id);
         if (failedDownload) {
-          showError('Download Failed', `"${failedDownload.title}" failed: ${data.error}`);
+          notifyRef.current.showError(
+            'Download Failed',
+            `"${failedDownload.title}" failed: ${data.error}`
+          );
         }
       }
     });
 
     const cancelStarted = EventsOn('download:started', (data: { id?: string }) => {
       if (data?.id) {
-        startDownload(data.id);
+        useDownloadStore.getState().startDownload(data.id);
       }
     });
 
@@ -330,7 +344,7 @@ export function DownloadPage() {
     // Remove downloads cancelled on the backend (trash icon, Clear All)
     const cancelCancelled = EventsOn('download:cancelled', (id: string) => {
       if (id) {
-        removeDownload(id);
+        useDownloadStore.getState().removeDownload(id);
       }
     });
 
@@ -339,7 +353,7 @@ export function DownloadPage() {
         // Clear processed events for this download so new events can be handled
         processedEvents.current.delete(`completed_${retryId}`);
         processedEvents.current.delete(`error_${retryId}`);
-        retryDownload(retryId);
+        useDownloadStore.getState().retryDownload(retryId);
       }
     });
 
@@ -366,19 +380,10 @@ export function DownloadPage() {
       }
       clearInterval(cleanupInterval);
     };
-  }, [
-    updateProgress,
-    completeDownload,
-    failDownload,
-    startDownload,
-    retryDownload,
-    downloads,
-    success,
-    showError,
-    updateDownloadInfo,
-    removeDownload,
-    flushAddedDownloads,
-  ]);
+    // Stable by design: handlers read the store via getState() and notify via
+    // notifyRef, so backend events are subscribed exactly once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flushAddedDownloads]);
 
   const handleFetchInfo = async () => {
     if (!url.trim()) {
@@ -548,21 +553,28 @@ export function DownloadPage() {
   };
 
   // Queue sections keep large queues readable: group by status, completed
-  // collapsed by default
-  const statusSections: { label: string; statuses: DownloadStatus[] }[] = [
-    { label: 'Downloading', statuses: ['downloading'] },
-    { label: 'Pending', statuses: ['pending'] },
-    { label: 'Paused', statuses: ['paused'] },
-    { label: 'Failed', statuses: ['error'] },
-    { label: 'Completed', statuses: ['completed'] },
-  ];
+  // collapsed by default (static config, memoized to keep referential stability)
+  const statusSections = useMemo<{ label: string; statuses: DownloadStatus[] }[]>(
+    () => [
+      { label: 'Downloading', statuses: ['downloading'] },
+      { label: 'Pending', statuses: ['pending'] },
+      { label: 'Paused', statuses: ['paused'] },
+      { label: 'Failed', statuses: ['error'] },
+      { label: 'Completed', statuses: ['completed'] },
+    ],
+    []
+  );
 
-  // Live per-status counts for the queue header, recomputed on every
-  // store change so they update in real time
-  const statusCounts = downloads.reduce<Record<string, number>>((acc, d) => {
-    acc[d.status] = (acc[d.status] || 0) + 1;
-    return acc;
-  }, {});
+  // Live per-status counts for the queue header, recomputed only when the
+  // downloads slice changes so progress ticks don't redo unrelated work
+  const statusCounts = useMemo(
+    () =>
+      downloads.reduce<Record<string, number>>((acc, d) => {
+        acc[d.status] = (acc[d.status] || 0) + 1;
+        return acc;
+      }, {}),
+    [downloads]
+  );
 
   // Sections render at most this many items until the user expands them,
   // keeping large queues responsive
@@ -905,6 +917,7 @@ export function DownloadPage() {
                               {download.thumbnail ? (
                                 <img
                                   alt={download.title || 'Video'}
+                                  loading="lazy"
                                   src={download.thumbnail}
                                   style={{
                                     width: 80,

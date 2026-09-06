@@ -153,8 +153,7 @@ describe('downloadStore', () => {
     expect(updatedDownloads.filter(d => d.status === 'completed')).toHaveLength(1);
   });
 
-  it('should prevent duplicate downloads', () => {
-    const { addDownload, hasDownload } = useDownloadStore.getState();
+  it('should prevent duplicate downloads', () => {    const { addDownload, hasDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
     expect(id).not.toBeNull();
@@ -166,5 +165,96 @@ describe('downloadStore', () => {
 
     // Should still only have 1 download
     expect(useDownloadStore.getState().downloads).toHaveLength(1);
+  });
+
+  describe('updateProgressInfo (coalesced)', () => {
+    it('should update progress, speed, eta and size in a single update', () => {
+      const { addDownload, updateProgressInfo } = useDownloadStore.getState();
+      const id = addDownload('https://youtube.com/watch?v=test');
+
+      expect(id).not.toBeNull();
+      updateProgressInfo(id!, { progress: 42, speed: '1.5 MiB/s', eta: '00:30', size: '10 MiB' });
+
+      const download = useDownloadStore.getState().downloads[0];
+      expect(download.progress).toBe(42);
+      expect(download.speed).toBe('1.5 MiB/s');
+      expect(download.eta).toBe('00:30');
+      expect(download.size).toBe('10 MiB');
+    });
+
+    it('should clamp progress between 0-100', () => {
+      const { addDownload, updateProgressInfo } = useDownloadStore.getState();
+      const id = addDownload('https://youtube.com/watch?v=test');
+
+      expect(id).not.toBeNull();
+      updateProgressInfo(id!, { progress: 150 });
+      expect(useDownloadStore.getState().downloads[0].progress).toBe(100);
+
+      updateProgressInfo(id!, { progress: -20 });
+      expect(useDownloadStore.getState().downloads[0].progress).toBe(0);
+    });
+
+    it('should keep the same downloads array ref when values are unchanged', () => {
+      const { addDownload, updateProgressInfo } = useDownloadStore.getState();
+      const id = addDownload('https://youtube.com/watch?v=test');
+
+      expect(id).not.toBeNull();
+      updateProgressInfo(id!, { progress: 42, speed: '1.5 MiB/s' });
+
+      const before = useDownloadStore.getState().downloads;
+      updateProgressInfo(id!, { progress: 42, speed: '1.5 MiB/s' });
+
+      expect(useDownloadStore.getState().downloads).toBe(before);
+    });
+
+    it('should bail out when the target download is not found', () => {
+      const { addDownload, updateProgressInfo } = useDownloadStore.getState();
+      addDownload('https://youtube.com/watch?v=test');
+
+      const before = useDownloadStore.getState().downloads;
+      updateProgressInfo('missing-id', { progress: 50, speed: '1 MiB/s' });
+
+      const after = useDownloadStore.getState();
+      expect(after.downloads).toBe(before);
+      expect(after.downloads).toHaveLength(1);
+    });
+  });
+
+  describe('mutator bailouts', () => {
+    it('should keep the same downloads array ref for no-op updates', () => {
+      const { addDownload, updateProgress, removeDownload } = useDownloadStore.getState();
+      const id = addDownload('https://youtube.com/watch?v=test');
+
+      expect(id).not.toBeNull();
+      updateProgress(id!, 30);
+
+      const before = useDownloadStore.getState().downloads;
+      // Same value: no new array
+      updateProgress(id!, 30);
+      expect(useDownloadStore.getState().downloads).toBe(before);
+      // Unknown id: no new array
+      updateProgress('missing-id', 80);
+      expect(useDownloadStore.getState().downloads).toBe(before);
+      removeDownload('missing-id');
+      expect(useDownloadStore.getState().downloads).toBe(before);
+    });
+
+    it('should not notify subscribers on no-op updates', () => {
+      const { addDownload, updateProgress } = useDownloadStore.getState();
+      const id = addDownload('https://youtube.com/watch?v=test');
+
+      expect(id).not.toBeNull();
+      let calls = 0;
+      const unsub = useDownloadStore.subscribe(() => {
+        calls += 1;
+      });
+
+      updateProgress(id!, 30);
+      expect(calls).toBe(1);
+      // Repeating the same value must not notify again
+      updateProgress(id!, 30);
+      expect(calls).toBe(1);
+      unsub();
+    });
   });
 });

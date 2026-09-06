@@ -117,6 +117,10 @@ function mapVideoToVideoResult(v: Video): app.VideoResult {
 export function LibraryPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [search, setSearch] = useState('');
+  // Debounced backend query: keystrokes update `search` instantly (and the
+  // client-side filter below), but ListVideos only fires 300ms after typing
+  // settles. Same API, just fewer calls.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [sortDesc, setSortDesc] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -132,7 +136,7 @@ export function LibraryPage() {
   const loadVideos = useCallback(async () => {
     try {
       const result = await ListVideos({
-        search,
+        search: debouncedSearch,
         channel: '',
         sort_by: sortBy,
         sort_desc: sortDesc,
@@ -147,7 +151,12 @@ export function LibraryPage() {
     } catch (err) {
       error('Failed to load videos', err instanceof Error ? err.message : 'Unknown error');
     }
-  }, [search, sortBy, sortDesc, setStoreVideos, error]);
+  }, [debouncedSearch, sortBy, sortDesc, setStoreVideos, error]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const loadStats = useCallback(async () => {
     try {

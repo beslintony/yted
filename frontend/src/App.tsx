@@ -31,8 +31,10 @@ function App() {
   const [mobileOpened, setMobileOpened] = useState(false);
   const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
   const [loggerOpened, setLoggerOpened] = useState(false);
-  const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
-  const { version, fetchVersion } = useVersionStore();
+  const sidebarCollapsed = useSettingsStore(s => s.sidebarCollapsed);
+  const toggleSidebar = useSettingsStore(s => s.toggleSidebar);
+  const version = useVersionStore(s => s.version);
+  const fetchVersion = useVersionStore(s => s.fetchVersion);
   const notifications = useNotifications();
 
   // Fetch version on mount
