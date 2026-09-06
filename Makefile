@@ -17,6 +17,10 @@ all: fmt lint build
 build:
 	@echo "Building YTed $(VERSION)..."
 	wails build -tags webkit2_41 -ldflags "$(LDFLAGS)"
+	@if [ -f build/bin/yted.bin ]; then rm -f build/bin/yted.bin; fi
+	@mv build/bin/yted build/bin/yted.bin
+	@CGO_ENABLED=0 go build -o build/bin/yted ./cmd/wrapper
+	@echo "Wrapped build/bin/yted (static) -> build/bin/yted.bin (real binary)"
 
 ## Build with version info injected
 build-versioned:
@@ -24,6 +28,10 @@ build-versioned:
 	@echo "Updating version in frontend/package.json..."
 	@cd frontend && npm version $(VERSION) --no-git-tag-version --allow-same-version 2>/dev/null || true
 	wails build -tags webkit2_41 -ldflags "$(LDFLAGS)"
+	@if [ -f build/bin/yted.bin ]; then rm -f build/bin/yted.bin; fi
+	@mv build/bin/yted build/bin/yted.bin
+	@CGO_ENABLED=0 go build -o build/bin/yted ./cmd/wrapper
+	@echo "Wrapped build/bin/yted (static) -> build/bin/yted.bin (real binary)"
 
 ## Build Linux .deb installer
 build-installer-linux:
@@ -94,7 +102,7 @@ generate:
 
 ## Run the application
 run:
-	env -u LD_LIBRARY_PATH ./build/bin/yted
+	./build/bin/yted
 
 ## Install for current user (~/.local/)
 install:

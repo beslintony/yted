@@ -55,10 +55,16 @@ else
     mkdir -p "$INSTALL_DIR" "$ICON_DIR" "$DESKTOP_DIR"
 fi
 
-# Install binary
+# Install binary + wrapper
+# build/bin/yted is a static wrapper that strips LD_LIBRARY_PATH before execing yted.bin.
+# Both files must be installed together.
 echo "Installing binary to $INSTALL_DIR..."
 $SUDO cp "$PROJECT_ROOT/build/bin/yted" "$INSTALL_DIR/$EXECUTABLE"
 $SUDO chmod +x "$INSTALL_DIR/$EXECUTABLE"
+if [ -f "$PROJECT_ROOT/build/bin/yted.bin" ]; then
+    $SUDO cp "$PROJECT_ROOT/build/bin/yted.bin" "$INSTALL_DIR/$EXECUTABLE.bin"
+    $SUDO chmod +x "$INSTALL_DIR/$EXECUTABLE.bin"
+fi
 
 # Install icon
 echo "Installing icon to $ICON_DIR..."
