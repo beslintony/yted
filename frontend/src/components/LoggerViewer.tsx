@@ -12,18 +12,96 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import { IconDownload, IconRefresh, IconSearch, IconTrash, IconX } from '@tabler/icons-react';
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ClearLogs, ExportLogs, GetLogs } from '../../wailsjs/go/app/App';
 import { EventsOn } from '../../wailsjs/runtime';
 import { LogEntry, LogLevel, useLogStore } from '../stores';
 
+// Cap on rendered rows: the store keeps the last 1000 entries, but mounting
+// 1000 Paper rows per update is the dominant cost of this view. Render only
+// the latest 200 matches with a "showing X of Y" note instead.
+export const MAX_VISIBLE_LOG_ROWS = 200;
+
+function getLevelColor(level: LogLevel) {
+  switch (level) {
+    case 'ERROR':
+      return 'red';
+    case 'WARN':
+      return 'yellow';
+    case 'INFO':
+      return 'blue';
+    case 'DEBUG':
+      return 'gray';
+    default:
+      return 'gray';
+  }
+}
+
+interface LogRowProps {
+  dark: boolean;
+  entry: LogEntry;
+}
+
+// Memoized so that appends (which reuse the same entry object references via
+// [...entries, entry]) don't re-render existing rows.
+// Key note: LogEntry has no unique id — timestamp/level/component/message are
+// all non-unique (see logStore.test.ts, which pins the exact entry shape, so
+// we cannot inject ids without breaking store semantics). Callers therefore
+// key rows by list offset (see visibleEntries below); index keys stay stable
+// for appends at the tail.
+export const LogRow = memo(function LogRow({ dark, entry }: LogRowProps) {
+  return (
+    <Paper
+      p="xs"
+      style={{
+        background: dark ? '#25262b' : '#fff',
+        borderLeft: `3px solid ${
+          entry.level === 'ERROR' ? '#fa5252' : entry.level === 'WARN' ? '#fab005' : '#228be6'
+        }`,
+      }}
+    >
+      <Group gap="xs" wrap="nowrap">
+        <Badge color={getLevelColor(entry.level)} size="sm" variant="light">
+          {entry.level}
+        </Badge>
+        <Text c="dimmed" size="xs" style={{ whiteSpace: 'nowrap' }}>
+          {new Date(entry.timestamp).toLocaleTimeString()}
+        </Text>
+        <Text fw={500} size="sm" style={{ whiteSpace: 'nowrap' }}>
+          [{entry.component}]
+        </Text>
+        <Text size="sm" style={{ flex: 1, wordBreak: 'break-word' }}>
+          {entry.message}
+        </Text>
+      </Group>
+      {entry.error && (
+        <Text c="red" mt="xs" pl="md" size="xs">
+          {entry.error}
+        </Text>
+      )}
+    </Paper>
+  );
+});
+
 export function LoggerViewer() {
-  const { entries, setEntries, clearLogs, addEntry } = useLogStore();
+  // Select slices individually so unrelated store fields (isLoading/error)
+  // don't re-render this view.
+  const entries = useLogStore(s => s.entries);
+  const setEntries = useLogStore(s => s.setEntries);
+  const clearLogs = useLogStore(s => s.clearLogs);
   const [filter, setFilter] = useState<LogLevel | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
+
+  // Coalescing buffer for the high-frequency `log:new` event: rapid backend
+  // log storms previously caused one store notify + full re-render per entry.
+  // Events are buffered and flushed as a single addEntries batch on the next
+  // microtask (same-tick flush). The store's synchronous addEntry path is
+  // untouched — only this subscription coalesces.
+  const pendingRef = useRef<LogEntry[]>([]);
+  const flushScheduledRef = useRef(false);
 
   // Load initial logs
   const loadLogs = useCallback(async () => {
@@ -35,13 +113,38 @@ export function LoggerViewer() {
     }
   }, [setEntries]);
 
-  // Listen for log events from backend
+  // Listen for log events from backend (coalesced, see above)
   useEffect(() => {
+    const flush = () => {
+      flushScheduledRef.current = false;
+      if (pendingRef.current.length === 0) {
+        return;
+      }
+      const batch = pendingRef.current;
+      pendingRef.current = [];
+      useLogStore.getState().addEntries(batch);
+    };
+    const scheduleFlush = () => {
+      if (flushScheduledRef.current) {
+        return;
+      }
+      flushScheduledRef.current = true;
+      if (typeof queueMicrotask === 'function') {
+        queueMicrotask(flush);
+      } else {
+        setTimeout(flush, 0);
+      }
+    };
     const cancel = EventsOn('log:new', (data: LogEntry) => {
-      addEntry(data);
+      pendingRef.current.push(data);
+      scheduleFlush();
     });
-    return () => cancel();
-  }, [addEntry]);
+    return () => {
+      cancel();
+      // Don't drop logs that arrived in the same tick as unmount.
+      flush();
+    };
+  }, []);
 
   useEffect(() => {
     loadLogs();
@@ -61,29 +164,26 @@ export function LoggerViewer() {
     }
   };
 
-  const filteredEntries = entries.filter((entry: LogEntry) => {
-    const matchesFilter = filter === 'ALL' || entry.level === filter;
-    const matchesSearch =
-      search === '' ||
-      entry.message.toLowerCase().includes(search.toLowerCase()) ||
-      entry.component.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredEntries = useMemo(() => {
+    const query = search.toLowerCase();
+    return entries.filter((entry: LogEntry) => {
+      const matchesFilter = filter === 'ALL' || entry.level === filter;
+      const matchesSearch =
+        query === '' ||
+        entry.message.toLowerCase().includes(query) ||
+        entry.component.toLowerCase().includes(query);
+      return matchesFilter && matchesSearch;
+    });
+  }, [entries, filter, search]);
 
-  const getLevelColor = (level: LogLevel) => {
-    switch (level) {
-      case 'ERROR':
-        return 'red';
-      case 'WARN':
-        return 'yellow';
-      case 'INFO':
-        return 'blue';
-      case 'DEBUG':
-        return 'gray';
-      default:
-        return 'gray';
-    }
-  };
+  const visibleEntries = useMemo(
+    () => filteredEntries.slice(-MAX_VISIBLE_LOG_ROWS),
+    [filteredEntries]
+  );
+  // Offset of the visible window within the filtered list. Used as the key
+  // base so rows keep stable identities when the tail window slides on
+  // append (plain slice indices would shift every row's key per entry).
+  const visibleOffset = filteredEntries.length - visibleEntries.length;
 
   return (
     <Stack gap="md" style={{ height: '100%' }}>
@@ -131,6 +231,13 @@ export function LoggerViewer() {
         </Tooltip>
       </Group>
 
+      {filteredEntries.length > visibleEntries.length && (
+        <Text c="dimmed" size="xs">
+          Showing {visibleEntries.length} of {filteredEntries.length} matching logs (latest{' '}
+          {MAX_VISIBLE_LOG_ROWS})
+        </Text>
+      )}
+
       <Paper
         p="xs"
         style={{
@@ -142,46 +249,13 @@ export function LoggerViewer() {
       >
         <ScrollArea h="calc(100vh - 300px)">
           <Stack gap="xs">
-            {filteredEntries.length === 0 ? (
+            {visibleEntries.length === 0 ? (
               <Text c="dimmed" ta="center">
                 No logs found
               </Text>
             ) : (
-              filteredEntries.map((entry: LogEntry, index: number) => (
-                <Paper
-                  key={index}
-                  p="xs"
-                  style={{
-                    background: dark ? '#25262b' : '#fff',
-                    borderLeft: `3px solid ${
-                      entry.level === 'ERROR'
-                        ? '#fa5252'
-                        : entry.level === 'WARN'
-                          ? '#fab005'
-                          : '#228be6'
-                    }`,
-                  }}
-                >
-                  <Group gap="xs" wrap="nowrap">
-                    <Badge color={getLevelColor(entry.level)} size="sm" variant="light">
-                      {entry.level}
-                    </Badge>
-                    <Text c="dimmed" size="xs" style={{ whiteSpace: 'nowrap' }}>
-                      {new Date(entry.timestamp).toLocaleTimeString()}
-                    </Text>
-                    <Text fw={500} size="sm" style={{ whiteSpace: 'nowrap' }}>
-                      [{entry.component}]
-                    </Text>
-                    <Text size="sm" style={{ flex: 1, wordBreak: 'break-word' }}>
-                      {entry.message}
-                    </Text>
-                  </Group>
-                  {entry.error && (
-                    <Text c="red" mt="xs" pl="md" size="xs">
-                      {entry.error}
-                    </Text>
-                  )}
-                </Paper>
+              visibleEntries.map((entry: LogEntry, index: number) => (
+                <LogRow key={visibleOffset + index} dark={dark} entry={entry} />
               ))
             )}
           </Stack>

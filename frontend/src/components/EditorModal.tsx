@@ -184,6 +184,9 @@ export function EditorModal({ video, opened, onClose }: EditorModalProps) {
     if (!video) return;
     setPreviewLoading(true);
     try {
+      // GenerateEditPreview returns a data: URL (base64 JPEG, see
+      // internal/app/editor.go) — not a blob object URL — so there is
+      // nothing to revoke on replace/unmount/close; dropping the state is enough.
       const url = await GenerateEditPreview(video.id, buildSettings(), Number(trimStart) || 0);
       setPreviewUrl(url);
     } catch (err) {

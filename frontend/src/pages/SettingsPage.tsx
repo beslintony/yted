@@ -1,5 +1,5 @@
 import { Badge, Group, Paper, Stack, Text, useMantineColorScheme } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   GetFFmpegLocations,
@@ -24,7 +24,7 @@ import { useNotifications, useSettingsStore } from '../stores';
 import { QualityOption, ThemeMode } from '../types';
 
 export function SettingsPage() {
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const { colorScheme, setColorScheme: setMantineColorScheme } = useMantineColorScheme();
   const [settings, setSettings] = useState<config.Config | null>(null);
   const [originalSettings, setOriginalSettings] = useState<config.Config | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +47,27 @@ export function SettingsPage() {
   const { success, error, confirm } = useNotifications();
 
   const dark = colorScheme === 'dark';
+
+  // Latest-ref pattern: handleSave/handleReset read through refs so their
+  // identities stay stable across keystrokes. Combined with the memoized
+  // section components below, this keeps sections that don't depend on the
+  // edited values (Cache, Actions) from re-rendering per keystroke.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const originalSettingsRef = useRef(originalSettings);
+  originalSettingsRef.current = originalSettings;
+
+  // useMantineColorScheme() returns new setColorScheme/clearColorScheme
+  // closures on every render (plain function declarations, not useCallback),
+  // so stabilize it here — otherwise every useCallback depending on it (and
+  // every memoized child receiving those callbacks) would invalidate per
+  // render. Behavior is identical: it always calls the latest setter.
+  const setColorSchemeRef = useRef(setMantineColorScheme);
+  setColorSchemeRef.current = setMantineColorScheme;
+  const setColorScheme = useCallback(
+    (value: 'auto' | 'dark' | 'light') => setColorSchemeRef.current(value),
+    []
+  );
 
   useEffect(() => {
     loadSettings();
@@ -80,24 +101,25 @@ export function SettingsPage() {
     }
   };
 
-  const handleSave = async () => {
-    if (!settings) return;
+  const handleSave = useCallback(async () => {
+    const current = settingsRef.current;
+    if (!current) return;
 
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
 
     try {
-      await SaveSettings(settings);
-      setOriginalSettings(JSON.parse(JSON.stringify(settings)));
+      await SaveSettings(current);
+      setOriginalSettings(JSON.parse(JSON.stringify(current)));
       setHasChanges(false);
       setSaveSuccess(true);
 
       await saveSettingsToStore();
 
-      if (settings.theme === 'dark' && colorScheme !== 'dark') {
+      if (current.theme === 'dark' && colorScheme !== 'dark') {
         setColorScheme('dark');
-      } else if (settings.theme === 'light' && colorScheme !== 'light') {
+      } else if (current.theme === 'light' && colorScheme !== 'light') {
         setColorScheme('light');
       }
 
@@ -112,9 +134,9 @@ export function SettingsPage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [colorScheme, setColorScheme, saveSettingsToStore, success, error]);
 
-  const handleBrowseDownloadPath = async () => {
+  const handleBrowseDownloadPath = useCallback(async () => {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
@@ -125,9 +147,9 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Failed to browse:', err);
     }
-  };
+  }, [setDownloadPath]);
 
-  const handleBrowseLogExportPath = async () => {
+  const handleBrowseLogExportPath = useCallback(async () => {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
@@ -137,9 +159,9 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Failed to browse:', err);
     }
-  };
+  }, []);
 
-  const handleBrowseLogPath = async () => {
+  const handleBrowseLogPath = useCallback(async () => {
     try {
       const path = await ShowOpenDirectoryDialog();
       if (path) {
@@ -149,9 +171,21 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Failed to browse:', err);
     }
-  };
+  }, []);
 
-  const handleBrowseFFmpeg = async () => {
+  const refreshFfmpegStatus = useCallback(async () => {
+    setLoadingFfmpeg(true);
+    try {
+      const result = await RefreshFFmpegStatus();
+      setFfmpegStatus(result);
+    } catch (err) {
+      console.error('Failed to refresh FFmpeg status:', err);
+    } finally {
+      setLoadingFfmpeg(false);
+    }
+  }, []);
+
+  const handleBrowseFFmpeg = useCallback(async () => {
     try {
       const path = await ShowFFmpegDialog();
       if (path) {
@@ -163,19 +197,7 @@ export function SettingsPage() {
     } catch (err) {
       console.error('Failed to browse for ffmpeg:', err);
     }
-  };
-
-  const refreshFfmpegStatus = async () => {
-    setLoadingFfmpeg(true);
-    try {
-      const result = await RefreshFFmpegStatus();
-      setFfmpegStatus(result);
-    } catch (err) {
-      console.error('Failed to refresh FFmpeg status:', err);
-    } finally {
-      setLoadingFfmpeg(false);
-    }
-  };
+  }, [refreshFfmpegStatus]);
 
   const loadFfmpegStatus = async () => {
     setLoadingFfmpeg(true);
@@ -189,37 +211,40 @@ export function SettingsPage() {
     }
   };
 
-  const getSelectedFfmpegInfo = () => {
+  const getSelectedFfmpegInfo = useCallback(() => {
     if (!ffmpegStatus || !ffmpegStatus.installed) return null;
     if (ffmpegStatus.selectedIndex >= 0 && ffmpegStatus.allLocations) {
       return ffmpegStatus.allLocations[ffmpegStatus.selectedIndex];
     }
     return null;
-  };
+  }, [ffmpegStatus]);
 
-  const handleReset = () => {
-    if (originalSettings) {
-      setSettings(JSON.parse(JSON.stringify(originalSettings)));
+  const handleReset = useCallback(() => {
+    if (originalSettingsRef.current) {
+      setSettings(JSON.parse(JSON.stringify(originalSettingsRef.current)));
     }
-  };
+  }, []);
 
-  const handleThemeChange = (value: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setSettings(s => (s ? ({ ...s, theme: value } as any) : null));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setTheme(value as any);
-    if (value === 'dark') {
-      setColorScheme('dark');
-    } else if (value === 'light') {
-      setColorScheme('light');
-    }
-  };
+  const handleThemeChange = useCallback(
+    (value: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setSettings(s => (s ? ({ ...s, theme: value } as any) : null));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setTheme(value as any);
+      if (value === 'dark') {
+        setColorScheme('dark');
+      } else if (value === 'light') {
+        setColorScheme('light');
+      }
+    },
+    [setTheme, setColorScheme]
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateSetting = (key: string, value: any) => {
+  const updateSetting = useCallback((key: string, value: any) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSettings(s => (s ? ({ ...s, [key]: value } as any) : null));
-  };
+  }, []);
 
   if (loading) {
     return <Text>Loading settings...</Text>;

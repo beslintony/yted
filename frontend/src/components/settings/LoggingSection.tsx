@@ -1,5 +1,6 @@
 import { Button, Group, NumberInput, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { IconFolder } from '@tabler/icons-react';
+import { memo } from 'react';
 
 import { config } from '../../../wailsjs/go/models';
 
@@ -12,7 +13,9 @@ interface LoggingSectionProps {
   handleBrowseLogExportPath: () => void;
 }
 
-export function LoggingSection({
+// Memoized: skips re-render unless this section's own props change (see
+// DownloadsSection for the rationale).
+export const LoggingSection = memo(function LoggingSection({
   dark,
   settings,
   updateSetting,
@@ -97,4 +100,4 @@ export function LoggingSection({
       </Stack>
     </Paper>
   );
-}
+});

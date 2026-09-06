@@ -1,5 +1,6 @@
 import { Button, Group, NumberInput, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import { IconFolder } from '@tabler/icons-react';
+import { memo } from 'react';
 
 import { config } from '../../../wailsjs/go/models';
 
@@ -11,7 +12,10 @@ interface DownloadsSectionProps {
   handleBrowseDownloadPath: () => void;
 }
 
-export function DownloadsSection({
+// Memoized: skips re-render unless this section's own props change. Parent
+// passes stable callbacks (see SettingsPage), so unrelated state updates
+// (e.g. FFmpeg status polling) don't re-render this section.
+export const DownloadsSection = memo(function DownloadsSection({
   dark,
   settings,
   updateSetting,
@@ -143,4 +147,4 @@ export function DownloadsSection({
       </Stack>
     </Paper>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { Button, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
+import { memo } from 'react';
 
 import {
   ClearCompletedDownloads,
@@ -15,7 +16,14 @@ interface CacheSectionProps {
   confirm: (options: ConfirmOptions) => void;
 }
 
-export function CacheSection({ dark, success, error, confirm }: CacheSectionProps) {
+// Memoized: this section takes no settings state and its callbacks are
+// stable, so keystrokes elsewhere never re-render it.
+export const CacheSection = memo(function CacheSection({
+  dark,
+  success,
+  error,
+  confirm,
+}: CacheSectionProps) {
   return (
     <Paper
       withBorder
@@ -119,4 +127,4 @@ export function CacheSection({ dark, success, error, confirm }: CacheSectionProp
       </Stack>
     </Paper>
   );
-}
+});
