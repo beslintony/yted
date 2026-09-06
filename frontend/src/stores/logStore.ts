@@ -19,6 +19,9 @@ interface LogState {
 
   // Actions
   addEntry: (entry: LogEntry) => void;
+  // Batch-append entries in a single set() (one notify per tick).
+  // The single-add path above stays synchronous so existing callers/tests pin it.
+  addEntries: (newEntries: LogEntry[]) => void;
   setEntries: (entries: LogEntry[]) => void;
   clearLogs: () => void;
   loadLogs: () => Promise<void>;
@@ -35,6 +38,15 @@ export const useLogStore = create<LogState>((set, get) => ({
   addEntry: entry => {
     set(state => ({
       entries: [...state.entries, entry].slice(-1000), // Keep last 1000 entries
+    }));
+  },
+
+  addEntries: newEntries => {
+    if (newEntries.length === 0) {
+      return;
+    }
+    set(state => ({
+      entries: [...state.entries, ...newEntries].slice(-1000), // Keep last 1000 entries
     }));
   },
 

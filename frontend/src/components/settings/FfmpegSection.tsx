@@ -1,5 +1,6 @@
 import { Badge, Button, Group, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { IconFolder, IconRefresh } from '@tabler/icons-react';
+import { memo, useMemo } from 'react';
 
 import { app, config } from '../../../wailsjs/go/models';
 
@@ -15,7 +16,9 @@ interface FfmpegSectionProps {
   getSelectedFfmpegInfo: () => app.FFmpegLocation | null;
 }
 
-export function FfmpegSection({
+// Memoized: skips re-render unless this section's own props change (see
+// DownloadsSection for the rationale).
+export const FfmpegSection = memo(function FfmpegSection({
   dark,
   settings,
   ffmpegStatus,
@@ -25,6 +28,9 @@ export function FfmpegSection({
   refreshFfmpegStatus,
   getSelectedFfmpegInfo,
 }: FfmpegSectionProps) {
+  // Derived once per ffmpegStatus change instead of recomputed on every
+  // render (previously called 4+ times per render below).
+  const selectedFfmpegInfo = useMemo(() => getSelectedFfmpegInfo(), [getSelectedFfmpegInfo]);
   return (
     <Paper
       withBorder
@@ -70,7 +76,7 @@ export function FfmpegSection({
         </Group>
 
         {/* Detected FFmpeg Info */}
-        {!loadingFfmpeg && ffmpegStatus?.installed && getSelectedFfmpegInfo() && (
+        {!loadingFfmpeg && ffmpegStatus?.installed && selectedFfmpegInfo && (
           <Paper
             bg={dark ? '#1b2c1b' : '#f0f9f0'}
             p="sm"
@@ -85,13 +91,13 @@ export function FfmpegSection({
                 FFmpeg Detected
               </Text>
               <Text c={dark ? '#c1c2c5' : '#495057'} size="sm">
-                <strong>Path:</strong> {getSelectedFfmpegInfo()?.path}
+                <strong>Path:</strong> {selectedFfmpegInfo?.path}
               </Text>
               <Text c={dark ? '#c1c2c5' : '#495057'} size="sm">
-                <strong>Version:</strong> {getSelectedFfmpegInfo()?.version}
+                <strong>Version:</strong> {selectedFfmpegInfo?.version}
               </Text>
               <Text c={dark ? '#909296' : '#6c757d'} size="xs">
-                Source: {getSelectedFfmpegInfo()?.source}
+                Source: {selectedFfmpegInfo?.source}
               </Text>
             </Stack>
           </Paper>
@@ -221,4 +227,4 @@ export function FfmpegSection({
       </Stack>
     </Paper>
   );
-}
+});

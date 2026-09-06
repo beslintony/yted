@@ -30,6 +30,13 @@ function App() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [mobileOpened, setMobileOpened] = useState(false);
   const [activeTab, setActiveTab] = useState<'downloads' | 'library' | 'settings'>('downloads');
+  // Keep-alive tabs: pages mount on first visit and are then only hidden
+  // (display:none), so queue/search/scroll state survives tab switches and
+  // effects don't refetch on every switch. Unvisited tabs stay unmounted to
+  // preserve lazy startup (no upfront ListVideos/GetSettings).
+  const [visitedTabs, setVisitedTabs] = useState<Set<'downloads' | 'library' | 'settings'>>(
+    () => new Set(['downloads'])
+  );
   const [loggerOpened, setLoggerOpened] = useState(false);
   const sidebarCollapsed = useSettingsStore(s => s.sidebarCollapsed);
   const toggleSidebar = useSettingsStore(s => s.toggleSidebar);
@@ -65,6 +72,19 @@ function App() {
   const handleThemeToggle = () => {
     const newScheme = dark ? 'light' : 'dark';
     setColorScheme(newScheme);
+  };
+
+  const handleTabChange = (tab: 'downloads' | 'library' | 'settings') => {
+    setVisitedTabs(prev => {
+      if (prev.has(tab)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+    setActiveTab(tab);
+    setMobileOpened(false);
   };
 
   return (
@@ -153,8 +173,7 @@ function App() {
                   variant={isActive ? 'filled' : 'subtle'}
                   w={sidebarCollapsed ? 60 : '100%'}
                   onClick={() => {
-                    setActiveTab(item.id);
-                    setMobileOpened(false);
+                    handleTabChange(item.id);
                   }}
                 >
                   <Group
@@ -180,9 +199,33 @@ function App() {
       </AppShell.Navbar>
 
       <AppShell.Main bg={dark ? '#1a1b1e' : '#f8f9fa'}>
-        {activeTab === 'downloads' && <DownloadPage />}
-        {activeTab === 'library' && <LibraryPage />}
-        {activeTab === 'settings' && <SettingsPage />}
+        {visitedTabs.has('downloads') && (
+          <div
+            data-testid="tab-panel-downloads"
+            hidden={activeTab !== 'downloads'}
+            style={activeTab !== 'downloads' ? { display: 'none' } : undefined}
+          >
+            <DownloadPage />
+          </div>
+        )}
+        {visitedTabs.has('library') && (
+          <div
+            data-testid="tab-panel-library"
+            hidden={activeTab !== 'library'}
+            style={activeTab !== 'library' ? { display: 'none' } : undefined}
+          >
+            <LibraryPage />
+          </div>
+        )}
+        {visitedTabs.has('settings') && (
+          <div
+            data-testid="tab-panel-settings"
+            hidden={activeTab !== 'settings'}
+            style={activeTab !== 'settings' ? { display: 'none' } : undefined}
+          >
+            <SettingsPage />
+          </div>
+        )}
       </AppShell.Main>
 
       <AppShell.Footer>

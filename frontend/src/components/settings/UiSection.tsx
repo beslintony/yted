@@ -1,4 +1,5 @@
 import { ColorInput, Paper, Select, Stack, Switch, Text } from '@mantine/core';
+import { memo } from 'react';
 
 import { config } from '../../../wailsjs/go/models';
 
@@ -11,7 +12,9 @@ interface UiSectionProps {
   toggleSidebar: () => void;
 }
 
-export function UiSection({
+// Memoized: skips re-render unless this section's own props change (see
+// DownloadsSection for the rationale).
+export const UiSection = memo(function UiSection({
   dark,
   settings,
   updateSetting,
@@ -71,4 +74,4 @@ export function UiSection({
       </Stack>
     </Paper>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { Button, Group } from '@mantine/core';
 import { IconDeviceFloppy, IconRefresh } from '@tabler/icons-react';
+import { memo } from 'react';
 
 interface ActionsSectionProps {
   hasChanges: boolean;
@@ -8,7 +9,9 @@ interface ActionsSectionProps {
   handleSave: () => void;
 }
 
-export function ActionsSection({
+// Memoized: only hasChanges/saving flips re-render this section; the
+// handlers are stable across keystrokes (see SettingsPage).
+export const ActionsSection = memo(function ActionsSection({
   hasChanges,
   saving,
   handleReset,
@@ -37,4 +40,4 @@ export function ActionsSection({
       </Button>
     </Group>
   );
-}
+});

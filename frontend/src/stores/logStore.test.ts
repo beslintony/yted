@@ -243,4 +243,58 @@ describe('logStore', () => {
     expect(entries[1].message).toBe('Second');
     expect(entries[2].message).toBe('Third');
   });
+
+  describe('addEntries (batched append)', () => {
+    const makeEntry = (i: number) => ({
+      timestamp: '12:00:00',
+      level: 'INFO' as LogLevel,
+      component: 'Test',
+      message: `Batch ${i}`,
+    });
+
+    it('should append multiple entries in order', () => {
+      const { addEntries } = useLogStore.getState();
+
+      addEntries([makeEntry(1), makeEntry(2), makeEntry(3)]);
+
+      const entries = useLogStore.getState().entries;
+      expect(entries).toHaveLength(3);
+      expect(entries.map(e => e.message)).toEqual(['Batch 1', 'Batch 2', 'Batch 3']);
+    });
+
+    it('should notify subscribers only once per batch', () => {
+      const listener = vi.fn();
+      const unsub = useLogStore.subscribe(listener);
+      try {
+        useLogStore.getState().addEntries([makeEntry(1), makeEntry(2), makeEntry(3)]);
+        expect(listener).toHaveBeenCalledTimes(1);
+      } finally {
+        unsub();
+      }
+    });
+
+    it('should keep only the last 1000 entries like addEntry', () => {
+      const { addEntries } = useLogStore.getState();
+
+      addEntries(Array.from({ length: 1005 }, (_, i) => makeEntry(i)));
+
+      const entries = useLogStore.getState().entries;
+      expect(entries).toHaveLength(1000);
+      expect(entries[0].message).toBe('Batch 5');
+      expect(entries[entries.length - 1].message).toBe('Batch 1004');
+    });
+
+    it('should not notify on an empty batch', () => {
+      const before = useLogStore.getState().entries;
+      const listener = vi.fn();
+      const unsub = useLogStore.subscribe(listener);
+      try {
+        useLogStore.getState().addEntries([]);
+        expect(listener).not.toHaveBeenCalled();
+        expect(useLogStore.getState().entries).toBe(before);
+      } finally {
+        unsub();
+      }
+    });
+  });
 });

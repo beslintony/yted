@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 
 import { config } from '../../../wailsjs/go/models';
 
@@ -24,7 +24,13 @@ interface PresetsSectionProps {
   updateSetting: (key: string, value: any) => void;
 }
 
-export function PresetsSection({ dark, settings, updateSetting }: PresetsSectionProps) {
+// Memoized: skips re-render unless this section's own props change (see
+// DownloadsSection for the rationale).
+export const PresetsSection = memo(function PresetsSection({
+  dark,
+  settings,
+  updateSetting,
+}: PresetsSectionProps) {
   const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [editingPreset, setEditingPreset] = useState<config.DownloadPreset | null>(null);
 
@@ -135,7 +141,7 @@ export function PresetsSection({ dark, settings, updateSetting }: PresetsSection
       </Modal>
     </>
   );
-}
+});
 
 function PresetForm({
   preset,

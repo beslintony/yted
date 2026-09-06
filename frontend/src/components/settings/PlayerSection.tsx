@@ -1,4 +1,5 @@
 import { NumberInput, Paper, Stack, Switch, Text } from '@mantine/core';
+import { memo } from 'react';
 
 import { config } from '../../../wailsjs/go/models';
 
@@ -9,7 +10,13 @@ interface PlayerSectionProps {
   updateSetting: (key: string, value: any) => void;
 }
 
-export function PlayerSection({ dark, settings, updateSetting }: PlayerSectionProps) {
+// Memoized: skips re-render unless this section's own props change (see
+// DownloadsSection for the rationale).
+export const PlayerSection = memo(function PlayerSection({
+  dark,
+  settings,
+  updateSetting,
+}: PlayerSectionProps) {
   return (
     <Paper
       withBorder
@@ -50,4 +57,4 @@ export function PlayerSection({ dark, settings, updateSetting }: PlayerSectionPr
       </Stack>
     </Paper>
   );
-}
+});
