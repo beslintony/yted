@@ -49,6 +49,7 @@ tar xzf YTed-linux-amd64.tar.gz
 ```
 
 > **Note:** FFmpeg is required for video/audio merging. Install it via your package manager or download from [ffmpeg.org](https://ffmpeg.org/download.html).
+> **Linux runtime libs:** the binary (tarball/manual builds) needs GTK + WebKit at *runtime*, not just at build time. On Debian/Ubuntu: `sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0` (the `.deb` installer pulls these in automatically). If the app won't start, run `ldd ./build/bin/yted | grep "not found"` — any line listed there is a missing library. A graphical session (`$DISPLAY` on X11, or Wayland) is also required; headless/SSH sessions need a display (e.g. `xvfb-run`) to launch the window.
 > For full YouTube extraction quality, a JS runtime is recommended — YTed auto-detects `deno`, `node`, or `bun` on your PATH (e.g. `sudo apt install nodejs` or install [deno](https://deno.land)). Downloads still work without one, but some formats may be unavailable.
 
 ## Development
