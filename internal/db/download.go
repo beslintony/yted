@@ -285,6 +285,34 @@ func (db *DB) UpdateDownloadStatus(id string, status string) error {
 	return nil
 }
 
+// ResetStuckDownloading resets every row stuck in 'downloading' back to
+// 'pending' with a single UPDATE. Used by the queue-restore path instead of
+// one UpdateDownloadStatus call per orphaned row.
+func (db *DB) ResetStuckDownloading() (int64, error) {
+	res, err := db.conn.Exec(`UPDATE downloads SET status = 'pending' WHERE status = 'downloading'`)
+	if err != nil {
+		return 0, fmt.Errorf("failed to reset stuck downloads: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to read reset row count: %w", err)
+	}
+	return n, nil
+}
+
+// UpdateDownloadMetadata persists fetched video metadata without touching
+// status/progress/timestamps. It must be used instead of UpdateDownload for
+// metadata backfills: UpdateDownload overwrites status and started_at from
+// the (possibly stale) struct, which would clobber the live download state.
+func (db *DB) UpdateDownloadMetadata(id string, title, channel, thumbnail string, duration int) error {
+	query := `UPDATE downloads SET title = ?, channel = ?, thumbnail_url = ?, duration = ? WHERE id = ?`
+	_, err := db.conn.Exec(query, title, channel, thumbnail, duration, id)
+	if err != nil {
+		return fmt.Errorf("failed to update download metadata: %w", err)
+	}
+	return nil
+}
+
 // StartDownload marks a download as started
 func (db *DB) StartDownload(id string) error {
 	now := time.Now()

@@ -422,28 +422,60 @@ func (a *App) GetDownloadQueue() ([]DownloadResult, error) {
 	})
 
 	// Reset downloads that were 'downloading' to 'pending' ONLY if no active worker exists
-	// This prevents spawning duplicate workers if the app was restarted
+	// This prevents spawning duplicate workers if the app was restarted.
+	// Common case (no live workers, e.g. after restart) uses a single batched
+	// UPDATE; rows with live workers keep per-ID handling so they stay
+	// 'downloading'.
+	a.activeDownloadsMu.RLock()
+	active := make(map[string]struct{}, len(a.activeDownloads))
+	for id := range a.activeDownloads {
+		active[id] = struct{}{}
+	}
+	a.activeDownloadsMu.RUnlock()
+
+	needsSelective := false
 	for _, dl := range downloads {
 		if dl.Status == "downloading" {
-			a.activeDownloadsMu.RLock()
-			_, hasActiveWorker := a.activeDownloads[dl.ID]
-			a.activeDownloadsMu.RUnlock()
+			if _, ok := active[dl.ID]; ok {
+				needsSelective = true
+				break
+			}
+		}
+	}
 
-			if hasActiveWorker {
+	if !needsSelective {
+		if _, err := a.db.ResetStuckDownloading(); err != nil {
+			logger.Error("Download", "Failed to reset stuck downloads", err)
+		} else {
+			for i := range downloads {
+				if downloads[i].Status == "downloading" {
+					logger.Info("Download", "Resetting stuck download to pending (no active worker)", map[string]string{
+						"id": downloads[i].ID,
+					})
+					downloads[i].Status = "pending"
+				}
+			}
+		}
+	} else {
+		for i := range downloads {
+			if downloads[i].Status != "downloading" {
+				continue
+			}
+			if _, ok := active[downloads[i].ID]; ok {
 				logger.Info("Download", "Download has active worker, keeping as downloading", map[string]string{
-					"id": dl.ID,
+					"id": downloads[i].ID,
+				})
+				continue
+			}
+			logger.Info("Download", "Resetting stuck download to pending (no active worker)", map[string]string{
+				"id": downloads[i].ID,
+			})
+			if err := a.db.UpdateDownloadStatus(downloads[i].ID, "pending"); err != nil {
+				logger.Error("Download", "Failed to reset download status", err, map[string]string{
+					"id": downloads[i].ID,
 				})
 			} else {
-				logger.Info("Download", "Resetting stuck download to pending (no active worker)", map[string]string{
-					"id": dl.ID,
-				})
-				if err := a.db.UpdateDownloadStatus(dl.ID, "pending"); err != nil {
-					logger.Error("Download", "Failed to reset download status", err, map[string]string{
-						"id": dl.ID,
-					})
-				} else {
-					dl.Status = "pending"
-				}
+				downloads[i].Status = "pending"
 			}
 		}
 	}

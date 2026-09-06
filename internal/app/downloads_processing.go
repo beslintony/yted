@@ -167,28 +167,20 @@ func (a *App) startDownload(dl db.Download) {
 		return
 	}
 
-	// Get video info if not already have title
-	title, channel, thumbnail := extractDownloadInfo(&dl)
-
-	if title == "" {
+	// Get video info if not already have title. Fetched metadata is persisted
+	// via UpdateDownloadMetadata (status/timestamps untouched) so the later
+	// addDownloadToLibrary call reuses it instead of fetching a second time.
+	if downloadNeedsMetadata(&dl) {
 		info, err := a.ytdl.GetInfo(ctx, cleanYouTubeURL(dl.URL))
 		if err == nil {
-			title = info.Title
-			channel = info.Channel
-			thumbnail = info.Thumbnail
-
-			// Update download with info
-			dl.Title = &title
-			dl.Channel = &channel
-			dl.ThumbnailURL = &thumbnail
-			dl.Duration = &info.Duration
-			if updateErr := a.db.UpdateDownload(&dl); updateErr != nil {
+			applyVideoInfoToDownload(&dl, info)
+			if updateErr := a.db.UpdateDownloadMetadata(dl.ID, info.Title, info.Channel, info.Thumbnail, info.Duration); updateErr != nil {
 				logger.Warn("Download", "Failed to update download info", map[string]string{"error": updateErr.Error()})
 			}
 
 			logger.Info("Download", "Video info retrieved", map[string]string{
 				"id":    dl.ID,
-				"title": title,
+				"title": info.Title,
 			})
 		} else {
 			logger.Warn("Download", "Could not get video info", map[string]string{
@@ -342,4 +334,35 @@ func extractDownloadInfo(dl *db.Download) (title, channel, thumbnail string) {
 		thumbnail = *dl.ThumbnailURL
 	}
 	return
+}
+
+// downloadNeedsMetadata reports whether startDownload should fetch video info.
+// A missing/empty title means we have no metadata yet.
+func downloadNeedsMetadata(dl *db.Download) bool {
+	return dl.Title == nil || *dl.Title == ""
+}
+
+// libraryNeedsMetadata reports whether addDownloadToLibrary should fetch video
+// info as a fallback. Duration is checked for nil (never fetched) rather than
+// zero: a fetched-but-unknown duration (pointer to 0) must not trigger a
+// second yt-dlp fetch — refetching would return 0 again.
+func libraryNeedsMetadata(dl *db.Download) bool {
+	if dl.Title == nil || *dl.Title == "" {
+		return true
+	}
+	return dl.Duration == nil
+}
+
+// applyVideoInfoToDownload copies fetched metadata into the download record.
+// Duration is always set (even when 0) so callers can distinguish
+// "fetched, unknown" (non-nil 0) from "never fetched" (nil).
+func applyVideoInfoToDownload(dl *db.Download, info *ytdl.VideoInfo) {
+	title := info.Title
+	channel := info.Channel
+	thumbnail := info.Thumbnail
+	duration := info.Duration
+	dl.Title = &title
+	dl.Channel = &channel
+	dl.ThumbnailURL = &thumbnail
+	dl.Duration = &duration
 }

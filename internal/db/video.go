@@ -239,6 +239,30 @@ func (db *DB) ListVideosWithHash(opts ListVideosOptions) ([]Video, error) {
 	return videos, nil
 }
 
+// ListVideoFilePaths returns every non-empty tracked file path in the
+// library. It is a cheap single-column scan for orphan detection, avoiding
+// the full-row ListVideosWithHash query.
+func (db *DB) ListVideoFilePaths() ([]string, error) {
+	rows, err := db.conn.Query(`SELECT file_path FROM videos WHERE file_path IS NOT NULL AND file_path != ''`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list video file paths: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var paths []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, fmt.Errorf("failed to scan video file path: %w", err)
+		}
+		paths = append(paths, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read video file paths: %w", err)
+	}
+	return paths, nil
+}
+
 // UpdateVideo updates a video
 func (db *DB) UpdateVideo(video *Video) error {
 	query := `
