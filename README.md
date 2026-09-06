@@ -101,6 +101,18 @@ yted/
 └── main.go         # Entry point
 ```
 
+### Troubleshooting
+
+**`T3-Code.AppImage: symbol lookup error: ... libpthread.so.0: undefined symbol: __libc_pthread_init`** when running `./build/bin/yted`:
+The AppImage exports a stale `LD_LIBRARY_PATH` (often `/snap/core20/...` or `/tmp/.mount_T3-.../usr/lib` with glibc 2.31) that poisons every child process. Host binaries built on glibc 2.43 then load the old `libpthread`/`libc` and crash. This is not a YTed bug — it's an AppImage/snap env leak.
+Fix: strip the poisoned env for the child process:
+```bash
+env -u LD_LIBRARY_PATH ./build/bin/yted
+# or: LD_LIBRARY_PATH="" ./build/bin/yted
+# via Make (already fixed): make run
+```
+To make it permanent, alias it: `alias yted='env -u LD_LIBRARY_PATH /path/to/yted/build/bin/yted'`, or launch the AppImage itself without leaking: `env -u LD_LIBRARY_PATH /home/bax/.local/bin/T3-Code.AppImage` (then child shells start clean). If you installed T3-Code via snap, prefer the `.tar.gz`/`.deb` build to avoid the snap core20 libs entirely.
+
 ## Configuration
 
 Config is stored in `~/.yted/config/settings.json`:

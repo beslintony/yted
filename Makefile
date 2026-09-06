@@ -94,7 +94,7 @@ generate:
 
 ## Run the application
 run:
-	./build/bin/yted
+	env -u LD_LIBRARY_PATH ./build/bin/yted
 
 ## Install for current user (~/.local/)
 install:
