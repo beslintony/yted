@@ -36,21 +36,19 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir, knownPath string) 
 	var videoInfo *ytdl.VideoInfo
 	var err error
 
-	if dl.Title == nil || *dl.Title == "" || dl.Duration == nil || *dl.Duration == 0 {
+	// Get video info if we have the URL and any metadata is missing.
+	// This is a fallback: startDownload already persists fetched metadata
+	// (see downloadNeedsMetadata/applyVideoInfoToDownload), so a download
+	// that went through startDownload normally skips this second fetch.
+	if libraryNeedsMetadata(&dl) {
 		videoInfo, err = a.ytdl.GetInfo(ctx, cleanYouTubeURL(dl.URL))
 		if err != nil {
 			logger.Warn("Download", "Could not get video info for library", map[string]string{"error": err.Error()})
 		} else {
-			// Update download with info since we fetched it
-			title := videoInfo.Title
-			channel := videoInfo.Channel
-			thumbnail := videoInfo.Thumbnail
-			duration := videoInfo.Duration
-			dl.Title = &title
-			dl.Channel = &channel
-			dl.ThumbnailURL = &thumbnail
-			dl.Duration = &duration
-			if updateErr := a.db.UpdateDownload(&dl); updateErr != nil {
+			// Update download with info since we fetched it (metadata-only
+			// update: never clobber status/timestamps of the completed row)
+			applyVideoInfoToDownload(&dl, videoInfo)
+			if updateErr := a.db.UpdateDownloadMetadata(dl.ID, videoInfo.Title, videoInfo.Channel, videoInfo.Thumbnail, videoInfo.Duration); updateErr != nil {
 				logger.Warn("Download", "Failed to update download info", map[string]string{"error": updateErr.Error()})
 			}
 		}

@@ -43,6 +43,13 @@ type Logger struct {
 	maxSessions    int
 	currentSession string
 	listeners      []func(LogEntry)
+
+	// File output keeps ONE open handle per session (lazy open). Writes
+	// serialize on fileMu; the handle reopens when the session/logdir
+	// changes and closes on Clear/Close/SetLogDir.
+	fileMu      sync.Mutex
+	logFile     *os.File
+	logFilePath string
 }
 
 var (
@@ -70,6 +77,10 @@ func (l *Logger) SetLogDir(dir string) error {
 
 // SetLogDirWithSessions sets the log directory and configures session retention
 func (l *Logger) SetLogDirWithSessions(dir string, maxSessions int) error {
+	// Close any handle for the previous session first; the next write lazily
+	// opens the new session file.
+	l.closeLogFile()
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -215,6 +226,10 @@ func (l *Logger) log(level LogLevel, component, message string, data interface{}
 	listeners := make([]func(LogEntry), len(l.listeners))
 	copy(listeners, l.listeners)
 
+	// Snapshot file-output config while holding the lock (avoids a data
+	// race on logDir with concurrent SetLogDir).
+	logDir := l.logDir
+
 	l.mu.Unlock()
 
 	// Notify outside of lock
@@ -223,12 +238,40 @@ func (l *Logger) log(level LogLevel, component, message string, data interface{}
 	}
 
 	// Also write to file if configured
-	if l.logDir != "" {
+	if logDir != "" {
 		go l.writeToFile(entry)
 	}
 
 	// Also print to stdout for development
 	fmt.Printf("[%s] %s - %s: %s\n", entry.Timestamp.Format("15:04:05"), level, component, message)
+}
+
+// logFilePathFor computes the file path for a log entry, preserving the
+// existing rotation behavior: session subdirectory when a session is active,
+// otherwise a per-day file in the log dir.
+func logFilePathFor(logDir, session string) string {
+	if session != "" {
+		return filepath.Join(logDir, session, "app.log")
+	}
+	return filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
+}
+
+// closeLogFile releases the open file handle, if any. The next write lazily
+// reopens it.
+func (l *Logger) closeLogFile() {
+	l.fileMu.Lock()
+	defer l.fileMu.Unlock()
+	if l.logFile != nil {
+		_ = l.logFile.Close()
+		l.logFile = nil
+		l.logFilePath = ""
+	}
+}
+
+// Close releases the open log file handle, if any.
+func (l *Logger) Close() error {
+	l.closeLogFile()
+	return nil
 }
 
 func (l *Logger) writeToFile(entry LogEntry) {
@@ -241,24 +284,34 @@ func (l *Logger) writeToFile(entry LogEntry) {
 		return
 	}
 
-	// Use session subdirectory, fallback to main log dir if no session
-	var filename string
-	if session != "" {
-		sessionDir := filepath.Join(logDir, session)
-		filename = filepath.Join(sessionDir, "app.log")
-	} else {
-		filename = filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
-	}
-
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	defer func() { _ = file.Close() }()
+	filename := logFilePathFor(logDir, session)
 
 	jsonEntry, _ := json.Marshal(entry)
-	_, _ = file.Write(jsonEntry)
-	_, _ = file.Write([]byte("\n"))
+
+	// Single open handle per session: reopen only when the path changes.
+	l.fileMu.Lock()
+	defer l.fileMu.Unlock()
+
+	if l.logFile == nil || l.logFilePath != filename {
+		if l.logFile != nil {
+			_ = l.logFile.Close()
+			l.logFile = nil
+			l.logFilePath = ""
+		}
+		if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+			return
+		}
+		file, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return
+		}
+		l.logFile = file
+		l.logFilePath = filename
+	}
+
+	// Both writes hold fileMu, so lines from concurrent writers stay intact.
+	_, _ = l.logFile.Write(jsonEntry)
+	_, _ = l.logFile.Write([]byte("\n"))
 }
 
 // GetSessionDirs returns all session directories
@@ -369,9 +422,11 @@ func (l *Logger) GetAllEntries() []LogEntry {
 // Clear clears all log entries
 func (l *Logger) Clear() {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.entries = make([]LogEntry, 0, 1000)
+	l.mu.Unlock()
+
+	// Release the file handle; the next write lazily reopens it.
+	l.closeLogFile()
 }
 
 // Export exports logs to a file

@@ -71,42 +71,30 @@ func (a *App) GetCacheInfo() (*CacheInfo, error) {
 	return info, nil
 }
 
-// findOrphanedFiles finds files in the YTed folder that are not tracked in the database
-func (a *App) findOrphanedFiles() (int, int64, error) {
-	if a.fm == nil {
-		return 0, 0, nil
+// getTrackedFileSet returns the set of lower-cased file paths tracked in the
+// library. It uses a cheap single-column scan instead of full video rows.
+func (a *App) getTrackedFileSet() (map[string]bool, error) {
+	tracked := make(map[string]bool)
+	if a.db == nil {
+		return tracked, fmt.Errorf("database not initialized")
 	}
-
-	downloadPath := a.fm.GetDownloadPath()
-	if downloadPath == "" {
-		return 0, 0, nil
-	}
-
-	// Get all tracked file paths from database
-	trackedFiles := make(map[string]bool)
-	videos, err := a.db.ListVideosWithHash(db.ListVideosOptions{
-		Limit:  10000,
-		Offset: 0,
-	})
+	paths, err := a.db.ListVideoFilePaths()
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
-
-	for _, v := range videos {
-		if v.FilePath != "" {
-			trackedFiles[strings.ToLower(v.FilePath)] = true
+	for _, p := range paths {
+		if p != "" {
+			tracked[strings.ToLower(p)] = true
 		}
 	}
+	return tracked, nil
+}
 
-	// Scan YTed folder for files
-	entries, err := os.ReadDir(downloadPath)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	var orphanedCount int
-	var orphanedSize int64
-
+// scanOrphanedEntries filters a directory listing down to orphaned media
+// files, returning their full paths plus total size. The caller supplies a
+// single listing and a single tracked set so both counting and deletion can
+// share one pass.
+func scanOrphanedEntries(entries []os.DirEntry, downloadPath string, tracked map[string]bool) (orphans []string, totalSize int64) {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -122,16 +110,60 @@ func (a *App) findOrphanedFiles() (int, int64, error) {
 		fullPath := filepath.Join(downloadPath, name)
 
 		// Check if this file is tracked
-		if !trackedFiles[strings.ToLower(fullPath)] {
+		if !tracked[strings.ToLower(fullPath)] {
 			info, err := entry.Info()
 			if err == nil {
-				orphanedCount++
-				orphanedSize += info.Size()
+				orphans = append(orphans, fullPath)
+				totalSize += info.Size()
 			}
 		}
 	}
+	return orphans, totalSize
+}
 
-	return orphanedCount, orphanedSize, nil
+// collectOrphanedFiles builds the tracked set once and lists the download
+// directory once, returning orphaned media file paths and their total size.
+func (a *App) collectOrphanedFiles() (orphans []string, totalSize int64, err error) {
+	if a.fm == nil {
+		return nil, 0, nil
+	}
+
+	downloadPath := a.fm.GetDownloadPath()
+	if downloadPath == "" {
+		return nil, 0, nil
+	}
+
+	trackedFiles, err := a.getTrackedFileSet()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Single directory listing shared by counting and deletion
+	entries, err := os.ReadDir(downloadPath)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	orphans, totalSize = scanOrphanedEntries(entries, downloadPath, trackedFiles)
+	return orphans, totalSize, nil
+}
+
+// findOrphanedFiles finds files in the YTed folder that are not tracked in the database
+func (a *App) findOrphanedFiles() (int, int64, error) {
+	if a.fm == nil {
+		return 0, 0, nil
+	}
+
+	downloadPath := a.fm.GetDownloadPath()
+	if downloadPath == "" {
+		return 0, 0, nil
+	}
+
+	orphans, totalSize, err := a.collectOrphanedFiles()
+	if err != nil {
+		return 0, 0, err
+	}
+	return len(orphans), totalSize, nil
 }
 
 // isMediaFile checks if filename has a media extension
@@ -157,11 +189,12 @@ func (a *App) CleanupOrphanedFiles(deleteFiles bool) (map[string]interface{}, er
 		return nil, fmt.Errorf("download path not configured")
 	}
 
-	// Get orphaned files
-	orphanedCount, orphanedSize, err := a.findOrphanedFiles()
+	// Get orphaned files with a single tracked-set build + single listing
+	orphans, orphanedSize, err := a.collectOrphanedFiles()
 	if err != nil {
 		return nil, err
 	}
+	orphanedCount := len(orphans)
 
 	result := map[string]interface{}{
 		"found":      orphanedCount,
@@ -180,52 +213,19 @@ func (a *App) CleanupOrphanedFiles(deleteFiles bool) (map[string]interface{}, er
 		return result, nil
 	}
 
-	// Actually delete the orphaned files
-	entries, err := os.ReadDir(downloadPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get tracked files again for comparison
-	trackedFiles := make(map[string]bool)
-	videos, err := a.db.ListVideosWithHash(db.ListVideosOptions{
-		Limit:  10000,
-		Offset: 0,
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range videos {
-		if v.FilePath != "" {
-			trackedFiles[strings.ToLower(v.FilePath)] = true
-		}
-	}
-
+	// Actually delete the orphaned files (reuses the single listing above)
 	var deletedCount, failedCount int
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		lowerName := strings.ToLower(name)
-		if !isMediaFile(lowerName) {
-			continue
-		}
-
-		fullPath := filepath.Join(downloadPath, name)
-		if !trackedFiles[strings.ToLower(fullPath)] {
-			if err := os.Remove(fullPath); err != nil {
-				logger.Error("Cache", "Failed to delete orphaned file", err, map[string]string{
-					"path": fullPath,
-				})
-				failedCount++
-			} else {
-				logger.Info("Cache", "Deleted orphaned file", map[string]string{
-					"path": fullPath,
-				})
-				deletedCount++
-			}
+	for _, fullPath := range orphans {
+		if err := os.Remove(fullPath); err != nil {
+			logger.Error("Cache", "Failed to delete orphaned file", err, map[string]string{
+				"path": fullPath,
+			})
+			failedCount++
+		} else {
+			logger.Info("Cache", "Deleted orphaned file", map[string]string{
+				"path": fullPath,
+			})
+			deletedCount++
 		}
 	}
 
