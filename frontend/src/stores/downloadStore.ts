@@ -269,7 +269,12 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
       return {
         downloads: state.downloads.map(d =>
           d.id === id
-            ? { ...d, status: 'completed' as DownloadStatus, progress: 100, completedAt: Date.now() }
+            ? {
+                ...d,
+                status: 'completed' as DownloadStatus,
+                progress: 100,
+                completedAt: Date.now(),
+              }
             : d
         ),
       };

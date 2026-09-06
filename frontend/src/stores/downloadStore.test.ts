@@ -153,7 +153,8 @@ describe('downloadStore', () => {
     expect(updatedDownloads.filter(d => d.status === 'completed')).toHaveLength(1);
   });
 
-  it('should prevent duplicate downloads', () => {    const { addDownload, hasDownload } = useDownloadStore.getState();
+  it('should prevent duplicate downloads', () => {
+    const { addDownload, hasDownload } = useDownloadStore.getState();
     const id = addDownload('https://youtube.com/watch?v=test');
 
     expect(id).not.toBeNull();

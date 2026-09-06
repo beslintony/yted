@@ -382,7 +382,6 @@ export function DownloadPage() {
     };
     // Stable by design: handlers read the store via getState() and notify via
     // notifyRef, so backend events are subscribed exactly once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flushAddedDownloads]);
 
   const handleFetchInfo = async () => {
