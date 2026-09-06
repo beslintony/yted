@@ -108,7 +108,7 @@ func (a *App) GetVideoByYoutubeID(youtubeID string) (*VideoResult, error) {
 		return nil, nil
 	}
 
-	video, err := a.db.GetVideoByFileHash(youtubeID)
+	video, err := a.db.GetVideoByYoutubeID(youtubeID)
 	if err != nil {
 		return nil, err
 	}
