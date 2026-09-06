@@ -27,6 +27,13 @@ type videoInfoCacheEntry struct {
 	expiresAt time.Time
 }
 
+// Bounds for the video info cache: entries live 5 minutes and the map is
+// capped so a long-running process cannot grow it without limit.
+const (
+	videoInfoCacheTTL        = 5 * time.Minute
+	videoInfoCacheMaxEntries = 200
+)
+
 // App struct
 type App struct {
 	ctx    context.Context

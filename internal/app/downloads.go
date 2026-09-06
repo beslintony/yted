@@ -25,6 +25,31 @@ type VideoInfoResult struct {
 	Formats     []ytdl.FormatInfo `json:"formats"`
 }
 
+// pruneVideoInfoCache drops expired entries and, if the cache still exceeds
+// maxEntries, evicts the oldest entries (by expiry) first. TTL semantics are
+// unchanged: only entries with expiresAt after now survive.
+func pruneVideoInfoCache(cache map[string]videoInfoCacheEntry, now time.Time, maxEntries int) {
+	for key, entry := range cache {
+		if !now.Before(entry.expiresAt) {
+			delete(cache, key)
+		}
+	}
+	for len(cache) > maxEntries {
+		oldestKey := ""
+		var oldest time.Time
+		first := true
+		for key, entry := range cache {
+			if first || entry.expiresAt.Before(oldest) {
+				oldestKey, oldest, first = key, entry.expiresAt, false
+			}
+		}
+		if oldestKey == "" {
+			break
+		}
+		delete(cache, oldestKey)
+	}
+}
+
 // GetVideoInfo extracts video information from URL with caching
 // Cache TTL: 5 minutes to prevent duplicate fetches
 func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
@@ -45,18 +70,19 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 	// Normalize URL for cache key
 	cacheKey := normalizeURLForCache(videoURL)
 
-	// Check cache first
-	a.videoInfoCacheMu.RLock()
+	// Check cache first, dropping expired entries and enforcing the cap
+	a.videoInfoCacheMu.Lock()
 	cached, found := a.videoInfoCache[cacheKey]
-	a.videoInfoCacheMu.RUnlock()
-
 	if found && time.Now().Before(cached.expiresAt) {
+		a.videoInfoCacheMu.Unlock()
 		logger.Info("Download", "Video info cache hit", map[string]string{
 			"url":   videoURL,
 			"title": cached.info.Title,
 		})
 		return cached.info, nil
 	}
+	pruneVideoInfoCache(a.videoInfoCache, time.Now(), videoInfoCacheMaxEntries)
+	a.videoInfoCacheMu.Unlock()
 
 	// Clean URL before fetching (strip playlist params, etc.)
 	cleanURL := cleanYouTubeURL(videoURL)
@@ -89,12 +115,13 @@ func (a *App) GetVideoInfo(videoURL string) (*VideoInfoResult, error) {
 		Formats:     info.Formats,
 	}
 
-	// Store in cache with 5-minute TTL
+	// Store in cache with 5-minute TTL, enforcing expiry and size bounds
 	a.videoInfoCacheMu.Lock()
 	a.videoInfoCache[cacheKey] = videoInfoCacheEntry{
 		info:      result,
-		expiresAt: time.Now().Add(5 * time.Minute),
+		expiresAt: time.Now().Add(videoInfoCacheTTL),
 	}
+	pruneVideoInfoCache(a.videoInfoCache, time.Now(), videoInfoCacheMaxEntries)
 	a.videoInfoCacheMu.Unlock()
 
 	logger.Info("Download", "Video info fetched and cached", map[string]string{

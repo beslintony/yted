@@ -68,6 +68,79 @@ func (db *DB) GetActiveDownloadByURL(url string) (*Download, error) {
 	return &d, nil
 }
 
+// GetActiveDownloadURLs returns the subset of the given URLs that already
+// have an active (pending/downloading) download, using a single query to
+// avoid N+1 lookups when queueing playlists.
+func (db *DB) GetActiveDownloadURLs(urls []string) (map[string]bool, error) {
+	existing := make(map[string]bool, len(urls))
+	if len(urls) == 0 {
+		return existing, nil
+	}
+	placeholders := make([]string, len(urls))
+	args := make([]interface{}, len(urls))
+	for i, u := range urls {
+		placeholders[i] = "?"
+		args[i] = u
+	}
+	query := fmt.Sprintf(`
+		SELECT DISTINCT url FROM downloads
+		WHERE url IN (%s) AND status IN ('pending', 'downloading')
+	`, strings.Join(placeholders, ","))
+	rows, err := db.conn.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for existing downloads: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, fmt.Errorf("failed to scan existing download URL: %w", err)
+		}
+		existing[url] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read existing download URLs: %w", err)
+	}
+	return existing, nil
+}
+
+// CreateDownloads inserts multiple download jobs in a single transaction,
+// which is significantly faster than individual inserts for playlist batches.
+func (db *DB) CreateDownloads(downloads []*Download) error {
+	if len(downloads) == 0 {
+		return nil
+	}
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	query := `
+		INSERT INTO downloads (id, url, status, progress, title, channel,
+			thumbnail_url, format_id, quality, duration, error_message, created_at, started_at, completed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert: %w", err)
+	}
+	defer func() { _ = stmt.Close() }()
+	for _, download := range downloads {
+		if _, err := stmt.Exec(
+			download.ID, download.URL, download.Status, download.Progress,
+			download.Title, download.Channel, download.ThumbnailURL,
+			download.FormatID, download.Quality, download.Duration, download.ErrorMessage,
+			download.CreatedAt, download.StartedAt, download.CompletedAt,
+		); err != nil {
+			return fmt.Errorf("failed to create download: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit downloads: %w", err)
+	}
+	return nil
+}
+
 // GetDownload retrieves a download by ID
 func (db *DB) GetDownload(id string) (*Download, error) {
 	query := `

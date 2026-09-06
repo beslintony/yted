@@ -90,6 +90,23 @@ func (a *App) processDownloads() {
 	}
 }
 
+// shouldWriteDBProgress reports whether a progress tick should be persisted
+// to the database. DB writes are throttled separately from UI events to avoid
+// a SQLite write on every tick: write on the first tick, after 1s elapsed,
+// on >=1% progress delta, or at completion (100%).
+func shouldWriteDBProgress(lastTime time.Time, lastProg float64, now time.Time, prog float64) bool {
+	if lastTime.IsZero() {
+		return true
+	}
+	if prog >= 100 {
+		return true
+	}
+	if now.Sub(lastTime) >= time.Second {
+		return true
+	}
+	return prog-lastProg >= 1
+}
+
 // startDownload starts a single download
 // Note: The download must already be marked as 'started' in the database
 // before calling this function (done synchronously in processDownloads)
@@ -223,10 +240,19 @@ func (a *App) startDownload(dl db.Download) {
 	var lastEmitTime time.Time
 	var lastProgress float64
 	var lastLogTime time.Time
+	// DB writes are throttled separately (1s / 1% / completion) to avoid a
+	// SQLite write on every progress tick
+	var lastDBWriteTime time.Time
+	var lastDBProgress float64
 	progressCallback := func(progress ytdl.DownloadProgress) {
-		// Always update database
-		if updateErr := a.db.UpdateDownloadProgress(dl.ID, progress.Percent); updateErr != nil {
-			logger.Debug("Download", "Failed to update progress", map[string]string{"error": updateErr.Error()})
+		// Throttled database write (first tick always writes)
+		now := time.Now()
+		if shouldWriteDBProgress(lastDBWriteTime, lastDBProgress, now, progress.Percent) {
+			if updateErr := a.db.UpdateDownloadProgress(dl.ID, progress.Percent); updateErr != nil {
+				logger.Debug("Download", "Failed to update progress", map[string]string{"error": updateErr.Error()})
+			}
+			lastDBWriteTime = now
+			lastDBProgress = progress.Percent
 		}
 
 		// Throttle UI events: emit if:

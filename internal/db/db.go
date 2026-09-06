@@ -28,9 +28,10 @@ func New(appDataDir string) (*DB, error) {
 	}
 
 	// Configure connection pool for better performance
-	// SQLite handles concurrency via WAL mode, so we don't need many connections
-	conn.SetMaxOpenConns(10)                  // Maximum concurrent connections
-	conn.SetMaxIdleConns(5)                   // Keep some connections warm
+	// SQLite is single-writer (even in WAL mode), so keep the pool small to
+	// avoid write contention and SQLITE_BUSY errors
+	conn.SetMaxOpenConns(2)                   // Maximum concurrent connections
+	conn.SetMaxIdleConns(1)                   // Keep one connection warm
 	conn.SetConnMaxLifetime(10 * time.Minute) // Recycle connections periodically
 	conn.SetConnMaxIdleTime(5 * time.Minute)  // Close idle connections after 5 min
 
@@ -97,6 +98,9 @@ func (db *DB) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_videos_channel ON videos(channel)`,
 		`CREATE INDEX IF NOT EXISTS idx_videos_downloaded_at ON videos(downloaded_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_downloads_url_status ON downloads(url,status)`,
+		`CREATE INDEX IF NOT EXISTS idx_videos_youtube_id ON videos(youtube_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_videos_file_hash ON videos(file_hash)`,
 		// Schema migrations for existing databases
 		`ALTER TABLE videos ADD COLUMN file_hash TEXT`,
 		`ALTER TABLE videos ADD COLUMN is_managed BOOLEAN DEFAULT 1`,

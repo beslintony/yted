@@ -152,16 +152,44 @@ func (a *App) queuePlaylistEntries(entries []ytdl.PlaylistEntry, formatID, quali
 	logger := applog.GetLogger()
 
 	added := 0
-	for _, entry := range entries {
-		watchURL := "https://www.youtube.com/watch?v=" + entry.ID
 
-		existing, err := a.db.GetActiveDownloadByURL(watchURL)
-		if err != nil {
-			logger.Error("Download", "Failed to check for existing download", err)
-			continue
-		}
-		if existing != nil {
+	// Single pre-fetch of already-queued URLs to avoid an N+1 query pattern
+	// (one GetActiveDownloadByURL per entry). Falls back to per-item checks
+	// if the batch lookup fails so duplicates are still skipped.
+	watchURLs := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		watchURLs = append(watchURLs, "https://www.youtube.com/watch?v="+entry.ID)
+	}
+	existing, err := a.db.GetActiveDownloadURLs(watchURLs)
+	if err != nil {
+		logger.Error("Download", "Failed to pre-fetch existing downloads", err)
+		existing = nil
+	}
+	// seen tracks URLs already queued (or added in this batch) so duplicates
+	// within the same playlist batch are skipped like before
+	seen := make(map[string]bool, len(entries))
+	for url := range existing {
+		seen[url] = true
+	}
+
+	pending := make([]*db.Download, 0, len(entries))
+	for i, entry := range entries {
+		watchURL := watchURLs[i]
+
+		if seen[watchURL] {
 			continue // already queued
+		}
+		if existing == nil {
+			// Pre-fetch failed: fall back to the per-item check
+			existingItem, err := a.db.GetActiveDownloadByURL(watchURL)
+			if err != nil {
+				logger.Error("Download", "Failed to check for existing download", err)
+				continue
+			}
+			if existingItem != nil {
+				seen[watchURL] = true
+				continue // already queued
+			}
 		}
 
 		title := entry.Title
@@ -174,10 +202,25 @@ func (a *App) queuePlaylistEntries(entries []ytdl.PlaylistEntry, formatID, quali
 			FormatID: &formatID,
 			Quality:  &quality,
 		}
-		if err := a.db.CreateDownload(download); err != nil {
-			logger.Error("Download", "Failed to create playlist download record", err)
-			continue
+		pending = append(pending, download)
+		seen[watchURL] = true
+	}
+
+	// Insert the batch in a single transaction; on failure fall back to
+	// per-item inserts to preserve the previous best-effort behavior
+	created := pending
+	if err := a.db.CreateDownloads(pending); err != nil {
+		logger.Error("Download", "Failed to batch-create playlist download records", err)
+		created = created[:0]
+		for _, download := range pending {
+			if err := a.db.CreateDownload(download); err != nil {
+				logger.Error("Download", "Failed to create playlist download record", err)
+				continue
+			}
+			created = append(created, download)
 		}
+	}
+	for _, download := range created {
 		added++
 		if a.ctx != nil {
 			runtime.EventsEmit(a.ctx, "download:added", download)

@@ -94,6 +94,36 @@ func TestQueuePlaylistEntries(t *testing.T) {
 	}
 }
 
+func TestQueuePlaylistEntriesDedupesWithinBatch(t *testing.T) {
+	database, err := db.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("failed to create test database: %v", err)
+	}
+
+	t.Cleanup(func() { _ = database.Close() })
+
+	a := &App{db: database}
+
+	entries := []ytdl.PlaylistEntry{
+		{ID: "dup0000001", Title: "Same video"},
+		{ID: "dup0000001", Title: "Same video again"},
+		{ID: "uniq000002", Title: "Other video"},
+	}
+
+	added := a.queuePlaylistEntries(entries, "best", "best")
+	if added != 2 {
+		t.Errorf("queuePlaylistEntries() added %d, want 2 (in-batch duplicate skipped)", added)
+	}
+
+	downloads, err := database.GetIncompleteDownloads()
+	if err != nil {
+		t.Fatalf("GetIncompleteDownloads() error: %v", err)
+	}
+	if len(downloads) != 2 {
+		t.Errorf("GetIncompleteDownloads() = %d rows, want 2", len(downloads))
+	}
+}
+
 func TestCancelDownloadStopsWorker(t *testing.T) {
 	database, err := db.New(t.TempDir())
 	if err != nil {

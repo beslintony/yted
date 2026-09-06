@@ -368,10 +368,16 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 
 	// Add progress parsing
 	if callback != nil {
+		// Per-tick logging is gated to 1/s: the progress callback fires
+		// every 100ms and logging each tick spams stdout.
+		var lastProgressLog time.Time
 		dl = dl.ProgressFunc(100*time.Millisecond, func(update ytdlp.ProgressUpdate) {
 			progress := calculateProgress(update, speedLimitKbps)
-			log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s, throttled: %v)",
-				progress.Percent, update.Status, progress.Speed, progress.ETA, progress.IsThrottled)
+			if lastProgressLog.IsZero() || time.Since(lastProgressLog) >= time.Second {
+				lastProgressLog = time.Now()
+				log.Printf("[YTDLP] Progress: %.1f%% (status: %s, speed: %s, eta: %s, throttled: %v)",
+					progress.Percent, update.Status, progress.Speed, progress.ETA, progress.IsThrottled)
+			}
 			callback(progress)
 		})
 		// Ensure progress callback is cleared after download completes or fails
