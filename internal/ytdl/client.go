@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lrstanley/go-ytdlp"
@@ -21,6 +23,9 @@ type Client struct {
 
 	cookiesBrowser string
 	cookiesFile    string
+
+	jsRuntimesOnce   sync.Once
+	jsRuntimesCached []string
 }
 
 // ClientConfig contains configuration for the ytdl client
@@ -294,15 +299,57 @@ type DownloadOptions struct {
 	ProxyURL  *string
 }
 
-// Download downloads a video
-func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions, callback ProgressCallback) error {
+// preferredJSRuntimes lists JS runtimes yt-dlp can use for extraction,
+// in preference order. yt-dlp only enables deno by default, so any other
+// installed runtime must be passed explicitly via --js-runtimes.
+var preferredJSRuntimes = []string{"deno", "node", "bun"}
+
+// selectJSRuntimes returns the subset of candidates installed on PATH.
+func selectJSRuntimes(candidates []string, lookPath func(string) (string, error)) []string {
+	var found []string
+	for _, c := range candidates {
+		if _, err := lookPath(c); err == nil {
+			found = append(found, c)
+		}
+	}
+	return found
+}
+
+// resolveJSRuntimes detects installed JS runtimes once and caches the result.
+func (c *Client) resolveJSRuntimes() []string {
+	c.jsRuntimesOnce.Do(func() {
+		c.jsRuntimesCached = selectJSRuntimes(preferredJSRuntimes, exec.LookPath)
+		if len(c.jsRuntimesCached) > 0 {
+			log.Printf("[YTDLP] Using JS runtime(s) for extraction: %s",
+				strings.Join(c.jsRuntimesCached, ","))
+		} else {
+			log.Printf("[YTDLP] WARNING: no JS runtime (deno/node/bun) found on PATH; " +
+				"YouTube extraction will be limited. Install deno (https://deno.land) or node to fix this.")
+		}
+	})
+	return c.jsRuntimesCached
+}
+
+// lastNonEmptyLine returns the last non-blank line of s, or "".
+func lastNonEmptyLine(s string) string {
+	lines := strings.Split(s, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if t := strings.TrimSpace(lines[i]); t != "" {
+			return t
+		}
+	}
+	return ""
+}
+
+// Download downloads a video, returning yt-dlp's reported final file path.
+func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions, callback ProgressCallback) (string, error) {
 	log.Printf("[YTDLP] Starting download for URL: %s", url)
 	log.Printf("[YTDLP] Output directory: %s", opts.OutputDir)
 	log.Printf("[YTDLP] Format: %s, Quality: %s", opts.Format, opts.Quality)
 
 	// Ensure output directory exists
 	if err := os.MkdirAll(opts.OutputDir, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+		return "", fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	outputTemplate := filepath.Join(opts.OutputDir, c.config.FilenameTemplate)
@@ -317,7 +364,14 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		NoWarnings().
 		NoOverwrites().
 		NoPlaylist(). // Don't download playlists - single video only
-		Continue()
+		Continue().
+		Print("after_move:filepath") // report the final file path on stdout
+
+	// Use installed JS runtimes for full extraction (yt-dlp only enables
+	// deno by default, so node/bun must be passed explicitly).
+	for _, rt := range c.resolveJSRuntimes() {
+		dl = dl.JsRuntimes(rt)
+	}
 
 	// Apply format selection with proper merging.
 	// For non-audio downloads, force compatibility-oriented selectors so outputs
@@ -399,14 +453,14 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		// Check if context was cancelled
 		if ctx.Err() == context.Canceled {
 			log.Printf("[YTDLP] Download cancelled")
-			return fmt.Errorf("download cancelled")
+			return "", fmt.Errorf("download cancelled")
 		}
 		if ctx.Err() == context.DeadlineExceeded {
 			log.Printf("[YTDLP] Download timeout")
-			return fmt.Errorf("download timeout")
+			return "", fmt.Errorf("download timeout")
 		}
 		log.Printf("[YTDLP] Download failed: %v", err)
-		return fmt.Errorf("download failed: %w", err)
+		return "", fmt.Errorf("download failed: %w", err)
 	}
 
 	log.Printf("[YTDLP] Download completed successfully")
@@ -417,7 +471,12 @@ func (c *Client) Download(ctx context.Context, url string, opts DownloadOptions,
 		log.Printf("[YTDLP] Stderr: %s", result.Stderr)
 	}
 
-	return nil
+	// The --print after_move:filepath line is the final merged output path.
+	finalPath := lastNonEmptyLine(result.Stdout)
+	if finalPath != "" {
+		log.Printf("[YTDLP] Final file path: %s", finalPath)
+	}
+	return finalPath, nil
 }
 
 func (c *Client) compatibleFormatSelector(quality string) string {

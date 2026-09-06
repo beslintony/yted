@@ -16,8 +16,10 @@ import (
 	"yted/internal/ytdl"
 )
 
-// addDownloadToLibrary adds a completed download to the video library
-func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
+// addDownloadToLibrary adds a completed download to the video library.
+// knownPath is yt-dlp's reported final output path; when it exists on disk
+// it is used directly, otherwise we fall back to scanning outputDir.
+func (a *App) addDownloadToLibrary(dl db.Download, outputDir, knownPath string) {
 	logger := applog.GetLogger()
 
 	// Extract YouTube ID from URL
@@ -66,9 +68,26 @@ func (a *App) addDownloadToLibrary(dl db.Download, outputDir string) {
 		formatID = *dl.FormatID
 	}
 
-	// Find the actual downloaded file in the output directory
-	// yt-dlp sanitizes filenames, so we need to search for files with the YouTube ID and format
-	filePath := findDownloadedFile(outputDir, youtubeID, formatID, ext)
+	// Prefer yt-dlp's reported final path; it is exact, while directory
+	// scanning is only a fallback for older/foreign files.
+	filePath := ""
+	if knownPath != "" {
+		if info, err := os.Stat(knownPath); err == nil && !info.IsDir() {
+			filePath = knownPath
+			logger.Debug("Download", "Using yt-dlp reported output path", map[string]string{
+				"path": filePath,
+			})
+		} else {
+			logger.Warn("Download", "Reported output path missing, falling back to scan", map[string]string{
+				"path": knownPath,
+			})
+		}
+	}
+	if filePath == "" {
+		// Find the actual downloaded file in the output directory
+		// yt-dlp sanitizes filenames, so we need to search for files with the YouTube ID and format
+		filePath = findDownloadedFile(outputDir, youtubeID, formatID, ext)
+	}
 	if filePath == "" {
 		// Fallback: try to construct the path (may not exist if yt-dlp sanitized differently)
 		filename := fmt.Sprintf("%s.%s", title, ext)

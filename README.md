@@ -49,6 +49,7 @@ tar xzf YTed-linux-amd64.tar.gz
 ```
 
 > **Note:** FFmpeg is required for video/audio merging. Install it via your package manager or download from [ffmpeg.org](https://ffmpeg.org/download.html).
+> For full YouTube extraction quality, a JS runtime is recommended — YTed auto-detects `deno`, `node`, or `bun` on your PATH (e.g. `sudo apt install nodejs` or install [deno](https://deno.land)). Downloads still work without one, but some formats may be unavailable.
 
 ## Development
 

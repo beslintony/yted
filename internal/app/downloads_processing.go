@@ -287,7 +287,7 @@ func (a *App) startDownload(dl db.Download) {
 	}
 
 	// Perform download
-	err = a.ytdl.Download(ctx, dl.URL, opts, progressCallback)
+	finalPath, err := a.ytdl.Download(ctx, dl.URL, opts, progressCallback)
 	if err != nil {
 		// Check if this was a pause (context cancelled) vs a real error
 		if ctx.Err() == context.Canceled {
@@ -319,10 +319,9 @@ func (a *App) startDownload(dl db.Download) {
 		logger.Error("Download", "Failed to mark download as completed", err, map[string]string{"id": dl.ID})
 	}
 
-	// Add to library - construct the expected file path
-	// The file was downloaded to opts.OutputDir with the filename template
-	// We need to add this to the videos table
-	go a.addDownloadToLibrary(dl, opts.OutputDir)
+	// Add to library - pass yt-dlp's reported final path so the file can
+	// be used directly instead of scanning the output directory
+	go a.addDownloadToLibrary(dl, opts.OutputDir, finalPath)
 
 	logger.Info("Download", "Download completed successfully", map[string]string{"id": dl.ID})
 	runtime.EventsEmit(a.ctx, "download:completed", dl.ID)
